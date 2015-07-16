@@ -39,11 +39,11 @@ impl Optimizer {
     /// since you can't have 32-bit literals.
     pub fn opt_constant_fold(mut program: ast::Program) -> ast::Program {
         for stmt in &mut program.stmts {
-            match stmt.st {
-                ast::StmtType::Calc(_, ref mut expr) => Optimizer::fold(expr),
-                ast::StmtType::Resume(ref mut expr)  => Optimizer::fold(expr),
-                ast::StmtType::Forget(ref mut expr)  => Optimizer::fold(expr),
-                ast::StmtType::ReadOut(ref mut expr) => Optimizer::fold(expr),
+            match stmt.body {
+                ast::StmtBody::Calc(_, ref mut expr) => Optimizer::fold(expr),
+                ast::StmtBody::Resume(ref mut expr)  => Optimizer::fold(expr),
+                ast::StmtBody::Forget(ref mut expr)  => Optimizer::fold(expr),
+                ast::StmtBody::ReadOut(ref mut expr) => Optimizer::fold(expr),
                 _ => { }
             }
         }

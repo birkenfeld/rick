@@ -36,7 +36,7 @@ pub struct Program {
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct Stmt {
-    pub st: StmtType,
+    pub body: StmtBody,
     pub props: StmtProps,
 }
 
@@ -50,7 +50,7 @@ pub struct StmtProps {
 }
 
 #[derive(PartialEq, Eq, Debug)]
-pub enum StmtType {
+pub enum StmtBody {
     Error(err::Error),
     Calc(Var, Expr),
     DoNext(Label),
@@ -114,27 +114,27 @@ pub enum Abstain {
 
 impl Stmt {
     pub fn stype(&self) -> Abstain {
-        match self.st {
-            StmtType::Error(_) => Abstain::Line(0),
-            StmtType::Calc(..) => Abstain::Calc,
-            StmtType::DoNext(_) => Abstain::Next,
-            StmtType::ComeFrom(_) => Abstain::ComeFrom,
-            StmtType::Resume(_) => Abstain::Resume,
-            StmtType::Forget(_) => Abstain::Forget,
-            StmtType::Ignore(_) => Abstain::Ignore,
-            StmtType::Remember(_) => Abstain::Remember,
-            StmtType::Stash(_) => Abstain::Stash,
-            StmtType::Retrieve(_) => Abstain::Retrieve,
-            StmtType::Abstain(_) => Abstain::Abstain,
-            StmtType::Reinstate(_) => Abstain::Reinstate,
-            StmtType::WriteIn(_) => Abstain::WriteIn,
-            StmtType::ReadOut(_) => Abstain::ReadOut,
-            StmtType::GiveUp => Abstain::Line(0),
+        match self.body {
+            StmtBody::Error(_) => Abstain::Line(0),
+            StmtBody::Calc(..) => Abstain::Calc,
+            StmtBody::DoNext(_) => Abstain::Next,
+            StmtBody::ComeFrom(_) => Abstain::ComeFrom,
+            StmtBody::Resume(_) => Abstain::Resume,
+            StmtBody::Forget(_) => Abstain::Forget,
+            StmtBody::Ignore(_) => Abstain::Ignore,
+            StmtBody::Remember(_) => Abstain::Remember,
+            StmtBody::Stash(_) => Abstain::Stash,
+            StmtBody::Retrieve(_) => Abstain::Retrieve,
+            StmtBody::Abstain(_) => Abstain::Abstain,
+            StmtBody::Reinstate(_) => Abstain::Reinstate,
+            StmtBody::WriteIn(_) => Abstain::WriteIn,
+            StmtBody::ReadOut(_) => Abstain::ReadOut,
+            StmtBody::GiveUp => Abstain::Line(0),
         }
     }
 }
 
-impl StmtType {
+impl StmtBody {
     fn fmt_varlist(&self, vars: &Vec<Var>) -> String {
         vars.iter().map(|v| format!("{}", v)).collect::<Vec<_>>().connect("+")
     }
@@ -222,28 +222,28 @@ impl Display for Stmt {
         if self.props.chance < 100 {
             try!(write!(fmt, "%{} ", self.props.chance));
         }
-        write!(fmt, "{}", self.st)
+        write!(fmt, "{}", self.body)
     }
 }
 
-impl Display for StmtType {
+impl Display for StmtBody {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         match *self {
-            StmtType::Error(ref err) => write!(fmt, "* {}", err.short_string()),
-            StmtType::Calc(ref var, ref expr) => write!(fmt, "{} <- {}", var, expr),
-            StmtType::DoNext(ref line) => write!(fmt, "({}) NEXT", line),
-            StmtType::ComeFrom(ref line) => write!(fmt, "COME FROM ({})", line),
-            StmtType::Resume(ref expr) => write!(fmt, "RESUME {}", expr),
-            StmtType::Forget(ref expr) => write!(fmt, "FORGET {}", expr),
-            StmtType::Ignore(ref vars) => write!(fmt, "IGNORE {}", self.fmt_varlist(vars)),
-            StmtType::Remember(ref vars) => write!(fmt, "REMEMBER {}", self.fmt_varlist(vars)),
-            StmtType::Stash(ref vars) => write!(fmt, "STASH {}", self.fmt_varlist(vars)),
-            StmtType::Retrieve(ref vars) => write!(fmt, "RETRIEVE {}", self.fmt_varlist(vars)),
-            StmtType::Abstain(ref what) => write!(fmt, "ABSTAIN FROM {}", what),
-            StmtType::Reinstate(ref what) => write!(fmt, "REINSTATE {}", what),
-            StmtType::WriteIn(ref var) => write!(fmt, "WRITE IN {}", var),
-            StmtType::ReadOut(ref expr) => write!(fmt, "READ OUT {}", expr),
-            StmtType::GiveUp => write!(fmt, "GIVE UP"),
+            StmtBody::Error(ref err) => write!(fmt, "* {}", err.short_string()),
+            StmtBody::Calc(ref var, ref expr) => write!(fmt, "{} <- {}", var, expr),
+            StmtBody::DoNext(ref line) => write!(fmt, "({}) NEXT", line),
+            StmtBody::ComeFrom(ref line) => write!(fmt, "COME FROM ({})", line),
+            StmtBody::Resume(ref expr) => write!(fmt, "RESUME {}", expr),
+            StmtBody::Forget(ref expr) => write!(fmt, "FORGET {}", expr),
+            StmtBody::Ignore(ref vars) => write!(fmt, "IGNORE {}", self.fmt_varlist(vars)),
+            StmtBody::Remember(ref vars) => write!(fmt, "REMEMBER {}", self.fmt_varlist(vars)),
+            StmtBody::Stash(ref vars) => write!(fmt, "STASH {}", self.fmt_varlist(vars)),
+            StmtBody::Retrieve(ref vars) => write!(fmt, "RETRIEVE {}", self.fmt_varlist(vars)),
+            StmtBody::Abstain(ref what) => write!(fmt, "ABSTAIN FROM {}", what),
+            StmtBody::Reinstate(ref what) => write!(fmt, "REINSTATE {}", what),
+            StmtBody::WriteIn(ref var) => write!(fmt, "WRITE IN {}", var),
+            StmtBody::ReadOut(ref expr) => write!(fmt, "READ OUT {}", expr),
+            StmtBody::GiveUp => write!(fmt, "GIVE UP"),
         }
     }
 }

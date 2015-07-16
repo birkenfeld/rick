@@ -142,15 +142,15 @@ impl Eval {
     /// Process a single statement.
     fn eval_stmt(&mut self, stmt: &ast::Stmt) -> EvalRes<StmtRes> {
         //println!("        {}", stmt);
-        match &stmt.st {
-            &ast::StmtType::GiveUp => Ok(StmtRes::End),
-            &ast::StmtType::Error(ref e) => Err((*e).clone()),
-            &ast::StmtType::Calc(ref var, ref expr) => {
+        match &stmt.body {
+            &ast::StmtBody::GiveUp => Ok(StmtRes::End),
+            &ast::StmtBody::Error(ref e) => Err((*e).clone()),
+            &ast::StmtBody::Calc(ref var, ref expr) => {
                 let val = try!(self.eval_expr(expr));
                 try!(self.assign(var, val));
                 Ok(StmtRes::Next)
             }
-            &ast::StmtType::DoNext(n) => {
+            &ast::StmtBody::DoNext(n) => {
                 match self.program.labels.get(&n) {
                     Some(i) => {
                         if self.jumps.len() >= 80 {
@@ -163,58 +163,58 @@ impl Eval {
                     }
                 }
             }
-            &ast::StmtType::ComeFrom(_) => {
+            &ast::StmtBody::ComeFrom(_) => {
                 // nothing to do here at runtime
                 Ok(StmtRes::Next)
             }
-            &ast::StmtType::Resume(ref expr) => {
+            &ast::StmtBody::Resume(ref expr) => {
                 let n = try!(self.eval_expr(expr)).as_u32();
                 let next = try!(self.pop_jumps(n));
                 Ok(StmtRes::Back(next as usize))
             }
-            &ast::StmtType::Forget(ref expr) => {
+            &ast::StmtBody::Forget(ref expr) => {
                 let n = try!(self.eval_expr(expr)).as_u32();
                 try!(self.pop_jumps(n));
                 Ok(StmtRes::Next)
             }
-            &ast::StmtType::Ignore(ref vars) => {
+            &ast::StmtBody::Ignore(ref vars) => {
                 for var in vars {
                     try!(self.set_rw(var, false));
                 }
                 Ok(StmtRes::Next)
             }
-            &ast::StmtType::Remember(ref vars) => {
+            &ast::StmtBody::Remember(ref vars) => {
                 for var in vars {
                     try!(self.set_rw(var, true));
                 }
                 Ok(StmtRes::Next)
             }
-            &ast::StmtType::Stash(ref vars) => {
+            &ast::StmtBody::Stash(ref vars) => {
                 for var in vars {
                     try!(self.stash(var));
                 }
                 Ok(StmtRes::Next)
             }
-            &ast::StmtType::Retrieve(ref vars) => {
+            &ast::StmtBody::Retrieve(ref vars) => {
                 for var in vars {
                     try!(self.retrieve(var));
                 }
                 Ok(StmtRes::Next)
             }
-            &ast::StmtType::Abstain(ref what) => {
+            &ast::StmtBody::Abstain(ref what) => {
                 try!(self.abstain(what, true));
                 Ok(StmtRes::Next)
             }
-            &ast::StmtType::Reinstate(ref what) => {
+            &ast::StmtBody::Reinstate(ref what) => {
                 try!(self.abstain(what, false));
                 Ok(StmtRes::Next)
             }
-            &ast::StmtType::ReadOut(ref expr) => {
+            &ast::StmtBody::ReadOut(ref expr) => {
                 let varval = try!(self.eval_expr(expr));
                 write_number(varval.as_u32());
                 Ok(StmtRes::Next)
             }
-            &ast::StmtType::WriteIn(ref var) => {
+            &ast::StmtBody::WriteIn(ref var) => {
                 let n = try!(read_number());
                 try!(self.assign(var, ast::Val::from_u32(n)));
                 Ok(StmtRes::Next)
