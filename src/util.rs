@@ -234,3 +234,27 @@ pub fn xor_32(v: u32) -> u32 {
     }
     w ^ v
 }
+
+pub trait FromU16: Copy {
+    fn from_u16(u16) -> Self;
+}
+
+pub trait ToU16: Copy {
+    fn to_u16(self) -> u16;
+}
+
+impl FromU16 for u16 {
+    fn from_u16(x: u16) -> u16 { x }
+}
+
+impl FromU16 for u32 {
+    fn from_u16(x: u16) -> u32 { x as u32 }
+}
+
+impl ToU16 for u16 {
+    fn to_u16(self) -> u16 { self }
+}
+
+impl ToU16 for u32 {
+    fn to_u16(self) -> u16 { self as u16 }
+}

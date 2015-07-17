@@ -20,7 +20,7 @@ use std::rc::Rc;
 
 use ast::{ self, Program, Stmt, StmtBody, Expr, Val, Var };
 use err;
-use util::{ write_number, write_byte, read_number, read_byte, check_chance,
+use util::{ write_number, write_byte, read_number, read_byte, check_chance, FromU16, ToU16,
             mingle, select, and_16, and_32, or_16, or_32, xor_16, xor_32 };
 
 
@@ -475,69 +475,58 @@ impl Eval {
 
     /// Array readout helper.
     fn array_readout(&mut self, var: &Var) -> EvalRes<()> {
-        fn generic_readout<T: Copy, F>(bind: &Bind<Array<T>>, mut cb: F) -> EvalRes<()>
-            where F: FnMut(T) -> ()
-        {
+        fn generic_readout<T: ToU16>(bind: &Bind<Array<T>>, state: &mut u8) -> EvalRes<()> {
             if bind.val.dims.len() != 1 {
                 // only dimension-1 arrays can be output
                 return Err(err::new(&err::IE241));
             }
             for val in bind.val.elems.iter() {
-                cb(*val);
+                let byte = ((*state as i16 - val.to_u16() as i16) as u16 % 256) as u8;
+                let mut c = byte;
+                *state = byte as u8;
+                c = (c & 0x0f) << 4 | (c & 0xf0) >> 4;
+                c = (c & 0x33) << 2 | (c & 0xcc) >> 2;
+                c = (c & 0x55) << 1 | (c & 0xaa) >> 1;
+                write_byte(c);
             }
             Ok(())
         }
-        fn write(state: &mut u8, b: u16) {
-            let byte = ((*state as i16 - b as i16) as u16 % 256) as u8;
-            let mut c = byte;
-            *state = byte as u8;
-            c = (c & 0x0f) << 4 | (c & 0xf0) >> 4;
-            c = (c & 0x33) << 2 | (c & 0xcc) >> 2;
-            c = (c & 0x55) << 1 | (c & 0xaa) >> 1;
-            write_byte(c);
-        };
         let state = &mut self.last_out;
         match *var {
-            Var::A16(n, _) => try!(generic_readout(&self.tail[n], |v| write(state, v))),
-            Var::A32(n, _) => try!(generic_readout(&self.hybrid[n], |v| write(state, v as u16))),
+            Var::A16(n, _) => generic_readout(&self.tail[n], state),
+            Var::A32(n, _) => generic_readout(&self.hybrid[n], state),
             _ => unimplemented!()
         }
-        Ok(())
     }
 
     /// Array writein helper.
     fn array_writein(&mut self, var: &Var) -> EvalRes<()> {
-        fn generic_writein<T: Copy, F>(bind: &mut Bind<Array<T>>, mut cb: F) -> EvalRes<()>
-            where F: FnMut() -> T
-        {
+        fn generic_writein<T: FromU16>(bind: &mut Bind<Array<T>>, state: &mut u8) -> EvalRes<()> {
             if bind.val.dims.len() != 1 {
                 // only dimension-1 arrays can be input
                 return Err(err::new(&err::IE241));
             }
             for place in bind.val.elems.iter_mut() {
-                let b = cb();
+                let byte = read_byte();
+                let c = if byte == 256 {
+                    *state = 0;
+                    256
+                } else {
+                    let c = (byte as i16 - *state as i16) as u16 % 256;
+                    *state = byte as u8;
+                    c
+                };
                 if bind.rw {
-                    *place = b;
+                    *place = FromU16::from_u16(c);
                 }
             }
             Ok(())
         }
-        fn read(state: &mut u8) -> u16 {
-            let byte = read_byte();
-            if byte == 256 {
-                *state = 0;
-                return 256;
-            }
-            let c = (byte as i16 - *state as i16) as u16 % 256;
-            *state = byte as u8;
-            c
-        };
         let state = &mut self.last_in;
         match *var {
-            Var::A16(n, _) => try!(generic_writein(&mut self.tail[n], || read(state))),
-            Var::A32(n, _) => try!(generic_writein(&mut self.hybrid[n], || read(state) as u32)),
+            Var::A16(n, _) => generic_writein(&mut self.tail[n], state),
+            Var::A32(n, _) => generic_writein(&mut self.hybrid[n], state),
             _ => unimplemented!()
         }
-        Ok(())
     }
 }
