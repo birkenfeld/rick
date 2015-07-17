@@ -369,16 +369,12 @@ impl Eval {
                 vent.stack.push(vent.val);
             },
             ast::Var::A16(n, _) => {
-                match self.tail.get_mut(&n) {
-                    None => return Err(err::new(&err::IE241)),
-                    Some(mut vent) => vent.stack.push(vent.val.clone()),
-                }
+                let vent = self.tail.entry(n).or_insert(Var::new(Array::new(vec![], 0)));
+                vent.stack.push(vent.val.clone());
             }
             ast::Var::A32(n, _) => {
-                match self.hybrid.get_mut(&n) {
-                    None => return Err(err::new(&err::IE241)),
-                    Some(mut vent) => vent.stack.push(vent.val.clone()),
-                }
+                let vent = self.hybrid.entry(n).or_insert(Var::new(Array::new(vec![], 0)));
+                vent.stack.push(vent.val.clone());
             }
         }
         Ok(())
@@ -450,7 +446,7 @@ impl Eval {
                     ix += (sub - 1) * prev_dim;
                     prev_dim = *dim;
                 }
-                println!("array assign: dim={:?} subs={:?} ix={}", vent.val.0, subs, ix);
+                //println!("array assign: dim={:?} subs={:?} ix={}", vent.val.0, subs, ix);
                 vent.val.1[ix as usize] = val;
                 Ok(())
             }

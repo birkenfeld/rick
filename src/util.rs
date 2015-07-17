@@ -128,7 +128,7 @@ pub fn from_english(v: &str) -> Result<u32, err::Error> {
 }
 
 pub fn write_number(val: u32) {
-    println!("{}", to_roman(val));
+    print!("{}", to_roman(val));
 }
 
 pub fn read_number() -> Result<u32, err::Error> {
