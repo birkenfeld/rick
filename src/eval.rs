@@ -15,7 +15,6 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
-use std::collections::HashSet;
 use std::default::Default;
 use std::rc::Rc;
 
@@ -47,11 +46,12 @@ impl<T: Clone + Default> Array<T> {
 struct Bind<T> {
     pub val: T,
     pub stack: Vec<T>,
+    pub rw: bool,
 }
 
 impl<T> Bind<T> {
     pub fn new(t: T) -> Bind<T> {
-        Bind { val: t, stack: Vec::new() }
+        Bind { val: t, stack: Vec::new(), rw: true }
     }
 }
 
@@ -61,7 +61,6 @@ pub struct Eval {
     twospot: Vec<Bind<u32>>,
     tail: Vec<Bind<Array<u16>>>,
     hybrid: Vec<Bind<Array<u32>>>,
-    ignored: HashSet<(u8, u16)>,
     jumps: Vec<ast::LogLine>,
     abstentions: Vec<bool>,
     _in_state: u8,
@@ -90,7 +89,6 @@ impl Eval {
             twospot: vec![Bind::new(0); nv.1 as usize],
             tail:    vec![Bind::new(Array::empty()); nv.2 as usize],
             hybrid:  vec![Bind::new(Array::empty()); nv.3 as usize],
-            ignored: HashSet::new(),
             jumps:   Vec::new(),
             abstentions: abs,
             _in_state: 0,
@@ -312,18 +310,19 @@ impl Eval {
     /// Assign to a variable.
     fn assign(&mut self, var: &Var, val: Val) -> EvalRes<()> {
         //println!("assign: {:?} = {}", var, val.as_u32());
-        if self.ignored.contains(&var.unique()) {
-            return Ok(());
-        }
         match *var {
             Var::I16(n) => {
                 let vent = &mut self.spot[n as usize];
-                vent.val = try!(val.as_u16());
+                if vent.rw {
+                    vent.val = try!(val.as_u16());
+                }
                 Ok(())
             },
             Var::I32(n) => {
                 let vent = &mut self.twospot[n as usize];
-                vent.val = val.as_u32();
+                if vent.rw {
+                    vent.val = val.as_u32();
+                }
                 Ok(())
             },
             Var::A16(n, ref subs) => {
@@ -340,9 +339,6 @@ impl Eval {
 
     /// Dimension an array.
     fn array_dim(&mut self, var: &Var, dims: Vec<Val>) -> EvalRes<()> {
-        if self.ignored.contains(&var.unique()) {
-            return Ok(());
-        }
         match *var {
             Var::A16(n, _) => {
                 Eval::array_dimension(&mut self.tail, n, dims)
@@ -411,10 +407,15 @@ impl Eval {
 
     /// Process an IGNORE or REMEMBER statement.
     fn set_rw(&mut self, var: &Var, rw: bool) -> EvalRes<()> {
-        if rw {
-            self.ignored.remove(&var.unique());
-        } else {
-            self.ignored.insert(var.unique());
+        fn generic_set_rw<T>(vtbl: &mut Vec<Bind<T>>, n: u16, rw: bool) {
+            let vent = &mut vtbl[n as usize];
+            vent.rw = rw;
+        }
+        match *var {
+            Var::I16(n) => generic_set_rw(&mut self.spot, n, rw),
+            Var::I32(n) => generic_set_rw(&mut self.twospot, n, rw),
+            Var::A16(n, _) => generic_set_rw(&mut self.tail, n, rw),
+            Var::A32(n, _) => generic_set_rw(&mut self.hybrid, n, rw),
         }
         Ok(())
     }
@@ -445,7 +446,9 @@ impl Eval {
             return Err(err::new(&err::IE240));
         }
         let mut vent = &mut vtbl[n as usize];
-        vent.val = Array::new(dims);
+        if vent.rw {
+            vent.val = Array::new(dims);
+        }
         Ok(())
     }
 
@@ -471,9 +474,11 @@ impl Eval {
     fn array_assign<T>(vtbl: &mut Vec<Bind<Array<T>>>, n: u16,
                        subs: Vec<Val>, val: T) -> EvalRes<()> {
         let vent = &mut vtbl[n as usize];
-        let ix = try!(Eval::array_get_index(vent, subs));
-        //println!("array assign: dim={:?} subs={:?} ix={}", vent.val.0, subs, ix);
-        vent.val.elems[ix] = val;
+        if vent.rw {
+            let ix = try!(Eval::array_get_index(vent, subs));
+            //println!("array assign: dim={:?} subs={:?} ix={}", vent.val.0, subs, ix);
+            vent.val.elems[ix] = val;
+        }
         Ok(())
     }
 
