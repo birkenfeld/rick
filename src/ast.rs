@@ -26,6 +26,7 @@ use err;
 pub type Label = u16;
 pub type LogLine = u16;
 
+/// A whole program, with meta-information used at eval-time.
 #[derive(PartialEq, Eq, Debug)]
 pub struct Program {
     pub stmts: Vec<Stmt>,
@@ -35,12 +36,14 @@ pub struct Program {
     pub n_vars: (u16, u16, u16, u16),
 }
 
+/// A single statement.
 #[derive(PartialEq, Eq, Debug)]
 pub struct Stmt {
     pub body: StmtBody,
     pub props: StmtProps,
 }
 
+/// Common properties for all statements.
 #[derive(PartialEq, Eq, Debug)]
 pub struct StmtProps {
     pub label: Label,
@@ -50,6 +53,7 @@ pub struct StmtProps {
     pub disabled: bool,
 }
 
+/// Type-of-statement dependent data.
 #[derive(PartialEq, Eq, Debug)]
 pub enum StmtBody {
     Error(err::Error),
@@ -70,12 +74,14 @@ pub enum StmtBody {
     GiveUp,
 }
 
+/// An item in a READ OUT list.
 #[derive(PartialEq, Eq, Debug)]
 pub enum Readout {
     Var(Var),
     Const(u16),
 }
 
+/// A variable reference (store or load).
 #[derive(PartialEq, Eq, Debug)]
 pub enum Var {
     I16(u16),
@@ -84,6 +90,7 @@ pub enum Var {
     A32(u16, Vec<Expr>),
 }
 
+/// An expression.
 #[derive(PartialEq, Eq, Debug)]
 pub enum Expr {
     Num(Val),
@@ -95,12 +102,14 @@ pub enum Expr {
     Xor(Box<Expr>),
 }
 
+/// An evaluated value.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Val {
     I16(u16),
     I32(u32),
 }
 
+/// Specification for an ABSTAIN or REINSTATE.
 #[derive(PartialEq, Eq, Debug)]
 pub enum Abstain {
     Line(Label),
@@ -121,6 +130,7 @@ pub enum Abstain {
 
 
 impl Stmt {
+    /// Determine the abstain type for the statement. Line(0) is used as an escape value.
     pub fn stype(&self) -> Abstain {
         match self.body {
             StmtBody::Error(_) => Abstain::Line(0),
@@ -144,6 +154,7 @@ impl Stmt {
 }
 
 impl StmtBody {
+    // helpers for Display
     fn fmt_pluslist<T: Display>(&self, vars: &Vec<T>) -> String {
         vars.iter().map(|v| format!("{}", v)).collect::<Vec<_>>().join(" + ")
     }
@@ -154,6 +165,7 @@ impl StmtBody {
 }
 
 impl Var {
+    /// Is this Var a dimensioning access (array without subscript)?
     pub fn is_dim(&self) -> bool {
         match *self {
             Var::A16(_, ref v) if v.is_empty() => true,
@@ -162,17 +174,31 @@ impl Var {
         }
     }
 
-    pub fn ignore_key(&self) -> (u8, u16) {
+    /// Get a unique key that identifies this variable among all var types.
+    pub fn unique(&self) -> (u8, u16) {
         match *self {
-            Var::I16(n)    => (1, n),
-            Var::I32(n)    => (2, n),
-            Var::A16(n, _) => (3, n),
-            Var::A32(n, _) => (4, n),
+            Var::I16(n)    => (0, n),
+            Var::I32(n)    => (1, n),
+            Var::A16(n, _) => (2, n),
+            Var::A32(n, _) => (3, n),
+        }
+    }
+
+    /// Rename the variable with a new number.
+    pub fn rename(&mut self, new: u16) {
+        match *self {
+            Var::I16(ref mut n) |
+            Var::I32(ref mut n) |
+            Var::A16(ref mut n, _) |
+            Var::A32(ref mut n, _) => {
+                *n = new;
+            }
         }
     }
 }
 
 impl Val {
+    /// Cast as a 16-bit value; returns an Error if 32-bit and too big.
     pub fn as_u16(&self) -> Result<u16, err::Error> {
         match *self {
             Val::I16(v) => Ok(v),
@@ -185,6 +211,7 @@ impl Val {
         }
     }
 
+    /// Cast as a 32-bit value; always succeeds.
     pub fn as_u32(&self) -> u32 {
         match *self {
             Val::I16(v) => v as u32,
@@ -192,6 +219,7 @@ impl Val {
         }
     }
 
+    /// Create from a 32-bit value; will select the smallest possible type.
     pub fn from_u32(v: u32) -> Val {
         if v & 0xFFFF == v {
             Val::I16(v as u16)

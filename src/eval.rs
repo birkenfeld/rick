@@ -289,7 +289,7 @@ impl Eval {
     /// Assign to a variable.
     fn assign(&mut self, var: &ast::Var, val: ast::Val) -> EvalRes<()> {
         //println!("assign: {:?} = {}", var, val.as_u32());
-        if self.ignored.contains(&var.ignore_key()) {
+        if self.ignored.contains(&var.unique()) {
             return Ok(());
         }
         match *var {
@@ -317,7 +317,7 @@ impl Eval {
 
     /// Dimension an array.
     fn array_dim(&mut self, var: &ast::Var, vals: Vec<ast::Val>) -> EvalRes<()> {
-        if self.ignored.contains(&var.ignore_key()) {
+        if self.ignored.contains(&var.unique()) {
             return Ok(());
         }
         let vals = try!(vals.iter().map(|v| v.as_u16()).collect::<Result<Vec<_>, _>>());
@@ -401,9 +401,9 @@ impl Eval {
     /// Process an IGNORE or REMEMBER statement.
     fn set_rw(&mut self, var: &ast::Var, rw: bool) -> EvalRes<()> {
         if rw {
-            self.ignored.remove(&var.ignore_key());
+            self.ignored.remove(&var.unique());
         } else {
-            self.ignored.insert(var.ignore_key());
+            self.ignored.insert(var.unique());
         }
         Ok(())
     }

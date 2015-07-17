@@ -449,6 +449,7 @@ impl<'p> Parser<'p> {
         stmts
     }
 
+    /// Walk all references to variables, and call a visitor function for each.
     fn walk_vars<F>(&self, stmt: &mut ast::Stmt, mut visitor: F)
         where F: FnMut(&mut ast::Var) -> ()
     {
@@ -524,38 +525,32 @@ impl<'p> Parser<'p> {
         }
     }
 
+    /// Collect all used variable numbers and renumber them.
     fn collect_vars(&self, vars: &mut Vars, stmt: &mut ast::Stmt) {
         self.walk_vars(stmt, |var| {
-            let key = var.ignore_key();
+            let key = var.unique();
             if !vars.map.contains_key(&key) {
-                let idx = key.0 as usize - 1;
+                let idx = key.0 as usize;
                 vars.map.insert(key, vars.counts[idx]);
                 vars.counts[idx] += 1;
             }
         });
     }
 
+    /// Apply variable renumbering.
     fn rename_vars(&self, vars: &Vars, stmt: &mut ast::Stmt) {
         self.walk_vars(stmt, |var| {
-            let key = var.ignore_key();
-            let new_num = vars.map[&key];
-            match *var {
-                ast::Var::I16(ref mut n) |
-                ast::Var::I32(ref mut n) |
-                ast::Var::A16(ref mut n, _) |
-                ast::Var::A32(ref mut n, _) => {
-                    *n = new_num;
-                }
-            }
+            let key = var.unique();
+            var.rename(vars.map[&key]);
         });
     }
 
     fn post_process(&self, stmts: Vec<ast::Stmt>) -> Result<ast::Program, err::Error> {
         let mut stmts = self.add_syslib(stmts);
-        // here we collect:
-        // - the "abstain" type of each statement
-        // - a map of all labels to logical lines
-        // - a map of all come-froms to logical lines
+        // here we:
+        // - determine the "abstain" type of each statement
+        // - create a map of all labels to logical lines
+        // - collect variables for renaming
         let mut types = Vec::new();
         let mut labels = HashMap::new();
         let mut comefroms = HashMap::new();
@@ -567,7 +562,9 @@ impl<'p> Parser<'p> {
             }
             self.collect_vars(&mut vars, &mut stmt);
         }
-        println!("{:?}", vars);
+        // here we:
+        // - create a map of all come-froms to logical lines
+        // - apply new variable names
         for (i, mut stmt) in stmts.iter_mut().enumerate() {
             if let ast::StmtBody::ComeFrom(n) = stmt.body {
                 if !labels.contains_key(&n) {
