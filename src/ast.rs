@@ -32,6 +32,7 @@ pub struct Program {
     pub labels: HashMap<Label, LogLine>,
     pub comefroms: HashMap<Label, LogLine>,
     pub stmt_types: Vec<Abstain>,
+    pub n_vars: (u16, u16, u16, u16),
 }
 
 #[derive(PartialEq, Eq, Debug)]
@@ -144,11 +145,11 @@ impl Stmt {
 
 impl StmtBody {
     fn fmt_pluslist<T: Display>(&self, vars: &Vec<T>) -> String {
-        vars.iter().map(|v| format!("{}", v)).collect::<Vec<_>>().connect(" + ")
+        vars.iter().map(|v| format!("{}", v)).collect::<Vec<_>>().join(" + ")
     }
 
     fn fmt_bylist(&self, vars: &Vec<Expr>) -> String {
-        vars.iter().map(|v| format!("{}", v)).collect::<Vec<_>>().connect(" BY ")
+        vars.iter().map(|v| format!("{}", v)).collect::<Vec<_>>().join(" BY ")
     }
 }
 

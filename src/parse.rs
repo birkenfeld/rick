@@ -48,7 +48,14 @@ impl<'p> Parser<'p> {
     }
 
     /// Parse the whole file as a program.
-    pub fn parse(&mut self) -> Result<ast::Program, err::Error> {
+    pub fn get_program(&mut self) -> Result<ast::Program, err::Error> {
+        // parse all statements
+        let stmts = try!(self.parse());
+        // collect some necessary values and return the Program
+        self.post_process(stmts)
+    }
+
+    pub fn parse(&mut self) -> Result<Vec<ast::Stmt>, err::Error> {
         // a program is a series of statements until EOF
         let mut stmts = Vec::new();
         loop {
@@ -57,8 +64,7 @@ impl<'p> Parser<'p> {
             }
             stmts.push(try!(self.parse_stmt()));
         }
-        // collect some necessary values and return the Program
-        self.post_process(stmts)
+        Ok(stmts)
     }
 
     /// Parse a single statement (correct or botched).
@@ -437,14 +443,115 @@ impl<'p> Parser<'p> {
         if need_syslib {
             let code = syslib::SYSLIB_CODE.to_vec();
             let mut p = Parser::new(&code);
-            let mut syslib_stmts = p.parse().unwrap().stmts;
+            let mut syslib_stmts = p.parse().unwrap();
             stmts.append(&mut syslib_stmts);
         }
         stmts
     }
 
+    fn walk_vars<F>(&self, stmt: &mut ast::Stmt, mut visitor: F)
+        where F: FnMut(&mut ast::Var) -> ()
+    {
+        let visitor = &mut visitor;
+
+        fn walk_var<F>(var: &mut ast::Var, visitor: &mut F)
+            where F: FnMut(&mut ast::Var) -> ()
+        {
+            visitor(var);
+            match *var {
+                ast::Var::A16(_, ref mut es) |
+                ast::Var::A32(_, ref mut es) => {
+                    for e in es {
+                        walk_expr(e, visitor);
+                    }
+                },
+                ast::Var::I16(_) |
+                ast::Var::I32(_) => { },
+            }
+        }
+
+        fn walk_expr<F>(expr: &mut ast::Expr, visitor: &mut F)
+            where F: FnMut(&mut ast::Var) -> ()
+        {
+            match *expr {
+                ast::Expr::Var(ref mut v) => walk_var(v, visitor),
+                ast::Expr::And(ref mut e) |
+                ast::Expr::Or(ref mut e) |
+                ast::Expr::Xor(ref mut e) => walk_expr(e, visitor),
+                ast::Expr::Mingle(ref mut e, ref mut e2) |
+                ast::Expr::Select(ref mut e, ref mut e2) => {
+                    walk_expr(e, visitor);
+                    walk_expr(e2, visitor);
+                },
+                ast::Expr::Num(_) => { }
+            }
+        }
+
+        match stmt.body {
+            ast::StmtBody::Calc(ref mut v, ref mut e) => {
+                walk_var(v, visitor);
+                walk_expr(e, visitor);
+            },
+            ast::StmtBody::Dim(ref mut v, ref mut es) => {
+                walk_var(v, visitor);
+                for e in es {
+                    walk_expr(e, visitor);
+                }
+            },
+            ast::StmtBody::Resume(ref mut e) |
+            ast::StmtBody::Forget(ref mut e) => {
+                walk_expr(e, visitor);
+            },
+            ast::StmtBody::Ignore(ref mut vs) |
+            ast::StmtBody::Remember(ref mut vs) |
+            ast::StmtBody::Stash(ref mut vs) |
+            ast::StmtBody::Retrieve(ref mut vs) => {
+                for v in vs {
+                    walk_var(v, visitor);
+                }
+            },
+            ast::StmtBody::WriteIn(ref mut v) => {
+                walk_var(v, visitor);
+            },
+            ast::StmtBody::ReadOut(ref mut rs) => {
+                for r in rs {
+                    if let ast::Readout::Var(ref mut v) = *r {
+                        walk_var(v, visitor);
+                    }
+                }
+            }
+            _ => { }
+        }
+    }
+
+    fn collect_vars(&self, vars: &mut Vars, stmt: &mut ast::Stmt) {
+        self.walk_vars(stmt, |var| {
+            let key = var.ignore_key();
+            if !vars.map.contains_key(&key) {
+                let idx = key.0 as usize - 1;
+                vars.map.insert(key, vars.counts[idx]);
+                vars.counts[idx] += 1;
+            }
+        });
+    }
+
+    fn rename_vars(&self, vars: &Vars, stmt: &mut ast::Stmt) {
+        self.walk_vars(stmt, |var| {
+            let key = var.ignore_key();
+            let new_num = vars.map[&key];
+            match *var {
+                ast::Var::I16(ref mut n) |
+                ast::Var::I32(ref mut n) |
+                ast::Var::A16(ref mut n, _) |
+                ast::Var::A32(ref mut n, _) => {
+                    *n = new_num;
+                }
+            }
+        });
+    }
+
     fn post_process(&self, stmts: Vec<ast::Stmt>) -> Result<ast::Program, err::Error> {
-        let stmts = self.add_syslib(stmts);
+        let mut stmts = self.add_syslib(stmts);
         // here we collect:
         // - the "abstain" type of each statement
         // - a map of all labels to logical lines
@@ -452,13 +559,16 @@ impl<'p> Parser<'p> {
         let mut types = Vec::new();
         let mut labels = HashMap::new();
         let mut comefroms = HashMap::new();
-        for (i, stmt) in stmts.iter().enumerate() {
+        let mut vars = Vars { counts: vec![0, 0, 0, 0], map: HashMap::new() };
+        for (i, mut stmt) in stmts.iter_mut().enumerate() {
             types.push(stmt.stype());
             if stmt.props.label > 0 {
                 labels.insert(stmt.props.label, i as u16);
             }
+            self.collect_vars(&mut vars, &mut stmt);
         }
-        for (i, stmt) in stmts.iter().enumerate() {
+        println!("{:?}", vars);
+        for (i, mut stmt) in stmts.iter_mut().enumerate() {
             if let ast::StmtBody::ComeFrom(n) = stmt.body {
                 if !labels.contains_key(&n) {
                     return Err(err::with_line(&err::IE444, stmt.props.srcline));
@@ -468,10 +578,20 @@ impl<'p> Parser<'p> {
                 }
                 comefroms.insert(n, i as u16);
             }
+            self.rename_vars(&vars, &mut stmt);
         }
+        let n_vars = (vars.counts[0], vars.counts[1], vars.counts[2], vars.counts[3]);
         Ok(ast::Program { stmts: stmts,
                           labels: labels,
                           comefroms: comefroms,
-                          stmt_types: types })
+                          stmt_types: types,
+                          n_vars: n_vars })
     }
+}
+
+
+#[derive(Debug)]
+struct Vars {
+    counts: Vec<u16>,
+    map: HashMap<(u8, u16), u16>,
 }

@@ -15,7 +15,6 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
-use std::collections::HashMap;
 use std::collections::HashSet;
 use std::default::Default;
 use std::rc::Rc;
@@ -30,12 +29,18 @@ use util::{ write_number, read_number, check_chance,
 struct Array<T>(pub Vec<u16>, pub Vec<T>);
 
 impl<T: Clone + Default> Array<T> {
-    pub fn new(subs: Vec<u16>, t: T) -> Array<T> {
+    pub fn new(subs: Vec<u16>) -> Array<T> {
         let total = subs.iter().product::<u16>() as usize;
-        Array(subs, vec![t; total])
+        let value = Default::default();
+        Array(subs, vec![value; total])
+    }
+
+    pub fn empty() -> Array<T> {
+        Array(vec![], vec![])
     }
 }
 
+#[derive(Clone)]
 struct Var<T> {
     pub val: T,
     pub stack: Vec<T>,
@@ -49,10 +54,10 @@ impl<T> Var<T> {
 
 pub struct Eval {
     program: Rc<ast::Program>,
-    spot: HashMap<u16, Var<u16>>,
-    twospot: HashMap<u16, Var<u32>>,
-    tail: HashMap<u16, Var<Array<u16>>>,
-    hybrid: HashMap<u16, Var<Array<u32>>>,
+    spot: Vec<Var<u16>>,
+    twospot: Vec<Var<u32>>,
+    tail: Vec<Var<Array<u16>>>,
+    hybrid: Vec<Var<Array<u32>>>,
     ignored: HashSet<(u8, u16)>,
     jumps: Vec<ast::LogLine>,
     abstentions: Vec<bool>,
@@ -75,14 +80,15 @@ impl Eval {
         for stmt in &program.stmts {
             abs.push(stmt.props.disabled);
         }
+        let nv = program.n_vars;
         Eval {
             program: Rc::new(program),
-            spot: HashMap::new(),
-            twospot: HashMap::new(),
-            tail: HashMap::new(),
-            hybrid: HashMap::new(),
+            spot:    vec![Var::new(0); nv.0 as usize],
+            twospot: vec![Var::new(0); nv.1 as usize],
+            tail:    vec![Var::new(Array::empty()); nv.2 as usize],
+            hybrid:  vec![Var::new(Array::empty()); nv.3 as usize],
             ignored: HashSet::new(),
-            jumps: Vec::new(),
+            jumps:   Vec::new(),
             abstentions: abs,
             _in_state: 0,
             _out_state: 0,
@@ -126,11 +132,13 @@ impl Eval {
             }
             // check for COME FROMs from this line
             let lbl = self.program.stmts[pctr].props.label;
-            if let Some(next) = self.program.comefroms.get(&lbl) {
-                // check for abstained COME FROM
-                if !self.abstentions[*next as usize] {
-                    pctr = *next as usize;
-                    continue;
+            if lbl > 0 {
+                if let Some(next) = self.program.comefroms.get(&lbl) {
+                    // check for abstained COME FROM
+                    if !self.abstentions[*next as usize] {
+                        pctr = *next as usize;
+                        continue;
+                    }
                 }
             }
             // no COME FROM, normal execution
@@ -286,12 +294,12 @@ impl Eval {
         }
         match *var {
             ast::Var::I16(n) => {
-                let vent = self.spot.entry(n).or_insert(Var::new(0));
+                let vent = &mut self.spot[n as usize];
                 vent.val = try!(val.as_u16());
                 Ok(())
             },
             ast::Var::I32(n) => {
-                let vent = self.twospot.entry(n).or_insert(Var::new(0));
+                let vent = &mut self.twospot[n as usize];
                 vent.val = val.as_u32();
                 Ok(())
             },
@@ -341,10 +349,10 @@ impl Eval {
     fn lookup(&self, var: &ast::Var) -> EvalRes<ast::Val> {
         match *var {
             ast::Var::I16(n) => {
-                Ok(ast::Val::I16(self.spot.get(&n).map(|v| v.val).unwrap_or(0)))
+                Ok(ast::Val::I16(self.spot[n as usize].val))
             },
             ast::Var::I32(n) => {
-                Ok(ast::Val::I32(self.twospot.get(&n).map(|v| v.val).unwrap_or(0)))
+                Ok(ast::Val::I32(self.twospot[n as usize].val))
             },
             ast::Var::A16(n, ref subs) => {
                 let subs = try!(self.eval_exprlist(subs));
@@ -361,19 +369,19 @@ impl Eval {
     fn stash(&mut self, var: &ast::Var) -> EvalRes<()> {
         match *var {
             ast::Var::I16(n) => {
-                let vent = self.spot.entry(n).or_insert(Var::new(0));
+                let vent = &mut self.spot[n as usize];
                 vent.stack.push(vent.val);
             },
             ast::Var::I32(n) => {
-                let vent = self.twospot.entry(n).or_insert(Var::new(0));
+                let vent = &mut self.twospot[n as usize];
                 vent.stack.push(vent.val);
             },
             ast::Var::A16(n, _) => {
-                let vent = self.tail.entry(n).or_insert(Var::new(Array::new(vec![], 0)));
+                let vent = &mut self.tail[n as usize];
                 vent.stack.push(vent.val.clone());
             }
             ast::Var::A32(n, _) => {
-                let vent = self.hybrid.entry(n).or_insert(Var::new(Array::new(vec![], 0)));
+                let vent = &mut self.hybrid[n as usize];
                 vent.stack.push(vent.val.clone());
             }
         }
@@ -419,76 +427,63 @@ impl Eval {
     }
 
     /// Generic array dimension helper.
-    fn array_dimension<T: Clone + Default>(map: &mut HashMap<u16, Var<Array<T>>>, n: u16,
+    fn array_dimension<T: Clone + Default>(map: &mut Vec<Var<Array<T>>>, n: u16,
                                            subs: Vec<u16>) -> EvalRes<()> {
-        let new_arr = Array::new(subs, Default::default());
-        let vent = map.entry(n).or_insert(Var::new(new_arr.clone()));
-        vent.val = new_arr;
+        let mut vent = &mut map[n as usize];
+        vent.val = Array::new(subs);
         Ok(())
     }
 
     /// Generic array assignment helper.
-    fn array_assign<T>(map: &mut HashMap<u16, Var<Array<T>>>, n: u16,
+    fn array_assign<T>(map: &mut Vec<Var<Array<T>>>, n: u16,
                        subs: Vec<ast::Val>, val: T) -> EvalRes<()> {
         let subs = try!(subs.iter().map(|v| v.as_u16()).collect::<Result<Vec<_>, _>>());
-        match map.get_mut(&n) {
-            None => Err(err::new(&err::IE241)),
-            Some(vent) => {
-                if subs.len() != vent.val.0.len() {
-                    return Err(err::new(&err::IE241));
-                }
-                let mut ix = 0;
-                let mut prev_dim = 1;
-                for (sub, dim) in subs.iter().zip(&vent.val.0) {
-                    if *sub > *dim {
-                        return Err(err::new(&err::IE241));
-                    }
-                    ix += (sub - 1) * prev_dim;
-                    prev_dim = *dim;
-                }
-                //println!("array assign: dim={:?} subs={:?} ix={}", vent.val.0, subs, ix);
-                vent.val.1[ix as usize] = val;
-                Ok(())
-            }
+        let vent = &mut map[n as usize];
+        if subs.len() != vent.val.0.len() {
+            return Err(err::new(&err::IE241));
         }
+        let mut ix = 0;
+        let mut prev_dim = 1;
+        for (sub, dim) in subs.iter().zip(&vent.val.0) {
+            if *sub > *dim {
+                return Err(err::new(&err::IE241));
+            }
+            ix += (sub - 1) * prev_dim;
+            prev_dim = *dim;
+        }
+        //println!("array assign: dim={:?} subs={:?} ix={}", vent.val.0, subs, ix);
+        vent.val.1[ix as usize] = val;
+        Ok(())
     }
 
     /// Generic array lookup helper.
-    fn array_lookup<T: Copy>(map: &HashMap<u16, Var<Array<T>>>, n: u16,
+    fn array_lookup<T: Copy>(map: &Vec<Var<Array<T>>>, n: u16,
                              subs: Vec<ast::Val>) -> EvalRes<T> {
         let subs = try!(subs.iter().map(|v| v.as_u16()).collect::<Result<Vec<_>, _>>());
-        match map.get(&n) {
-            None => Err(err::new(&err::IE241)),
-            Some(vent) => {
-                if subs.len() != vent.val.0.len() {
-                    return Err(err::new(&err::IE241));
-                }
-                let mut ix = 0;
-                let mut prev_dim = 1;
-                for (sub, dim) in subs.iter().zip(&vent.val.0) {
-                    if *sub > *dim {
-                        return Err(err::new(&err::IE241));
-                    }
-                    ix += (sub - 1) * prev_dim;
-                    prev_dim = *dim;
-                }
-                Ok(vent.val.1[ix as usize])
-            }
+        let vent = &map[n as usize];
+        if subs.len() != vent.val.0.len() {
+            return Err(err::new(&err::IE241));
         }
+        let mut ix = 0;
+        let mut prev_dim = 1;
+        for (sub, dim) in subs.iter().zip(&vent.val.0) {
+            if *sub > *dim {
+                return Err(err::new(&err::IE241));
+            }
+            ix += (sub - 1) * prev_dim;
+            prev_dim = *dim;
+        }
+        Ok(vent.val.1[ix as usize])
     }
 
     /// Generic RETRIEVE helper.
-    fn generic_retrieve<T>(map: &mut HashMap<u16, Var<T>>, n: u16) -> EvalRes<()> {
-        match map.get_mut(&n) {
+    fn generic_retrieve<T>(map: &mut Vec<Var<T>>, n: u16) -> EvalRes<()> {
+        let vent = &mut map[n as usize];
+        match vent.stack.pop() {
             None => Err(err::new(&err::IE436)),
-            Some(mut vent) => {
-                match vent.stack.pop() {
-                    None => Err(err::new(&err::IE436)),
-                    Some(v) => {
-                        vent.val = v;
-                        Ok(())
-                    }
-                }
+            Some(v) => {
+                vent.val = v;
+                Ok(())
             }
         }
     }
