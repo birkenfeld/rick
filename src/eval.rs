@@ -114,7 +114,7 @@ impl Eval {
                         Err(mut err) => {
                             err.set_line(stmt.props.srcline);
                             return Err(err);
-                        },
+                        }
                         Ok(res)  => res
                     };
                     match res {
@@ -122,12 +122,12 @@ impl Eval {
                             self.jumps.push(pctr as u16);  // push the line with the NEXT
                             pctr = n;
                             continue;  // do not increment or check for COME FROMs
-                        },
+                        }
                         StmtRes::Back(n) => {
                             pctr = n;  // will be incremented below after COME FROM check
                         }
                         StmtRes::End     => break,
-                        StmtRes::Next    => { },
+                        StmtRes::Next    => { }
                     }
                 }
             }
@@ -151,94 +151,94 @@ impl Eval {
     /// Process a single statement.
     fn eval_stmt(&mut self, stmt: &Stmt) -> EvalRes<StmtRes> {
         //println!("        {}", stmt);
-        match &stmt.body {
-            &StmtBody::GiveUp => Ok(StmtRes::End),
-            &StmtBody::Error(ref e) => Err((*e).clone()),
-            &StmtBody::Calc(ref var, ref expr) => {
+        match stmt.body {
+            StmtBody::GiveUp => Ok(StmtRes::End),
+            StmtBody::Error(ref e) => Err((*e).clone()),
+            StmtBody::Calc(ref var, ref expr) => {
                 let val = try!(self.eval_expr(expr));
                 try!(self.assign(var, val));
                 Ok(StmtRes::Next)
             }
-            &StmtBody::Dim(ref var, ref exprs) => {
+            StmtBody::Dim(ref var, ref exprs) => {
                 let vals = try!(self.eval_exprlist(exprs));
                 try!(self.array_dim(var, vals));
                 Ok(StmtRes::Next)
             }
-            &StmtBody::DoNext(n) => {
+            StmtBody::DoNext(n) => {
                 match self.program.labels.get(&n) {
                     Some(i) => {
                         if self.jumps.len() >= 80 {
                             return Err(err::new(&err::IE123))
                         }
                         Ok(StmtRes::Jump(*i as usize))
-                    },
+                    }
                     None => {
                         Err(err::new(&err::IE129))
                     }
                 }
             }
-            &StmtBody::ComeFrom(_) => {
+            StmtBody::ComeFrom(_) => {
                 // nothing to do here at runtime
                 Ok(StmtRes::Next)
             }
-            &StmtBody::Resume(ref expr) => {
+            StmtBody::Resume(ref expr) => {
                 let n = try!(self.eval_expr(expr)).as_u32();
                 let next = try!(self.pop_jumps(n, true)).unwrap();
                 Ok(StmtRes::Back(next as usize))
             }
-            &StmtBody::Forget(ref expr) => {
+            StmtBody::Forget(ref expr) => {
                 let n = try!(self.eval_expr(expr)).as_u32();
                 try!(self.pop_jumps(n, false));
                 Ok(StmtRes::Next)
             }
-            &StmtBody::Ignore(ref vars) => {
+            StmtBody::Ignore(ref vars) => {
                 for var in vars {
                     try!(self.set_rw(var, false));
                 }
                 Ok(StmtRes::Next)
             }
-            &StmtBody::Remember(ref vars) => {
+            StmtBody::Remember(ref vars) => {
                 for var in vars {
                     try!(self.set_rw(var, true));
                 }
                 Ok(StmtRes::Next)
             }
-            &StmtBody::Stash(ref vars) => {
+            StmtBody::Stash(ref vars) => {
                 for var in vars {
                     try!(self.stash(var));
                 }
                 Ok(StmtRes::Next)
             }
-            &StmtBody::Retrieve(ref vars) => {
+            StmtBody::Retrieve(ref vars) => {
                 for var in vars {
                     try!(self.retrieve(var));
                 }
                 Ok(StmtRes::Next)
             }
-            &StmtBody::Abstain(ref what) => {
+            StmtBody::Abstain(ref what) => {
                 try!(self.abstain(what, true));
                 Ok(StmtRes::Next)
             }
-            &StmtBody::Reinstate(ref what) => {
+            StmtBody::Reinstate(ref what) => {
                 try!(self.abstain(what, false));
                 Ok(StmtRes::Next)
             }
-            &StmtBody::ReadOut(ref vars) => {
+            StmtBody::ReadOut(ref vars) => {
                 for var in vars {
                     match var {
                         &ast::Readout::Var(ref var) if var.is_dim() => {
                             try!(self.array_readout(var));
-                        },
+                        }
                         &ast::Readout::Var(ref var) => {
                             let varval = try!(self.lookup(var));
                             write_number(varval.as_u32());
-                        },
+                        }
                         &ast::Readout::Const(n) => write_number(n as u32),
                     };
                 }
                 Ok(StmtRes::Next)
             }
-            &StmtBody::WriteIn(ref var) => {
+            StmtBody::WriteIn(ref var) => {
                 if var.is_dim() {
                     try!(self.array_writein(var));
                 } else {
@@ -277,33 +277,34 @@ impl Eval {
                 let v = try!(self.eval_expr(vx));
                 let w = try!(self.eval_expr(wx));
                 mingle(v.as_u32(), w.as_u32()).map(Val::I32)
-            },
+            }
             Expr::Select(ref vx, ref wx) => {
                 let v = try!(self.eval_expr(vx));
                 let w = try!(self.eval_expr(wx));
                 select(v.as_u32(), w.as_u32()).map(Val::I32)
-            },
+            }
             Expr::And(ref vx) => {
                 match try!(self.eval_expr(vx)) {
                     Val::I16(v) => Ok(Val::I16(and_16(v))),
                     Val::I32(v) => Ok(Val::I32(and_32(v))),
                 }
-            },
+            }
             Expr::Or(ref vx) => {
                 match try!(self.eval_expr(vx)) {
                     Val::I16(v) => Ok(Val::I16(or_16(v))),
                     Val::I32(v) => Ok(Val::I32(or_32(v))),
                 }
-            },
+            }
             Expr::Xor(ref vx) => {
                 match try!(self.eval_expr(vx)) {
                     Val::I16(v) => Ok(Val::I16(xor_16(v))),
                     Val::I32(v) => Ok(Val::I32(xor_32(v))),
                 }
-            },
+            }
         }
     }
 
+    /// Evaluate a whole list of expressions.
     fn eval_exprlist(&self, exprs: &Vec<Expr>) -> EvalRes<Vec<Val>> {
         exprs.iter().map(|v| self.eval_expr(v)).collect::<Result<Vec<_>, _>>()
     }
@@ -317,13 +318,13 @@ impl Eval {
                 if bind.rw {
                     bind.val = try!(val.as_u16());
                 }
-            },
+            }
             Var::I32(n) => {
                 let bind = &mut self.twospot[n];
                 if bind.rw {
                     bind.val = val.as_u32();
                 }
-            },
+            }
             Var::A16(n, ref subs) => {
                 let subs = try!(self.eval_exprlist(subs));
                 let bind = &mut self.tail[n];
@@ -332,7 +333,7 @@ impl Eval {
                     let val = try!(val.as_u16());
                     bind.val.elems[ix] = val;
                 }
-            },
+            }
             Var::A32(n, ref subs) => {
                 let subs = try!(self.eval_exprlist(subs));
                 let bind = &mut self.hybrid[n];
@@ -340,7 +341,7 @@ impl Eval {
                 if bind.rw {
                     bind.val.elems[ix] = val.as_u32();
                 }
-            },
+            }
         }
         Ok(())
     }
@@ -361,10 +362,10 @@ impl Eval {
         match *var {
             Var::A16(n, _) => {
                 generic_dimension(&mut self.tail[n], dims)
-            },
+            }
             Var::A32(n, _) => {
                 generic_dimension(&mut self.hybrid[n], dims)
-            },
+            }
             _ => unimplemented!()
         }
     }
@@ -374,22 +375,22 @@ impl Eval {
         match *var {
             Var::I16(n) => {
                 Ok(Val::I16(self.spot[n].val))
-            },
+            }
             Var::I32(n) => {
                 Ok(Val::I32(self.twospot[n].val))
-            },
+            }
             Var::A16(n, ref subs) => {
                 let subs = try!(self.eval_exprlist(subs));
                 let bind = &self.tail[n];
                 let ix = try!(Eval::array_get_index(bind, subs));
                 Ok(Val::I16(bind.val.elems[ix]))
-            },
+            }
             Var::A32(n, ref subs) => {
                 let subs = try!(self.eval_exprlist(subs));
                 let bind = &self.hybrid[n];
                 let ix = try!(Eval::array_get_index(bind, subs));
                 Ok(Val::I32(bind.val.elems[ix]))
-            },
+            }
         }
     }
 

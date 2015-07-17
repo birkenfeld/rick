@@ -319,14 +319,14 @@ impl Display for Var {
                     try!(write!(fmt, " SUB {}", sub));
                 }
                 Ok(())
-            },
+            }
             Var::A32(n, ref subs) => {
                 try!(write!(fmt, ";{}", n));
                 for sub in subs {
                     try!(write!(fmt, " SUB {}", sub));
                 }
                 Ok(())
-            },
+            }
         }
     }
 }

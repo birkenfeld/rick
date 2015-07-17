@@ -77,8 +77,8 @@ fn main() {
 
     let t0 = time::get_time();
     let program = match Parser::new(&v).get_program() {
-        Ok(program) => { println!("{}", program); program },
-        Err(err)    => { println!("{}", err.to_string()); return },
+        Ok(program) => { println!("{}", program); program }
+        Err(err)    => { println!("{}", err.to_string()); return }
     };
 
     let t1 = time::get_time();

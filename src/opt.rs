@@ -62,7 +62,7 @@ impl Optimizer {
                         }
                     }
                 }
-            },
+            }
             ast::Expr::Select(ref mut vx, ref mut wx) => {
                 Optimizer::fold(vx);
                 Optimizer::fold(wx);

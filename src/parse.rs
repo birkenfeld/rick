@@ -93,13 +93,13 @@ impl<'p> Parser<'p> {
                             } else {
                                 self.tokens.next();
                             }
-                        },
+                        }
                         _ => { self.tokens.next(); }
                     }
                 }
                 // return the botched statement
                 Ok(ast::Stmt { body: body, props: props })
-            },
+            }
             // a full statement!
             Ok(body) => Ok(ast::Stmt { body: body, props: props }),
         }
@@ -246,7 +246,7 @@ impl<'p> Parser<'p> {
                             self.tokens.push(self.stash.pop().unwrap());
                         }
                         break
-                    },
+                    }
                     Err(harderr) => return Err(harderr),
                 }
             }
@@ -378,7 +378,7 @@ impl<'p> Parser<'p> {
     #[inline]
     fn take(&mut self, t: TT) -> bool {
         match self.tokens.peek() {
-            Some(ref v) if **v == t => { },
+            Some(ref v) if **v == t => { }
             _ => return false,
         }
         self.stash.push(self.tokens.next().unwrap());
@@ -395,11 +395,11 @@ impl<'p> Parser<'p> {
                     self.stash.push(TT::NUMBER(x));
                     Ok(x as u16)
                 }
-            },
+            }
             Some(t)  => {
                 self.tokens.push(t);
                 Err(self.invalid())
-            },
+            }
             None     => Err(self.invalid()),
         }
     }
@@ -411,11 +411,11 @@ impl<'p> Parser<'p> {
             Some(ref x) if *x == t  => {
                 self.stash.push(t);
                 Ok(())
-            },
+            }
             Some(t)                 => {
                 self.tokens.push(t);
                 Err(self.invalid())
-            },
+            }
         }
     }
 
@@ -465,9 +465,9 @@ impl<'p> Parser<'p> {
                     for e in es {
                         walk_expr(e, visitor);
                     }
-                },
+                }
                 ast::Var::I16(_) |
-                ast::Var::I32(_) => { },
+                ast::Var::I32(_) => { }
             }
         }
 
@@ -483,7 +483,7 @@ impl<'p> Parser<'p> {
                 ast::Expr::Select(ref mut e, ref mut e2) => {
                     walk_expr(e, visitor);
                     walk_expr(e2, visitor);
-                },
+                }
                 ast::Expr::Num(_) => { }
             }
         }
@@ -492,17 +492,17 @@ impl<'p> Parser<'p> {
             ast::StmtBody::Calc(ref mut v, ref mut e) => {
                 walk_var(v, visitor);
                 walk_expr(e, visitor);
-            },
+            }
             ast::StmtBody::Dim(ref mut v, ref mut es) => {
                 walk_var(v, visitor);
                 for e in es {
                     walk_expr(e, visitor);
                 }
-            },
+            }
             ast::StmtBody::Resume(ref mut e) |
             ast::StmtBody::Forget(ref mut e) => {
                 walk_expr(e, visitor);
-            },
+            }
             ast::StmtBody::Ignore(ref mut vs) |
             ast::StmtBody::Remember(ref mut vs) |
             ast::StmtBody::Stash(ref mut vs) |
@@ -510,10 +510,10 @@ impl<'p> Parser<'p> {
                 for v in vs {
                     walk_var(v, visitor);
                 }
-            },
+            }
             ast::StmtBody::WriteIn(ref mut v) => {
                 walk_var(v, visitor);
-            },
+            }
             ast::StmtBody::ReadOut(ref mut rs) => {
                 for r in rs {
                     if let ast::Readout::Var(ref mut v) = *r {
