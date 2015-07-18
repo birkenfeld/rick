@@ -16,6 +16,7 @@
 // -------------------------------------------------------------------------------------------------
 
 use std::io::Read;
+use std::u32;
 
 
 #[derive(PartialEq, Eq, Clone, Debug)]
@@ -103,7 +104,8 @@ rustlex! RawLexer {
     let NL  = '\n';
 
     ANY   => |l: Lx<R>| { let s = l.yystr(); l.tok(TT::UNKNOWN(s)) }
-    NUM   => |l: Lx<R>| { let s = l.yystr(); l.tok(TT::NUMBER(s.parse().unwrap())) }
+    NUM   => |l: Lx<R>| { let s = l.yystr();
+                          l.tok(s.parse().map(TT::NUMBER).unwrap_or(TT::NUMBER(u32::MAX))) }
     WS    => |_: Lx<R>| -> Option<Token> { None }
     NL    => |l: Lx<R>| -> Option<Token> { l.line += 1; None }
 
