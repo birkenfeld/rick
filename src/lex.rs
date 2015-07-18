@@ -24,8 +24,10 @@ pub struct Token(pub TT, pub usize);
 
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub enum TT {
-    // special tokens
-    UNKNOWN(String),
+    // any unknown non-whitespace character
+    UNKNOWN,
+
+    // an integer literal
     NUMBER(u32),
 
     // statement initiators
@@ -42,6 +44,24 @@ pub enum TT {
     HYBRID,
     WOW,
     MESH,
+
+    // grouping operators
+    SPARK,
+    RABBITEARS,
+
+    // number operators
+    MONEY,
+    SQUIGGLE,
+    AMPERSAND,
+    BOOK,
+    WHAT,
+
+    // misc. symbols
+    GETS,
+    SUB,
+    BY,
+    OHOHSEVEN,
+    INTERSECTION,
 
     // word stmt types
     NEXT,
@@ -72,24 +92,6 @@ pub enum TT {
     COMINGFROM,
     READINGOUT,
     WRITINGIN,
-
-    // misc. symbols
-    GETS,
-    SUB,
-    BY,
-    OHOHSEVEN,
-    INTERSECTION,
-
-    // precedence
-    SPARK,
-    RABBITEARS,
-
-    // bit operators
-    MONEY,
-    SQUIGGLE,
-    AMPERSAND,
-    BOOK,
-    WHAT,
 }
 
 
@@ -103,11 +105,12 @@ rustlex! RawLexer {
     let WS  = [' ' '\t']+;
     let NL  = '\n';
 
-    ANY   => |l: Lx<R>| { let s = l.yystr(); l.tok(TT::UNKNOWN(s)) }
-    NUM   => |l: Lx<R>| { let s = l.yystr();
-                          l.tok(s.parse().map(TT::NUMBER).unwrap_or(TT::NUMBER(u32::MAX))) }
-    WS    => |_: Lx<R>| -> Option<Token> { None }
-    NL    => |l: Lx<R>| -> Option<Token> { l.line += 1; None }
+    ANY            => |l: Lx<R>| l.tok(TT::UNKNOWN)
+    NUM            => |l: Lx<R>| { let s = l.yystr();
+                                   l.tok(s.parse().map(TT::NUMBER)
+                                         .unwrap_or(TT::NUMBER(u32::MAX))) }
+    WS             => |_: Lx<R>| -> Option<Token> { None }
+    NL             => |l: Lx<R>| -> Option<Token> { l.line += 1; None }
 
     '('            => |l: Lx<R>| l.tok(TT::WAX)
     ')'            => |l: Lx<R>| l.tok(TT::WANE)
