@@ -110,7 +110,9 @@ impl Eval {
                 let stmt = &program.stmts[pctr];
                 // check execution chance
                 if check_chance(stmt.props.chance) {
+                    // try to eval this statement
                     let res = match self.eval_stmt(stmt) {
+                        // on error, set the correct line number and bubble up
                         Err(mut err) => {
                             err.set_line(stmt.props.srcline);
                             return Err(err);
@@ -118,6 +120,7 @@ impl Eval {
                         Ok(res)  => res
                     };
                     match res {
+                        StmtRes::Next    => { }
                         StmtRes::Jump(n) => {
                             self.jumps.push(pctr as u16);  // push the line with the NEXT
                             pctr = n;
@@ -127,7 +130,6 @@ impl Eval {
                             pctr = n;  // will be incremented below after COME FROM check
                         }
                         StmtRes::End     => break,
-                        StmtRes::Next    => { }
                     }
                 }
             }
@@ -152,8 +154,6 @@ impl Eval {
     fn eval_stmt(&mut self, stmt: &Stmt) -> EvalRes<StmtRes> {
         //println!("        {}", stmt);
         match stmt.body {
-            StmtBody::GiveUp => Ok(StmtRes::End),
-            StmtBody::Error(ref e) => Err((*e).clone()),
             StmtBody::Calc(ref var, ref expr) => {
                 let val = try!(self.eval_expr(expr));
                 try!(self.assign(var, val));
@@ -165,16 +165,12 @@ impl Eval {
                 Ok(StmtRes::Next)
             }
             StmtBody::DoNext(n) => {
+                let j = self.jumps.len();
                 match self.program.labels.get(&n) {
-                    Some(i) => {
-                        if self.jumps.len() >= 80 {
-                            return Err(err::new(&err::IE123))
-                        }
-                        Ok(StmtRes::Jump(*i as usize))
-                    }
-                    None => {
-                        Err(err::new(&err::IE129))
-                    }
+                    // too many jumps on stack already?
+                    Some(_) if j >= 80 => Err(err::new(&err::IE123)),
+                    Some(i)            => Ok(StmtRes::Jump(*i as usize)),
+                    None               => Err(err::new(&err::IE129)),
                 }
             }
             StmtBody::ComeFrom(_) => {
@@ -193,13 +189,13 @@ impl Eval {
             }
             StmtBody::Ignore(ref vars) => {
                 for var in vars {
-                    try!(self.set_rw(var, false));
+                    self.set_rw(var, false);
                 }
                 Ok(StmtRes::Next)
             }
             StmtBody::Remember(ref vars) => {
                 for var in vars {
-                    try!(self.set_rw(var, true));
+                    self.set_rw(var, true);
                 }
                 Ok(StmtRes::Next)
             }
@@ -247,6 +243,8 @@ impl Eval {
                 }
                 Ok(StmtRes::Next)
             }
+            StmtBody::GiveUp => Ok(StmtRes::End),
+            StmtBody::Error(ref e) => Err((*e).clone()),
         }
     }
 
@@ -427,15 +425,14 @@ impl Eval {
         }
     }
 
-    /// Process an IGNORE or REMEMBER statement.
-    fn set_rw(&mut self, var: &Var, rw: bool) -> EvalRes<()> {
+    /// Process an IGNORE or REMEMBER statement.  Cannot fail.
+    fn set_rw(&mut self, var: &Var, rw: bool) {
         match *var {
             Var::I16(n) => self.spot[n].rw = rw,
             Var::I32(n) => self.twospot[n].rw = rw,
             Var::A16(n, _) => self.tail[n].rw = rw,
             Var::A32(n, _) => self.hybrid[n].rw = rw,
         }
-        Ok(())
     }
 
     /// Process an ABSTAIN or REINSTATE statement.
