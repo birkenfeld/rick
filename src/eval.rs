@@ -26,13 +26,13 @@ use util::{ write_number, write_byte, read_number, read_byte, check_chance, From
 
 #[derive(Clone)]
 struct Array<T> {
-    pub dims: Vec<u16>,
+    pub dims: Vec<usize>,
     pub elems: Vec<T>,
 }
 
 impl<T: Clone + Default> Array<T> {
-    pub fn new(dims: Vec<u16>) -> Array<T> {
-        let total = dims.iter().product::<u16>() as usize;
+    pub fn new(dims: Vec<usize>) -> Array<T> {
+        let total = dims.iter().product();
         let value = Default::default();
         Array { dims: dims, elems: vec![value; total] }
     }
@@ -349,8 +349,8 @@ impl Eval {
     fn array_dim(&mut self, var: &Var, dims: Vec<Val>) -> EvalRes<()> {
         fn generic_dimension<T: Clone + Default>(bind: &mut Bind<Array<T>>,
                                                  dims: Vec<Val>) -> EvalRes<()> {
-            let dims = try!(dims.iter().map(|v| v.as_u16()).collect::<Result<Vec<_>, _>>());
-            if dims.iter().product::<u16>() == 0 {
+            let dims = dims.iter().map(Val::as_usize).collect::<Vec<_>>();
+            if dims.iter().product::<usize>() == 0 {
                 return Err(err::new(&err::IE240));
             }
             if bind.rw {
@@ -452,7 +452,7 @@ impl Eval {
 
     /// Helper to calculate an array index.
     fn array_get_index<T>(bind: &Bind<Array<T>>, subs: Vec<Val>) -> EvalRes<usize> {
-        let subs = try!(subs.iter().map(|v| v.as_u16()).collect::<Result<Vec<_>, _>>());
+        let subs = subs.iter().map(Val::as_usize).collect::<Vec<_>>();
         if subs.len() != bind.val.dims.len() {
             return Err(err::new(&err::IE241));
         }
@@ -463,7 +463,7 @@ impl Eval {
                 return Err(err::new(&err::IE241));
             }
             ix += (sub - 1) * prev_dim;
-            prev_dim = *dim;
+            prev_dim *= *dim;
         }
         Ok(ix as usize)
     }

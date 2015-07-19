@@ -212,6 +212,11 @@ impl Val {
         }
     }
 
+    /// Cast as an usize value; always succeeds.
+    pub fn as_usize(&self) -> usize {
+        self.as_u32() as usize
+    }
+
     /// Create from a 32-bit value; will select the smallest possible type.
     pub fn from_u32(v: u32) -> Val {
         if v & 0xFFFF == v {

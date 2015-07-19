@@ -424,12 +424,12 @@ impl<'p> Parser<'p> {
         Error::Soft(self.tokens.lineno())
     }
 
+    /// Add the syslib to `stmts` if necessary.
     fn add_syslib(&self, mut stmts: Vec<Stmt>) -> Vec<Stmt> {
-        // add the syslib if necessary
         let mut need_syslib = false;
         for stmt in &stmts {
             if stmt.props.label >= 1000 && stmt.props.label < 1999 {
-                // we are the syslib or override it
+                // we *are* the syslib or override its labels
                 need_syslib = false;
                 break;
             }
