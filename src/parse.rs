@@ -142,14 +142,14 @@ impl<'p> Parser<'p> {
             }
         }
         // next jump?
-        if let Some(lno) = try!(self.parse_label_maybe()) {
+        if let Some(lbl) = try!(self.parse_label_maybe()) {
             try!(self.req(TT::NEXT));
-            return Ok(StmtBody::DoNext(lno));
+            return Ok(StmtBody::DoNext(lbl));
         }
         // other statements headed by keyword
         if self.take(TT::COMEFROM) {
-            let lno = try!(self.parse_label());
-            Ok(StmtBody::ComeFrom(lno))
+            let lbl = try!(self.parse_label());
+            Ok(StmtBody::ComeFrom(lbl))
         } else if self.take(TT::RESUME) {
             Ok(StmtBody::Resume(try!(self.parse_expr())))
         } else if self.take(TT::FORGET) {
@@ -180,9 +180,9 @@ impl<'p> Parser<'p> {
     /// Maybe parse a line label (N).
     fn parse_label_maybe(&mut self) -> ParseRes<Option<u16>> {
         if self.take(TT::WAX) {
-            let lno = try!(self.req_number(u16::MAX, &err::IE197));
+            let lbl = try!(self.req_number(u16::MAX, &err::IE197));
             try!(self.req(TT::WANE));
-            Ok(Some(lno))
+            Ok(Some(lbl))
         } else {
             Ok(None)
         }
@@ -286,8 +286,8 @@ impl<'p> Parser<'p> {
 
     /// Parse an ABSTAIN and REINSTATE statement.
     fn parse_abstain(&mut self) -> ParseRes<Abstain> {
-        if let Some(lno) = try!(self.parse_label_maybe()) {
-            return Ok(Abstain::Line(lno));
+        if let Some(lbl) = try!(self.parse_label_maybe()) {
+            return Ok(Abstain::Label(lbl));
         }
         if self.take(TT::CALCULATING) {
             Ok(Abstain::Calc)
@@ -552,7 +552,6 @@ impl<'p> Parser<'p> {
         // - determine the "abstain" type of each statement
         // - create a map of all labels to logical lines
         // - collect variables for renaming
-        // - make sure abstain labels exist
         let mut npolite = 0;
         let mut types = Vec::new();
         let mut labels = HashMap::new();
@@ -582,6 +581,7 @@ impl<'p> Parser<'p> {
         // here we:
         // - create a map of all come-froms to logical lines
         // - apply new variable names
+        // - make sure abstain labels exist
         for (i, mut stmt) in stmts.iter_mut().enumerate() {
             if let StmtBody::ComeFrom(n) = stmt.body {
                 if !labels.contains_key(&n) {
@@ -593,6 +593,11 @@ impl<'p> Parser<'p> {
                 comefroms.insert(n, i as u16);
             }
             self.rename_vars(&vars, &mut stmt);
+            if let StmtBody::Abstain(Abstain::Label(n)) = stmt.body {
+                if !labels.contains_key(&n) {
+                    return Err(err::with_line(&err::IE139, stmt.props.srcline));
+                }
+            }
         }
         let n_vars = (vars.counts[0], vars.counts[1], vars.counts[2], vars.counts[3]);
         Ok(Program { stmts: stmts,

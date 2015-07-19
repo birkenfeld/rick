@@ -212,11 +212,11 @@ impl Eval {
                 Ok(StmtRes::Next)
             }
             StmtBody::Abstain(ref what) => {
-                try!(self.abstain(what, true));
+                self.abstain(what, true);
                 Ok(StmtRes::Next)
             }
             StmtBody::Reinstate(ref what) => {
-                try!(self.abstain(what, false));
+                self.abstain(what, false);
                 Ok(StmtRes::Next)
             }
             StmtBody::ReadOut(ref vars) => {
@@ -435,13 +435,10 @@ impl Eval {
         }
     }
 
-    /// Process an ABSTAIN or REINSTATE statement.
-    fn abstain(&mut self, what: &ast::Abstain, abstain: bool) -> EvalRes<()> {
-        if let &ast::Abstain::Line(n) = what {
-            if !self.program.labels.contains_key(&n) {
-                return Err(err::new(&err::IE139));
-            }
-            let idx = self.program.labels[&n];
+    /// P()rocess an ABSTAIN or REINSTATE statement.  Cannot fail.
+    fn abstain(&mut self, what: &ast::Abstain, abstain: bool) {
+        if let &ast::Abstain::Label(lbl) = what {
+            let idx = self.program.labels[&lbl];
             self.abstentions[idx as usize] = abstain;
         } else {
             for (i, stype) in self.program.stmt_types.iter().enumerate() {
@@ -450,7 +447,6 @@ impl Eval {
                 }
             }
         }
-        Ok(())
     }
 
     /// Helper to calculate an array index.

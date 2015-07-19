@@ -112,7 +112,7 @@ pub enum Val {
 /// Specification for an ABSTAIN or REINSTATE.
 #[derive(PartialEq, Eq, Debug)]
 pub enum Abstain {
-    Line(Label),
+    Label(Label),
     Calc,
     Next,
     Resume,
@@ -130,10 +130,10 @@ pub enum Abstain {
 
 
 impl Stmt {
-    /// Determine the abstain type for the statement. Line(0) is used as an escape value.
+    /// Determine the abstain type for the statement. Label(0) is used as an escape value.
     pub fn stype(&self) -> Abstain {
         match self.body {
-            StmtBody::Error(_) => Abstain::Line(0),
+            StmtBody::Error(_) => Abstain::Label(0),
             StmtBody::Calc(..) => Abstain::Calc,
             StmtBody::Dim(..) => Abstain::Calc,
             StmtBody::DoNext(_) => Abstain::Next,
@@ -148,7 +148,7 @@ impl Stmt {
             StmtBody::Reinstate(_) => Abstain::Reinstate,
             StmtBody::WriteIn(_) => Abstain::WriteIn,
             StmtBody::ReadOut(_) => Abstain::ReadOut,
-            StmtBody::GiveUp => Abstain::Line(0),
+            StmtBody::GiveUp => Abstain::Label(0),
         }
     }
 }
@@ -357,7 +357,7 @@ impl Display for Val {
 impl Display for Abstain {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         match *self {
-            Abstain::Line(n) => write!(fmt, "({})", n),
+            Abstain::Label(n) => write!(fmt, "({})", n),
             Abstain::Calc => write!(fmt, "CALCULATING"),
             Abstain::Next => write!(fmt, "NEXTING"),
             Abstain::Resume => write!(fmt, "RESUMING"),
