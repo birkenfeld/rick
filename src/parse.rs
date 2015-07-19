@@ -19,7 +19,7 @@ use std::collections::HashMap;
 use std::io::{ Read, BufRead, BufReader, Cursor };
 use std::u16;
 
-use ast::{ Program, Stmt, StmtBody, StmtProps, Expr, Readout, Abstain, Var, Val };
+use ast::{ self, Program, Stmt, StmtBody, StmtProps, Expr, Abstain, Var };
 use err;
 use syslib;
 use lex::{ lex, Lexer, TT };
@@ -178,7 +178,7 @@ impl<'p> Parser<'p> {
     }
 
     /// Maybe parse a line label (N).
-    fn parse_label_maybe(&mut self) -> ParseRes<Option<u16>> {
+    fn parse_label_maybe(&mut self) -> ParseRes<Option<ast::Label>> {
         if self.take(TT::WAX) {
             let lbl = try!(self.req_number(u16::MAX, &err::IE197));
             try!(self.req(TT::WANE));
@@ -189,7 +189,7 @@ impl<'p> Parser<'p> {
     }
 
     /// Require a line label.
-    fn parse_label(&mut self) -> ParseRes<u16> {
+    fn parse_label(&mut self) -> ParseRes<ast::Label> {
         try!(self.parse_label_maybe()).ok_or_else(|| self.invalid())
     }
 
@@ -265,20 +265,20 @@ impl<'p> Parser<'p> {
     }
 
     /// Parse a list of variables (with subscripts) or consts separated by +.
-    fn parse_readlist(&mut self) -> ParseRes<Vec<Readout>> {
+    fn parse_readlist(&mut self) -> ParseRes<Vec<Expr>> {
         let mut res = Vec::new();
         if self.take(TT::MESH) {
             let val = try!(self.req_number(u16::MAX, &err::IE017));
-            res.push(Readout::Const(val));
+            res.push(Expr::Num(ast::Val::I16(val)));
         } else {
-            res.push(Readout::Var(try!(self.parse_var(true))));
+            res.push(Expr::Var(try!(self.parse_var(true))));
         }
         while self.take(TT::INTERSECTION) {
             if self.take(TT::MESH) {
                 let val = try!(self.req_number(u16::MAX, &err::IE017));
-                res.push(Readout::Const(val));
+                res.push(Expr::Num(ast::Val::I16(val)));
             } else {
-                res.push(Readout::Var(try!(self.parse_var(true))));
+                res.push(Expr::Var(try!(self.parse_var(true))));
             }
         }
         Ok(res)
@@ -347,7 +347,7 @@ impl<'p> Parser<'p> {
     fn parse_expr2(&mut self) -> ParseRes<Expr> {
         if self.take(TT::MESH) {
             let val = try!(self.req_number(u16::MAX, &err::IE017));
-            return Ok(Expr::Num(Val::I16(val)))
+            return Ok(Expr::Num(ast::Val::I16(val)))
         }
         if let Some(var) = try!(self.parse_var_maybe(true)) {
             return Ok(Expr::Var(var));
@@ -514,11 +514,9 @@ impl<'p> Parser<'p> {
             StmtBody::WriteIn(ref mut v) => {
                 walk_var(v, visitor);
             }
-            StmtBody::ReadOut(ref mut rs) => {
-                for r in rs {
-                    if let Readout::Var(ref mut v) = *r {
-                        walk_var(v, visitor);
-                    }
+            StmtBody::ReadOut(ref mut es) => {
+                for e in es {
+                    walk_expr(e, visitor);
                 }
             }
             _ => { }

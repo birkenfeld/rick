@@ -70,15 +70,8 @@ pub enum StmtBody {
     Abstain(Abstain),
     Reinstate(Abstain),
     WriteIn(Var),
-    ReadOut(Vec<Readout>),
+    ReadOut(Vec<Expr>),
     GiveUp,
-}
-
-/// An item in a READ OUT list.
-#[derive(PartialEq, Eq, Debug)]
-pub enum Readout {
-    Var(Var),
-    Const(u16),
 }
 
 /// A variable reference (store or load).
@@ -295,15 +288,6 @@ impl Display for StmtBody {
             StmtBody::WriteIn(ref var) => write!(fmt, "WRITE IN {}", var),
             StmtBody::ReadOut(ref vars) => write!(fmt, "READ OUT {}", self.fmt_pluslist(vars)),
             StmtBody::GiveUp => write!(fmt, "GIVE UP"),
-        }
-    }
-}
-
-impl Display for Readout {
-    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        match *self {
-            Readout::Var(ref v) => write!(fmt, "{}", v),
-            Readout::Const(n) => write!(fmt, "#{}", n),
         }
     }
 }

@@ -221,15 +221,16 @@ impl Eval {
             }
             StmtBody::ReadOut(ref vars) => {
                 for var in vars {
-                    match var {
-                        &ast::Readout::Var(ref var) if var.is_dim() => {
+                    match *var {
+                        Expr::Var(ref var) if var.is_dim() => {
                             try!(self.array_readout(var));
                         }
-                        &ast::Readout::Var(ref var) => {
+                        Expr::Var(ref var) => {
                             let varval = try!(self.lookup(var));
                             write_number(varval.as_u32());
                         }
-                        &ast::Readout::Const(n) => write_number(n as u32),
+                        Expr::Num(ref n) => write_number(n.as_u32()),
+                        _ => unreachable!(),
                     };
                 }
                 Ok(StmtRes::Next)
