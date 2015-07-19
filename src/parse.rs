@@ -19,7 +19,7 @@ use std::collections::HashMap;
 use std::io::{ Read, BufRead, BufReader, Cursor };
 use std::u16;
 
-use ast;
+use ast::{ Program, Stmt, StmtBody, StmtProps, Expr, Readout, Abstain, Var, Val };
 use err;
 use syslib;
 use lex::{ lex, Lexer, TT };
@@ -48,14 +48,14 @@ impl<'p> Parser<'p> {
     }
 
     /// Parse the whole file as a program.
-    pub fn get_program(&mut self) -> Result<ast::Program, err::Error> {
+    pub fn get_program(&mut self) -> Result<Program, err::Error> {
         // parse all statements
         let stmts = try!(self.parse());
         // collect some necessary values and return the Program
         self.post_process(stmts)
     }
 
-    pub fn parse(&mut self) -> Result<Vec<ast::Stmt>, err::Error> {
+    pub fn parse(&mut self) -> Result<Vec<Stmt>, err::Error> {
         // a program is a series of statements until EOF
         let mut stmts = Vec::new();
         loop {
@@ -68,8 +68,8 @@ impl<'p> Parser<'p> {
     }
 
     /// Parse a single statement (correct or botched).
-    fn parse_stmt(&mut self) -> Result<ast::Stmt, err::Error> {
-        let mut props = ast::StmtProps::default();
+    fn parse_stmt(&mut self) -> Result<Stmt, err::Error> {
+        let mut props = StmtProps::default();
         // try to decode a statement
         self.stash.clear();
         match self.parse_stmt_maybe(&mut props) {
@@ -77,7 +77,7 @@ impl<'p> Parser<'p> {
             Err(Error::Hard(err)) => Err(err),
             // a "soft" error: thrown at runtime as E000
             Err(Error::Soft(srcline)) => {
-                let body = ast::StmtBody::Error(
+                let body = StmtBody::Error(
                     err::full(&err::IE000, Some(self.lines[srcline - 1].clone()), srcline));
                 // jump over tokens until the next statement beginning
                 loop {
@@ -98,15 +98,15 @@ impl<'p> Parser<'p> {
                     }
                 }
                 // return the botched statement
-                Ok(ast::Stmt { body: body, props: props })
+                Ok(Stmt { body: body, props: props })
             }
             // a full statement!
-            Ok(body) => Ok(ast::Stmt { body: body, props: props }),
+            Ok(body) => Ok(Stmt { body: body, props: props }),
         }
     }
 
     /// Try to parse a full statement.
-    fn parse_stmt_maybe(&mut self, props: &mut ast::StmtProps) -> ParseRes<ast::StmtBody> {
+    fn parse_stmt_maybe(&mut self, props: &mut StmtProps) -> ParseRes<StmtBody> {
         // parse logical line number label
         if let Some(label) = try!(self.parse_label_maybe()) {
             props.label = label;
@@ -135,43 +135,43 @@ impl<'p> Parser<'p> {
             try!(self.req(TT::GETS));
             if var.is_dim() {
                 let exprs = try!(self.parse_by_exprs());
-                return Ok(ast::StmtBody::Dim(var, exprs));
+                return Ok(StmtBody::Dim(var, exprs));
             } else {
                 let expr = try!(self.parse_expr());
-                return Ok(ast::StmtBody::Calc(var, expr));
+                return Ok(StmtBody::Calc(var, expr));
             }
         }
         // next jump?
         if let Some(lno) = try!(self.parse_label_maybe()) {
             try!(self.req(TT::NEXT));
-            return Ok(ast::StmtBody::DoNext(lno));
+            return Ok(StmtBody::DoNext(lno));
         }
         // other statements headed by keyword
         if self.take(TT::COMEFROM) {
             let lno = try!(self.parse_label());
-            Ok(ast::StmtBody::ComeFrom(lno))
+            Ok(StmtBody::ComeFrom(lno))
         } else if self.take(TT::RESUME) {
-            Ok(ast::StmtBody::Resume(try!(self.parse_expr())))
+            Ok(StmtBody::Resume(try!(self.parse_expr())))
         } else if self.take(TT::FORGET) {
-            Ok(ast::StmtBody::Forget(try!(self.parse_expr())))
+            Ok(StmtBody::Forget(try!(self.parse_expr())))
         } else if self.take(TT::IGNORE) {
-            Ok(ast::StmtBody::Ignore(try!(self.parse_varlist())))
+            Ok(StmtBody::Ignore(try!(self.parse_varlist())))
         } else if self.take(TT::REMEMBER) {
-            Ok(ast::StmtBody::Remember(try!(self.parse_varlist())))
+            Ok(StmtBody::Remember(try!(self.parse_varlist())))
         } else if self.take(TT::STASH) {
-            Ok(ast::StmtBody::Stash(try!(self.parse_varlist())))
+            Ok(StmtBody::Stash(try!(self.parse_varlist())))
         } else if self.take(TT::RETRIEVE) {
-            Ok(ast::StmtBody::Retrieve(try!(self.parse_varlist())))
+            Ok(StmtBody::Retrieve(try!(self.parse_varlist())))
         } else if self.take(TT::ABSTAIN) {
-            Ok(ast::StmtBody::Abstain(try!(self.parse_abstain())))
+            Ok(StmtBody::Abstain(try!(self.parse_abstain())))
         } else if self.take(TT::REINSTATE) {
-            Ok(ast::StmtBody::Reinstate(try!(self.parse_abstain())))
+            Ok(StmtBody::Reinstate(try!(self.parse_abstain())))
         } else if self.take(TT::WRITEIN) {
-            Ok(ast::StmtBody::WriteIn(try!(self.parse_var(true))))
+            Ok(StmtBody::WriteIn(try!(self.parse_var(true))))
         } else if self.take(TT::READOUT) {
-            Ok(ast::StmtBody::ReadOut(try!(self.parse_readlist())))
+            Ok(StmtBody::ReadOut(try!(self.parse_readlist())))
         } else if self.take(TT::GIVEUP) {
-            return Ok(ast::StmtBody::GiveUp)
+            return Ok(StmtBody::GiveUp)
         } else {
             Err(self.invalid())
         }
@@ -194,14 +194,14 @@ impl<'p> Parser<'p> {
     }
 
     /// Maybe parse a variable reference [.:,;]N {SUB X}.
-    fn parse_var_maybe(&mut self, subs_allowed: bool) -> ParseRes<Option<ast::Var>> {
+    fn parse_var_maybe(&mut self, subs_allowed: bool) -> ParseRes<Option<Var>> {
         if self.take(TT::SPOT) {
             let val = try!(self.req_number(u16::MAX, &err::IE200));
-            return Ok(Some(ast::Var::I16(val as usize)));
+            return Ok(Some(Var::I16(val as usize)));
         }
         if self.take(TT::TWOSPOT) {
             let val = try!(self.req_number(u16::MAX, &err::IE200));
-            return Ok(Some(ast::Var::I32(val as usize)));
+            return Ok(Some(Var::I32(val as usize)));
         }
         if self.take(TT::TAIL) {
             let val = try!(self.req_number(u16::MAX, &err::IE200));
@@ -210,7 +210,7 @@ impl<'p> Parser<'p> {
             } else {
                 vec![]
             };
-            return Ok(Some(ast::Var::A16(val as usize, subs)));
+            return Ok(Some(Var::A16(val as usize, subs)));
         }
         if self.take(TT::HYBRID) {
             let val = try!(self.req_number(u16::MAX, &err::IE200));
@@ -219,18 +219,18 @@ impl<'p> Parser<'p> {
             } else {
                 vec![]
             };
-            return Ok(Some(ast::Var::A32(val as usize, subs)));
+            return Ok(Some(Var::A32(val as usize, subs)));
         }
         return Ok(None);
     }
 
     /// Require a variable reference.
-    fn parse_var(&mut self, subs_allowed: bool) -> ParseRes<ast::Var> {
+    fn parse_var(&mut self, subs_allowed: bool) -> ParseRes<Var> {
         try!(self.parse_var_maybe(subs_allowed)).ok_or_else(|| self.invalid())
     }
 
     /// Parse subscripts for a variable reference.
-    fn parse_subs(&mut self) -> ParseRes<Vec<ast::Expr>> {
+    fn parse_subs(&mut self) -> ParseRes<Vec<Expr>> {
         let mut res = Vec::new();
         if self.take(TT::SUB) {
             // we need one expr at least
@@ -255,7 +255,7 @@ impl<'p> Parser<'p> {
     }
 
     /// Parse a list of variables separated by + (without subscripts).
-    fn parse_varlist(&mut self) -> ParseRes<Vec<ast::Var>> {
+    fn parse_varlist(&mut self) -> ParseRes<Vec<Var>> {
         let mut res = Vec::new();
         res.push(try!(self.parse_var(false)));
         while self.take(TT::INTERSECTION) {
@@ -265,63 +265,63 @@ impl<'p> Parser<'p> {
     }
 
     /// Parse a list of variables (with subscripts) or consts separated by +.
-    fn parse_readlist(&mut self) -> ParseRes<Vec<ast::Readout>> {
+    fn parse_readlist(&mut self) -> ParseRes<Vec<Readout>> {
         let mut res = Vec::new();
         if self.take(TT::MESH) {
             let val = try!(self.req_number(u16::MAX, &err::IE017));
-            res.push(ast::Readout::Const(val));
+            res.push(Readout::Const(val));
         } else {
-            res.push(ast::Readout::Var(try!(self.parse_var(true))));
+            res.push(Readout::Var(try!(self.parse_var(true))));
         }
         while self.take(TT::INTERSECTION) {
             if self.take(TT::MESH) {
                 let val = try!(self.req_number(u16::MAX, &err::IE017));
-                res.push(ast::Readout::Const(val));
+                res.push(Readout::Const(val));
             } else {
-                res.push(ast::Readout::Var(try!(self.parse_var(true))));
+                res.push(Readout::Var(try!(self.parse_var(true))));
             }
         }
         Ok(res)
     }
 
     /// Parse an ABSTAIN and REINSTATE statement.
-    fn parse_abstain(&mut self) -> ParseRes<ast::Abstain> {
+    fn parse_abstain(&mut self) -> ParseRes<Abstain> {
         if let Some(lno) = try!(self.parse_label_maybe()) {
-            return Ok(ast::Abstain::Line(lno));
+            return Ok(Abstain::Line(lno));
         }
         if self.take(TT::CALCULATING) {
-            Ok(ast::Abstain::Calc)
+            Ok(Abstain::Calc)
         } else if self.take(TT::NEXTING) {
-            Ok(ast::Abstain::Next)
+            Ok(Abstain::Next)
         } else if self.take(TT::RESUMING) {
-            Ok(ast::Abstain::Resume)
+            Ok(Abstain::Resume)
         } else if self.take(TT::FORGETTING) {
-            Ok(ast::Abstain::Forget)
+            Ok(Abstain::Forget)
         } else if self.take(TT::IGNORING) {
-            Ok(ast::Abstain::Ignore)
+            Ok(Abstain::Ignore)
         } else if self.take(TT::REMEMBERING) {
-            Ok(ast::Abstain::Remember)
+            Ok(Abstain::Remember)
         } else if self.take(TT::STASHING) {
-            Ok(ast::Abstain::Stash)
+            Ok(Abstain::Stash)
         } else if self.take(TT::RETRIEVING) {
-            Ok(ast::Abstain::Retrieve)
+            Ok(Abstain::Retrieve)
         } else if self.take(TT::ABSTAINING) {
-            Ok(ast::Abstain::Abstain)
+            Ok(Abstain::Abstain)
         } else if self.take(TT::REINSTATING) {
-            Ok(ast::Abstain::Reinstate)
+            Ok(Abstain::Reinstate)
         } else if self.take(TT::COMINGFROM) {
-            Ok(ast::Abstain::ComeFrom)
+            Ok(Abstain::ComeFrom)
         } else if self.take(TT::READINGOUT) {
-            Ok(ast::Abstain::ReadOut)
+            Ok(Abstain::ReadOut)
         } else if self.take(TT::WRITINGIN) {
-            Ok(ast::Abstain::WriteIn)
+            Ok(Abstain::WriteIn)
         } else {
             Err(self.invalid())
         }
     }
 
     /// Parse a list of exprs separated by BY.
-    fn parse_by_exprs(&mut self) -> ParseRes<Vec<ast::Expr>> {
+    fn parse_by_exprs(&mut self) -> ParseRes<Vec<Expr>> {
         let mut res = Vec::new();
         res.push(try!(self.parse_expr()));
         while self.take(TT::BY) {
@@ -331,26 +331,26 @@ impl<'p> Parser<'p> {
     }
 
     /// Parse a single expression.
-    fn parse_expr(&mut self) -> ParseRes<ast::Expr> {
+    fn parse_expr(&mut self) -> ParseRes<Expr> {
         let left = try!(self.parse_expr2());
         if self.take(TT::MONEY) {
             let right = try!(self.parse_expr2());
-            return Ok(ast::Expr::Mingle(box left, box right));
+            return Ok(Expr::Mingle(box left, box right));
         }
         if self.take(TT::SQUIGGLE) {
             let right = try!(self.parse_expr2());
-            return Ok(ast::Expr::Select(box left, box right));
+            return Ok(Expr::Select(box left, box right));
         }
         return Ok(left);
     }
 
-    fn parse_expr2(&mut self) -> ParseRes<ast::Expr> {
+    fn parse_expr2(&mut self) -> ParseRes<Expr> {
         if self.take(TT::MESH) {
             let val = try!(self.req_number(u16::MAX, &err::IE017));
-            return Ok(ast::Expr::Num(ast::Val::I16(val)))
+            return Ok(Expr::Num(Val::I16(val)))
         }
         if let Some(var) = try!(self.parse_var_maybe(true)) {
-            return Ok(ast::Expr::Var(var));
+            return Ok(Expr::Var(var));
         }
         if self.take(TT::RABBITEARS) {
             let expr = try!(self.parse_expr());
@@ -362,13 +362,13 @@ impl<'p> Parser<'p> {
             Ok(expr)
         } else if self.take(TT::AMPERSAND) {
             let expr = try!(self.parse_expr());
-            Ok(ast::Expr::And(box expr))
+            Ok(Expr::And(box expr))
         } else if self.take(TT::BOOK) {
             let expr = try!(self.parse_expr());
-            Ok(ast::Expr::Or(box expr))
+            Ok(Expr::Or(box expr))
         } else if self.take(TT::WHAT) {
             let expr = try!(self.parse_expr());
-            Ok(ast::Expr::Xor(box expr))
+            Ok(Expr::Xor(box expr))
         } else {
             Err(self.invalid())
         }
@@ -424,7 +424,7 @@ impl<'p> Parser<'p> {
         Error::Soft(self.tokens.lineno())
     }
 
-    fn add_syslib(&self, mut stmts: Vec<ast::Stmt>) -> Vec<ast::Stmt> {
+    fn add_syslib(&self, mut stmts: Vec<Stmt>) -> Vec<Stmt> {
         // add the syslib if necessary
         let mut need_syslib = false;
         for stmt in &stmts {
@@ -433,7 +433,7 @@ impl<'p> Parser<'p> {
                 need_syslib = false;
                 break;
             }
-            if let ast::StmtBody::DoNext(n) = stmt.body {
+            if let StmtBody::DoNext(n) = stmt.body {
                 // jumping to a syslib label? we might need it then
                 if n >= 1000 && n < 1999 {
                     need_syslib = true;
@@ -450,73 +450,73 @@ impl<'p> Parser<'p> {
     }
 
     /// Walk all references to variables, and call a visitor function for each.
-    fn walk_vars<F>(&self, stmt: &mut ast::Stmt, mut visitor: F)
-        where F: FnMut(&mut ast::Var) -> ()
+    fn walk_vars<F>(&self, stmt: &mut Stmt, mut visitor: F)
+        where F: FnMut(&mut Var) -> ()
     {
         let visitor = &mut visitor;
 
-        fn walk_var<F>(var: &mut ast::Var, visitor: &mut F)
-            where F: FnMut(&mut ast::Var) -> ()
+        fn walk_var<F>(var: &mut Var, visitor: &mut F)
+            where F: FnMut(&mut Var) -> ()
         {
             visitor(var);
             match *var {
-                ast::Var::A16(_, ref mut es) |
-                ast::Var::A32(_, ref mut es) => {
+                Var::A16(_, ref mut es) |
+                Var::A32(_, ref mut es) => {
                     for e in es {
                         walk_expr(e, visitor);
                     }
                 }
-                ast::Var::I16(_) |
-                ast::Var::I32(_) => { }
+                Var::I16(_) |
+                Var::I32(_) => { }
             }
         }
 
-        fn walk_expr<F>(expr: &mut ast::Expr, visitor: &mut F)
-            where F: FnMut(&mut ast::Var) -> ()
+        fn walk_expr<F>(expr: &mut Expr, visitor: &mut F)
+            where F: FnMut(&mut Var) -> ()
         {
             match *expr {
-                ast::Expr::Var(ref mut v) => walk_var(v, visitor),
-                ast::Expr::And(ref mut e) |
-                ast::Expr::Or(ref mut e) |
-                ast::Expr::Xor(ref mut e) => walk_expr(e, visitor),
-                ast::Expr::Mingle(ref mut e, ref mut e2) |
-                ast::Expr::Select(ref mut e, ref mut e2) => {
+                Expr::Var(ref mut v) => walk_var(v, visitor),
+                Expr::And(ref mut e) |
+                Expr::Or(ref mut e) |
+                Expr::Xor(ref mut e) => walk_expr(e, visitor),
+                Expr::Mingle(ref mut e, ref mut e2) |
+                Expr::Select(ref mut e, ref mut e2) => {
                     walk_expr(e, visitor);
                     walk_expr(e2, visitor);
                 }
-                ast::Expr::Num(_) => { }
+                Expr::Num(_) => { }
             }
         }
 
         match stmt.body {
-            ast::StmtBody::Calc(ref mut v, ref mut e) => {
+            StmtBody::Calc(ref mut v, ref mut e) => {
                 walk_var(v, visitor);
                 walk_expr(e, visitor);
             }
-            ast::StmtBody::Dim(ref mut v, ref mut es) => {
+            StmtBody::Dim(ref mut v, ref mut es) => {
                 walk_var(v, visitor);
                 for e in es {
                     walk_expr(e, visitor);
                 }
             }
-            ast::StmtBody::Resume(ref mut e) |
-            ast::StmtBody::Forget(ref mut e) => {
+            StmtBody::Resume(ref mut e) |
+            StmtBody::Forget(ref mut e) => {
                 walk_expr(e, visitor);
             }
-            ast::StmtBody::Ignore(ref mut vs) |
-            ast::StmtBody::Remember(ref mut vs) |
-            ast::StmtBody::Stash(ref mut vs) |
-            ast::StmtBody::Retrieve(ref mut vs) => {
+            StmtBody::Ignore(ref mut vs) |
+            StmtBody::Remember(ref mut vs) |
+            StmtBody::Stash(ref mut vs) |
+            StmtBody::Retrieve(ref mut vs) => {
                 for v in vs {
                     walk_var(v, visitor);
                 }
             }
-            ast::StmtBody::WriteIn(ref mut v) => {
+            StmtBody::WriteIn(ref mut v) => {
                 walk_var(v, visitor);
             }
-            ast::StmtBody::ReadOut(ref mut rs) => {
+            StmtBody::ReadOut(ref mut rs) => {
                 for r in rs {
-                    if let ast::Readout::Var(ref mut v) = *r {
+                    if let Readout::Var(ref mut v) = *r {
                         walk_var(v, visitor);
                     }
                 }
@@ -526,7 +526,7 @@ impl<'p> Parser<'p> {
     }
 
     /// Collect all used variable numbers and renumber them.
-    fn collect_vars(&self, vars: &mut Vars, stmt: &mut ast::Stmt) {
+    fn collect_vars(&self, vars: &mut Vars, stmt: &mut Stmt) {
         self.walk_vars(stmt, |var| {
             let key = var.unique();
             if !vars.map.contains_key(&key) {
@@ -538,20 +538,21 @@ impl<'p> Parser<'p> {
     }
 
     /// Apply variable renumbering.
-    fn rename_vars(&self, vars: &Vars, stmt: &mut ast::Stmt) {
+    fn rename_vars(&self, vars: &Vars, stmt: &mut Stmt) {
         self.walk_vars(stmt, |var| {
             let key = var.unique();
             var.rename(vars.map[&key]);
         });
     }
 
-    fn post_process(&self, stmts: Vec<ast::Stmt>) -> Result<ast::Program, err::Error> {
+    fn post_process(&self, stmts: Vec<Stmt>) -> Result<Program, err::Error> {
         let mut stmts = self.add_syslib(stmts);
         // here we:
         // - count polite statements
         // - determine the "abstain" type of each statement
         // - create a map of all labels to logical lines
         // - collect variables for renaming
+        // - make sure abstain labels exist
         let mut npolite = 0;
         let mut types = Vec::new();
         let mut labels = HashMap::new();
@@ -582,7 +583,7 @@ impl<'p> Parser<'p> {
         // - create a map of all come-froms to logical lines
         // - apply new variable names
         for (i, mut stmt) in stmts.iter_mut().enumerate() {
-            if let ast::StmtBody::ComeFrom(n) = stmt.body {
+            if let StmtBody::ComeFrom(n) = stmt.body {
                 if !labels.contains_key(&n) {
                     return Err(err::with_line(&err::IE444, stmt.props.srcline));
                 }
@@ -594,11 +595,11 @@ impl<'p> Parser<'p> {
             self.rename_vars(&vars, &mut stmt);
         }
         let n_vars = (vars.counts[0], vars.counts[1], vars.counts[2], vars.counts[3]);
-        Ok(ast::Program { stmts: stmts,
-                          labels: labels,
-                          comefroms: comefroms,
-                          stmt_types: types,
-                          n_vars: n_vars })
+        Ok(Program { stmts: stmts,
+                     labels: labels,
+                     comefroms: comefroms,
+                     stmt_types: types,
+                     n_vars: n_vars })
     }
 }
 
