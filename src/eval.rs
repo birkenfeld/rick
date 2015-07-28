@@ -78,20 +78,17 @@ enum StmtRes {
 
 impl Eval {
     pub fn new(program: Program) -> Eval {
-        let mut abs = Vec::new();
-        for stmt in &program.stmts {
-            abs.push(stmt.props.disabled);
-        }
-        let nv = program.n_vars;
+        let abs = program.stmts.iter().map(|stmt| stmt.props.disabled).collect();
+        let nvars = program.n_vars;
         Eval {
-            program: Rc::new(program),
-            spot:    vec![Bind::new(0); nv.0],
-            twospot: vec![Bind::new(0); nv.1],
-            tail:    vec![Bind::new(Array::empty()); nv.2],
-            hybrid:  vec![Bind::new(Array::empty()); nv.3],
-            jumps:   Vec::new(),
+            program:  Rc::new(program),
+            spot:     vec![Bind::new(0); nvars.0],
+            twospot:  vec![Bind::new(0); nvars.1],
+            tail:     vec![Bind::new(Array::empty()); nvars.2],
+            hybrid:   vec![Bind::new(Array::empty()); nvars.3],
+            jumps:    Vec::new(),
             abstentions: abs,
-            last_in: 0,
+            last_in:  0,
             last_out: 0,
         }
     }
