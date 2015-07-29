@@ -18,10 +18,10 @@
 use std::default::Default;
 use std::rc::Rc;
 
-use ast::{ self, Program, Stmt, StmtBody, Expr, Val, Var };
 use err;
-use util::{ write_number, write_byte, read_number, read_byte, check_chance, FromU16, ToU16,
-            mingle, select, and_16, and_32, or_16, or_32, xor_16, xor_32 };
+use ast::{ self, Program, Stmt, StmtBody, Expr, Val, Var };
+use stdops::{ write_number, write_byte, read_number, read_byte, check_chance, FromU16, ToU16,
+              mingle, select, and_16, and_32, or_16, or_32, xor_16, xor_32 };
 
 
 #[derive(Clone)]

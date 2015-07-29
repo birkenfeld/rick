@@ -7,3 +7,6 @@ authors = ["Georg Brandl <georg@python.org>"]
 rustlex = "*"
 rand = "*"
 time = "*"
+
+[dependencies.rick_syntex]
+path = "rick_syntex"

@@ -15,6 +15,7 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
+#![rick_embed_module_code]
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct ErrDesc {

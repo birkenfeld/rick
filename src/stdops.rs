@@ -15,6 +15,8 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
+#![rick_embed_module_code]
+
 use std::io::{ BufRead, Read, stdin };
 use std::u16;
 use std::u32;

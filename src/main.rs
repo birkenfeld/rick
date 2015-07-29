@@ -17,6 +17,7 @@
 
 #![feature(plugin, iter_arith, box_syntax, box_patterns, append)]
 #![plugin(rustlex)]
+#![plugin(rick_syntex)]
 
 #[allow(plugin_as_library)]
 extern crate rustlex;
@@ -28,8 +29,8 @@ mod err;
 mod lex;
 mod parse;
 mod eval;
-mod util;
 mod opt;
+mod stdops;
 mod syslib;
 
 use std::env::args;

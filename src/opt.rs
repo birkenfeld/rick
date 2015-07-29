@@ -16,7 +16,7 @@
 // -------------------------------------------------------------------------------------------------
 
 use ast;
-use util::{ mingle, select, and_16, and_32, or_16, or_32, xor_16, xor_32 };
+use stdops::{ mingle, select, and_16, and_32, or_16, or_32, xor_16, xor_32 };
 
 
 
