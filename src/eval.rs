@@ -15,45 +15,13 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
-use std::default::Default;
 use std::rc::Rc;
 
-use err;
+use err::{ self, Res };
 use ast::{ self, Program, Stmt, StmtBody, Expr, Val, Var };
-use stdops::{ write_number, write_byte, read_number, read_byte, check_chance, FromU16, ToU16,
+use stdops::{ Bind, Array, write_number, read_number, check_chance,
               mingle, select, and_16, and_32, or_16, or_32, xor_16, xor_32 };
 
-
-#[derive(Clone)]
-struct Array<T> {
-    pub dims: Vec<usize>,
-    pub elems: Vec<T>,
-}
-
-impl<T: Clone + Default> Array<T> {
-    pub fn new(dims: Vec<usize>) -> Array<T> {
-        let total = dims.iter().product();
-        let value = Default::default();
-        Array { dims: dims, elems: vec![value; total] }
-    }
-
-    pub fn empty() -> Array<T> {
-        Array { dims: vec![], elems: vec![] }
-    }
-}
-
-#[derive(Clone)]
-struct Bind<T> {
-    pub val: T,
-    pub stack: Vec<T>,
-    pub rw: bool,
-}
-
-impl<T> Bind<T> {
-    pub fn new(t: T) -> Bind<T> {
-        Bind { val: t, stack: Vec::new(), rw: true }
-    }
-}
 
 pub struct Eval {
     program: Rc<Program>,
@@ -67,8 +35,6 @@ pub struct Eval {
     last_out: u8,
     stmt_ctr: usize,
 }
-
-type EvalRes<T> = Result<T, err::Error>;
 
 enum StmtRes {
     Next,
@@ -95,7 +61,7 @@ impl Eval {
         }
     }
 
-    pub fn eval(&mut self) -> EvalRes<usize> {
+    pub fn eval(&mut self) -> Res<usize> {
         let mut pctr = 0;  // index of current statement
         let program = self.program.clone();
         let nstmts = program.stmts.len();
@@ -148,7 +114,7 @@ impl Eval {
     }
 
     /// Process a single statement.
-    fn eval_stmt(&mut self, stmt: &Stmt) -> EvalRes<StmtRes> {
+    fn eval_stmt(&mut self, stmt: &Stmt) -> Res<StmtRes> {
         //println!("        {}", stmt);
         match stmt.body {
             StmtBody::Calc(ref var, ref expr) => {
@@ -157,8 +123,7 @@ impl Eval {
                 Ok(StmtRes::Next)
             }
             StmtBody::Dim(ref var, ref exprs) => {
-                let vals = try!(self.eval_exprlist(exprs));
-                try!(self.array_dim(var, vals));
+                try!(self.array_dim(var, exprs));
                 Ok(StmtRes::Next)
             }
             StmtBody::DoNext(n) => {
@@ -247,7 +212,7 @@ impl Eval {
     }
 
     /// Pop "n" jumps from the jump stack and return the last one.
-    fn pop_jumps(&mut self, n: u32, strict: bool) -> EvalRes<Option<u16>> {
+    fn pop_jumps(&mut self, n: u32, strict: bool) -> Res<Option<u16>> {
         if n == 0 {
             return Err(err::new(&err::IE621));
         }
@@ -265,7 +230,7 @@ impl Eval {
     }
 
     /// Evaluate an expression to a value.
-    fn eval_expr(&self, expr: &Expr) -> EvalRes<Val> {
+    fn eval_expr(&self, expr: &Expr) -> Res<Val> {
         match *expr {
             Expr::Num(ref n) => Ok(n.clone()),
             Expr::Var(ref var) => self.lookup(var),
@@ -301,125 +266,76 @@ impl Eval {
     }
 
     /// Evaluate a whole list of expressions.
-    fn eval_exprlist(&self, exprs: &Vec<Expr>) -> EvalRes<Vec<Val>> {
+    fn eval_exprlist(&self, exprs: &Vec<Expr>) -> Res<Vec<Val>> {
         exprs.iter().map(|v| self.eval_expr(v)).collect::<Result<Vec<_>, _>>()
     }
 
-    /// Assign to a variable.
-    fn assign(&mut self, var: &Var, val: Val) -> EvalRes<()> {
-        //println!("assign: {:?} = {}", var, val.as_u32());
-        match *var {
-            Var::I16(n) => {
-                let bind = &mut self.spot[n];
-                if bind.rw {
-                    bind.val = try!(val.as_u16());
-                }
-            }
-            Var::I32(n) => {
-                let bind = &mut self.twospot[n];
-                if bind.rw {
-                    bind.val = val.as_u32();
-                }
-            }
-            Var::A16(n, ref subs) => {
-                let subs = try!(self.eval_exprlist(subs));
-                let bind = &mut self.tail[n];
-                let ix = try!(Eval::array_get_index(bind, subs));
-                if bind.rw {
-                    let val = try!(val.as_u16());
-                    bind.val.elems[ix] = val;
-                }
-            }
-            Var::A32(n, ref subs) => {
-                let subs = try!(self.eval_exprlist(subs));
-                let bind = &mut self.hybrid[n];
-                let ix = try!(Eval::array_get_index(bind, subs));
-                if bind.rw {
-                    bind.val.elems[ix] = val.as_u32();
-                }
-            }
-        }
-        Ok(())
+    #[inline]
+    fn eval_subs(&self, subs: &Vec<Expr>) -> Res<Vec<usize>> {
+        let subs = try!(self.eval_exprlist(subs));
+        Ok(subs.iter().map(Val::as_usize).collect::<Vec<_>>())
     }
 
     /// Dimension an array.
-    fn array_dim(&mut self, var: &Var, dims: Vec<Val>) -> EvalRes<()> {
-        fn generic_dimension<T: Clone + Default>(bind: &mut Bind<Array<T>>,
-                                                 dims: Vec<Val>) -> EvalRes<()> {
-            let dims = dims.iter().map(Val::as_usize).collect::<Vec<_>>();
-            if dims.iter().product::<usize>() == 0 {
-                return Err(err::new(&err::IE240));
-            }
-            if bind.rw {
-                bind.val = Array::new(dims);
-            }
-            Ok(())
-        }
+    fn array_dim(&mut self, var: &Var, dims: &Vec<Expr>) -> Res<()> {
+        let dims = try!(self.eval_subs(dims));
         match *var {
-            Var::A16(n, _) => {
-                generic_dimension(&mut self.tail[n], dims)
-            }
-            Var::A32(n, _) => {
-                generic_dimension(&mut self.hybrid[n], dims)
-            }
+            Var::A16(n, _) => self.tail[n].dimension(dims),
+            Var::A32(n, _) => self.hybrid[n].dimension(dims),
             _ => unimplemented!()
         }
     }
 
-    /// Look up the value of a variable.
-    fn lookup(&self, var: &Var) -> EvalRes<Val> {
+    /// Assign to a variable.
+    fn assign(&mut self, var: &Var, val: Val) -> Res<()> {
+        //println!("assign: {:?} = {}", var, val.as_u32());
         match *var {
-            Var::I16(n) => {
-                Ok(Val::I16(self.spot[n].val))
-            }
-            Var::I32(n) => {
-                Ok(Val::I32(self.twospot[n].val))
-            }
+            Var::I16(n) => self.spot[n].assign(try!(val.as_u16())),
+            Var::I32(n) => self.twospot[n].assign(val.as_u32()),
             Var::A16(n, ref subs) => {
-                let subs = try!(self.eval_exprlist(subs));
-                let bind = &self.tail[n];
-                let ix = try!(Eval::array_get_index(bind, subs));
-                Ok(Val::I16(bind.val.elems[ix]))
+                let subs = try!(self.eval_subs(subs));
+                self.tail[n].arr_assign(subs, try!(val.as_u16()))
             }
             Var::A32(n, ref subs) => {
-                let subs = try!(self.eval_exprlist(subs));
-                let bind = &self.hybrid[n];
-                let ix = try!(Eval::array_get_index(bind, subs));
-                Ok(Val::I32(bind.val.elems[ix]))
+                let subs = try!(self.eval_subs(subs));
+                self.hybrid[n].arr_assign(subs, val.as_u32())
+            }
+        }
+    }
+
+    /// Look up the value of a variable.
+    fn lookup(&self, var: &Var) -> Res<Val> {
+        match *var {
+            Var::I16(n) => Ok(Val::I16(self.spot[n].val)),
+            Var::I32(n) => Ok(Val::I32(self.twospot[n].val)),
+            Var::A16(n, ref subs) => {
+                let subs = try!(self.eval_subs(subs));
+                self.tail[n].arr_lookup(subs).map(Val::I16)
+            }
+            Var::A32(n, ref subs) => {
+                let subs = try!(self.eval_subs(subs));
+                self.hybrid[n].arr_lookup(subs).map(Val::I32)
             }
         }
     }
 
     /// Process a STASH statement.
-    fn stash(&mut self, var: &Var) -> EvalRes<()> {
-        fn generic_stash<T: Clone>(bind: &mut Bind<T>) {
-            bind.stack.push(bind.val.clone());
-        }
+    fn stash(&mut self, var: &Var) -> Res<()> {
         match *var {
-            Var::I16(n) => generic_stash(&mut self.spot[n]),
-            Var::I32(n) => generic_stash(&mut self.twospot[n]),
-            Var::A16(n, _) => generic_stash(&mut self.tail[n]),
-            Var::A32(n, _) => generic_stash(&mut self.hybrid[n]),
+            Var::I16(n) => self.spot[n].stash(),
+            Var::I32(n) => self.twospot[n].stash(),
+            Var::A16(n, _) => self.tail[n].stash(),
+            Var::A32(n, _) => self.hybrid[n].stash(),
         }
-        Ok(())
     }
 
     /// Process a RETRIEVE statement.
-    fn retrieve(&mut self, var: &Var) -> EvalRes<()> {
-        fn generic_retrieve<T>(bind: &mut Bind<T>) -> EvalRes<()> {
-            match bind.stack.pop() {
-                None => Err(err::new(&err::IE436)),
-                Some(v) => {
-                    bind.val = v;
-                    Ok(())
-                }
-            }
-        }
+    fn retrieve(&mut self, var: &Var) -> Res<()> {
         match *var {
-            Var::I16(n) => generic_retrieve(&mut self.spot[n]),
-            Var::I32(n) => generic_retrieve(&mut self.twospot[n]),
-            Var::A16(n, _) => generic_retrieve(&mut self.tail[n]),
-            Var::A32(n, _) => generic_retrieve(&mut self.hybrid[n]),
+            Var::I16(n) => self.spot[n].retrieve(),
+            Var::I32(n) => self.twospot[n].retrieve(),
+            Var::A16(n, _) => self.tail[n].retrieve(),
+            Var::A32(n, _) => self.hybrid[n].retrieve(),
         }
     }
 
@@ -447,77 +363,22 @@ impl Eval {
         }
     }
 
-    /// Helper to calculate an array index.
-    fn array_get_index<T>(bind: &Bind<Array<T>>, subs: Vec<Val>) -> EvalRes<usize> {
-        let subs = subs.iter().map(Val::as_usize).collect::<Vec<_>>();
-        if subs.len() != bind.val.dims.len() {
-            return Err(err::new(&err::IE241));
-        }
-        let mut ix = 0;
-        let mut prev_dim = 1;
-        for (sub, dim) in subs.iter().zip(&bind.val.dims) {
-            if *sub > *dim {
-                return Err(err::new(&err::IE241));
-            }
-            ix += (sub - 1) * prev_dim;
-            prev_dim *= *dim;
-        }
-        Ok(ix as usize)
-    }
-
     /// Array readout helper.
-    fn array_readout(&mut self, var: &Var) -> EvalRes<()> {
-        fn generic_readout<T: ToU16>(bind: &Bind<Array<T>>, state: &mut u8) -> EvalRes<()> {
-            if bind.val.dims.len() != 1 {
-                // only dimension-1 arrays can be output
-                return Err(err::new(&err::IE241));
-            }
-            for val in bind.val.elems.iter() {
-                let byte = ((*state as i16 - val.to_u16() as i16) as u16 % 256) as u8;
-                let mut c = byte;
-                *state = byte as u8;
-                c = (c & 0x0f) << 4 | (c & 0xf0) >> 4;
-                c = (c & 0x33) << 2 | (c & 0xcc) >> 2;
-                c = (c & 0x55) << 1 | (c & 0xaa) >> 1;
-                write_byte(c);
-            }
-            Ok(())
-        }
+    fn array_readout(&mut self, var: &Var) -> Res<()> {
         let state = &mut self.last_out;
         match *var {
-            Var::A16(n, _) => generic_readout(&self.tail[n], state),
-            Var::A32(n, _) => generic_readout(&self.hybrid[n], state),
+            Var::A16(n, _) => self.tail[n].readout(state),
+            Var::A32(n, _) => self.hybrid[n].readout(state),
             _ => unimplemented!()
         }
     }
 
     /// Array writein helper.
-    fn array_writein(&mut self, var: &Var) -> EvalRes<()> {
-        fn generic_writein<T: FromU16>(bind: &mut Bind<Array<T>>, state: &mut u8) -> EvalRes<()> {
-            if bind.val.dims.len() != 1 {
-                // only dimension-1 arrays can be input
-                return Err(err::new(&err::IE241));
-            }
-            for place in bind.val.elems.iter_mut() {
-                let byte = read_byte();
-                let c = if byte == 256 {
-                    *state = 0;
-                    256
-                } else {
-                    let c = (byte as i16 - *state as i16) as u16 % 256;
-                    *state = byte as u8;
-                    c
-                };
-                if bind.rw {
-                    *place = FromU16::from_u16(c);
-                }
-            }
-            Ok(())
-        }
+    fn array_writein(&mut self, var: &Var) -> Res<()> {
         let state = &mut self.last_in;
         match *var {
-            Var::A16(n, _) => generic_writein(&mut self.tail[n], state),
-            Var::A32(n, _) => generic_writein(&mut self.hybrid[n], state),
+            Var::A16(n, _) => self.tail[n].writein(state),
+            Var::A32(n, _) => self.hybrid[n].writein(state),
             _ => unimplemented!()
         }
     }

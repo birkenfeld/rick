@@ -17,6 +17,9 @@
 
 #![rick_embed_module_code]
 
+/// Result of a statement.
+pub type Res<T> = Result<T, Error>;
+
 #[derive(PartialEq, Eq, Debug)]
 pub struct ErrDesc {
     num: u16,

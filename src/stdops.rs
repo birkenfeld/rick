@@ -22,8 +22,141 @@ use std::u16;
 use std::u32;
 use rand::{ random, Closed01 };
 
-use err;
+use err::{ self, Res };
 
+#[derive(Clone)]
+pub struct Array<T> {
+    pub dims: Vec<usize>,
+    pub elems: Vec<T>,
+}
+
+impl<T: Clone + Default> Array<T> {
+    pub fn new(dims: Vec<usize>) -> Array<T> {
+        let total = dims.iter().product();
+        let value = Default::default();
+        Array { dims: dims, elems: vec![value; total] }
+    }
+
+    pub fn empty() -> Array<T> {
+        Array { dims: vec![], elems: vec![] }
+    }
+}
+
+#[derive(Clone)]
+pub struct Bind<T> {
+    pub val: T,
+    pub stack: Vec<T>,
+    pub rw: bool,
+}
+
+impl<T: Clone> Bind<T> {
+    pub fn new(t: T) -> Bind<T> {
+        Bind { val: t, stack: Vec::new(), rw: true }
+    }
+
+    pub fn assign(&mut self, v: T) -> Res<()> {
+        if self.rw {
+            self.val = v;
+        }
+        Ok(())
+    }
+
+    pub fn stash(&mut self) -> Res<()> {
+        self.stack.push(self.val.clone());
+        Ok(())
+    }
+
+    pub fn retrieve(&mut self) -> Res<()> {
+        match self.stack.pop() {
+            None => Err(err::new(&err::IE436)),
+            Some(v) => {
+                self.val = v;
+                Ok(())
+            }
+        }
+    }
+}
+
+impl<T: LikeU16 + Default> Bind<Array<T>> {
+    pub fn arr_assign(&mut self, subs: Vec<usize>, val: T) -> Res<()> {
+        let ix = try!(self.get_index(subs));
+        if self.rw {
+            self.val.elems[ix] = val;
+        }
+        Ok(())
+    }
+
+    pub fn arr_lookup(&self, subs: Vec<usize>) -> Res<T> {
+        let ix = try!(self.get_index(subs));
+        Ok(self.val.elems[ix])
+    }
+
+    /// Helper to calculate an array index.
+    fn get_index(&self, subs: Vec<usize>) -> Res<usize> {
+        if subs.len() != self.val.dims.len() {
+            return Err(err::new(&err::IE241));
+        }
+        let mut ix = 0;
+        let mut prev_dim = 1;
+        for (sub, dim) in subs.iter().zip(&self.val.dims) {
+            if *sub > *dim {
+                return Err(err::new(&err::IE241));
+            }
+            ix += (sub - 1) * prev_dim;
+            prev_dim *= *dim;
+        }
+        Ok(ix as usize)
+    }
+
+    pub fn dimension(&mut self, dims: Vec<usize>) -> Res<()> {
+        if dims.iter().product::<usize>() == 0 {
+            return Err(err::new(&err::IE240));
+        }
+        if self.rw {
+            self.val = Array::new(dims);
+        }
+        Ok(())
+    }
+
+    pub fn readout(&self, state: &mut u8) -> Res<()> {
+        if self.val.dims.len() != 1 {
+            // only dimension-1 arrays can be output
+            return Err(err::new(&err::IE241));
+        }
+        for val in self.val.elems.iter() {
+            let byte = ((*state as i16 - val.to_u16() as i16) as u16 % 256) as u8;
+            let mut c = byte;
+            *state = byte as u8;
+            c = (c & 0x0f) << 4 | (c & 0xf0) >> 4;
+            c = (c & 0x33) << 2 | (c & 0xcc) >> 2;
+            c = (c & 0x55) << 1 | (c & 0xaa) >> 1;
+            write_byte(c);
+        }
+        Ok(())
+    }
+
+    pub fn writein(&mut self, state: &mut u8) -> Res<()> {
+        if self.val.dims.len() != 1 {
+            // only dimension-1 arrays can be input
+            return Err(err::new(&err::IE241));
+        }
+        for place in self.val.elems.iter_mut() {
+            let byte = read_byte();
+            let c = if byte == 256 {
+                *state = 0;
+                256
+            } else {
+                let c = (byte as i16 - *state as i16) as u16 % 256;
+                *state = byte as u8;
+                c
+            };
+            if self.rw {
+                *place = LikeU16::from_u16(c);
+            }
+        }
+        Ok(())
+    }
+}
 
 /// Check statement execution chance (false -> skip).
 pub fn check_chance(chance: u8) -> bool {
@@ -104,7 +237,7 @@ const ENGLISH_DIGITS: [(&'static str, u8); 12] = [
     ("NINER", 9)];
 
 /// Convert a number represented as digits spelled out in English.
-pub fn from_english(v: &str) -> Result<u32, err::Error> {
+pub fn from_english(v: &str) -> Res<u32> {
     let mut digits = Vec::new();
     for word in v.split_whitespace() {
         let mut found = false;
@@ -141,7 +274,7 @@ pub fn write_byte(val: u8) {
 }
 
 /// Read a number in spelled out English format.
-pub fn read_number() -> Result<u32, err::Error> {
+pub fn read_number() -> Res<u32> {
     let stdin = stdin();
     let mut slock = stdin.lock();
     let mut buf = String::new();
@@ -163,7 +296,7 @@ pub fn read_byte() -> u16 {
 }
 
 /// Implements the Mingle operator.
-pub fn mingle(mut v: u32, mut w: u32) -> Result<u32, err::Error> {
+pub fn mingle(mut v: u32, mut w: u32) -> Res<u32> {
     if v > (u16::MAX as u32) || w > (u16::MAX as u32) {
         return Err(err::new(&err::IE533));
     }
@@ -179,7 +312,7 @@ pub fn mingle(mut v: u32, mut w: u32) -> Result<u32, err::Error> {
 }
 
 /// Implements the Select operator.
-pub fn select(mut v: u32, mut w: u32) -> Result<u32, err::Error> {
+pub fn select(mut v: u32, mut w: u32) -> Res<u32> {
     let mut i = 1;
     let mut t = 0;
     while w > 0 {
@@ -243,26 +376,17 @@ pub fn xor_32(v: u32) -> u32 {
     w ^ v
 }
 
-pub trait FromU16: Copy {
+pub trait LikeU16: Copy {
     fn from_u16(u16) -> Self;
-}
-
-pub trait ToU16: Copy {
     fn to_u16(self) -> u16;
 }
 
-impl FromU16 for u16 {
+impl LikeU16 for u16 {
     fn from_u16(x: u16) -> u16 { x }
-}
-
-impl FromU16 for u32 {
-    fn from_u16(x: u16) -> u32 { x as u32 }
-}
-
-impl ToU16 for u16 {
     fn to_u16(self) -> u16 { self }
 }
 
-impl ToU16 for u32 {
+impl LikeU16 for u32 {
+    fn from_u16(x: u16) -> u32 { x as u32 }
     fn to_u16(self) -> u16 { self as u16 }
 }
