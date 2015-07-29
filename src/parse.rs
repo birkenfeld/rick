@@ -15,7 +15,7 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
-use std::collections::HashMap;
+use std::collections::{ BTreeMap, HashMap };
 use std::io::{ Read, BufRead, BufReader, Cursor };
 use std::u16;
 
@@ -98,10 +98,10 @@ impl<'p> Parser<'p> {
                     }
                 }
                 // return the botched statement
-                Ok(Stmt { body: body, props: props })
+                Ok(Stmt { body: body, props: props, comefrom: None })
             }
             // a full statement!
-            Ok(body) => Ok(Stmt { body: body, props: props }),
+            Ok(body) => Ok(Stmt { body: body, props: props, comefrom: None }),
         }
     }
 
@@ -552,7 +552,7 @@ impl<'p> Parser<'p> {
         // - collect variables for renaming
         let mut npolite = 0;
         let mut types = Vec::new();
-        let mut labels = HashMap::new();
+        let mut labels = BTreeMap::new();
         let mut comefroms = HashMap::new();
         let mut vars = Vars { counts: vec![0, 0, 0, 0], map: HashMap::new() };
         for (i, mut stmt) in stmts.iter_mut().enumerate() {
@@ -597,10 +597,18 @@ impl<'p> Parser<'p> {
                 }
             }
         }
+        // here we:
+        // - assign comefroms to statements
+        for mut stmt in stmts.iter_mut() {
+            if stmt.props.label > 0 {
+                if let Some(from) = comefroms.get(&stmt.props.label) {
+                    stmt.comefrom = Some(*from);
+                }
+            }
+        }
         let n_vars = (vars.counts[0], vars.counts[1], vars.counts[2], vars.counts[3]);
         Ok(Program { stmts: stmts,
                      labels: labels,
-                     comefroms: comefroms,
                      stmt_types: types,
                      n_vars: n_vars })
     }

@@ -15,7 +15,7 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::default::Default;
 use std::fmt::{ Display, Error, Formatter };
 use std::u16;
@@ -30,8 +30,7 @@ pub type LogLine = u16;
 #[derive(PartialEq, Eq, Debug)]
 pub struct Program {
     pub stmts: Vec<Stmt>,
-    pub labels: HashMap<Label, LogLine>,
-    pub comefroms: HashMap<Label, LogLine>,
+    pub labels: BTreeMap<Label, LogLine>,
     pub stmt_types: Vec<Abstain>,
     pub n_vars: (usize, usize, usize, usize),
 }
@@ -41,6 +40,7 @@ pub struct Program {
 pub struct Stmt {
     pub body: StmtBody,
     pub props: StmtProps,
+    pub comefrom: Option<LogLine>,
 }
 
 /// Common properties for all statements.

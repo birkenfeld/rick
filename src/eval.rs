@@ -134,14 +134,11 @@ impl Eval {
                 }
             }
             // check for COME FROMs from this line
-            let lbl = self.program.stmts[pctr].props.label;
-            if lbl > 0 {
-                if let Some(next) = self.program.comefroms.get(&lbl) {
-                    // check for abstained COME FROM
-                    if !self.abstentions[*next as usize] {
-                        pctr = *next as usize;
-                        continue;
-                    }
+            if let Some(next) = self.program.stmts[pctr].comefrom {
+                // check for abstained COME FROM
+                if !self.abstentions[next as usize] {
+                    pctr = next as usize;
+                    continue;
                 }
             }
             // no COME FROM, normal execution
