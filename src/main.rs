@@ -86,8 +86,9 @@ fn main() {
     println!("Optimized:\n\n{}", program);
 
     let t2 = time::get_time();
-    if let Err(err) = Eval::new(program).eval() {
-        println!("{}", err.to_string());
+    match Eval::new(program).eval() {
+        Err(err) => println!("{}", err.to_string()),
+        Ok(num)  => println!("#stmts:     {}", num)
     }
 
     let t3 = time::get_time();

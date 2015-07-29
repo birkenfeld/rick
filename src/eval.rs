@@ -65,6 +65,7 @@ pub struct Eval {
     abstentions: Vec<bool>,
     last_in: u8,
     last_out: u8,
+    stmt_ctr: usize,
 }
 
 type EvalRes<T> = Result<T, err::Error>;
@@ -90,10 +91,11 @@ impl Eval {
             abstentions: abs,
             last_in:  0,
             last_out: 0,
+            stmt_ctr: 0,
         }
     }
 
-    pub fn eval(&mut self) -> EvalRes<()> {
+    pub fn eval(&mut self) -> EvalRes<usize> {
         let mut pctr = 0;  // index of current statement
         let program = self.program.clone();
         let nstmts = program.stmts.len();
@@ -102,6 +104,7 @@ impl Eval {
             if pctr >= nstmts {
                 return Err(err::with_line(&err::IE663, nstmts));
             }
+            self.stmt_ctr += 1;
             // execute statement if not abstained
             if !self.abstentions[pctr] {
                 let stmt = &program.stmts[pctr];
@@ -144,7 +147,7 @@ impl Eval {
             // no COME FROM, normal execution
             pctr += 1;
         }
-        Ok(())
+        Ok(self.stmt_ctr)
     }
 
     /// Process a single statement.
