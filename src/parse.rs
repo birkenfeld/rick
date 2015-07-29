@@ -20,17 +20,18 @@ use std::io::{ Read, BufRead, BufReader, Cursor };
 use std::u16;
 
 use ast::{ self, Program, Stmt, StmtBody, StmtProps, Expr, Abstain, Var };
-use err;
+use err::{ Res, RtError, ErrDesc, IE000, IE017, IE079, IE099, IE139, IE182, IE197, IE200,
+           IE444, IE555 };
+use lex::{ lex, Lexer, SrcLine, TT };
 use syslib;
-use lex::{ lex, Lexer, TT };
 
 
-enum Error {
-    Hard(err::Error),
-    Soft(usize),
+enum DecodeError {
+    Hard(RtError),
+    Soft(SrcLine),
 }
 
-type ParseRes<T> = Result<T, Error>;
+type ParseRes<T> = Result<T, DecodeError>;
 
 pub struct Parser<'p> {
     lines:  Vec<String>,
@@ -48,14 +49,14 @@ impl<'p> Parser<'p> {
     }
 
     /// Parse the whole file as a program.
-    pub fn get_program(&mut self) -> Result<Program, err::Error> {
+    pub fn get_program(&mut self) -> Res<Program> {
         // parse all statements
         let stmts = try!(self.parse());
         // collect some necessary values and return the Program
         self.post_process(stmts)
     }
 
-    pub fn parse(&mut self) -> Result<Vec<Stmt>, err::Error> {
+    pub fn parse(&mut self) -> Res<Vec<Stmt>> {
         // a program is a series of statements until EOF
         let mut stmts = Vec::new();
         loop {
@@ -68,17 +69,17 @@ impl<'p> Parser<'p> {
     }
 
     /// Parse a single statement (correct or botched).
-    fn parse_stmt(&mut self) -> Result<Stmt, err::Error> {
+    fn parse_stmt(&mut self) -> Res<Stmt> {
         let mut props = StmtProps::default();
         // try to decode a statement
         self.stash.clear();
         match self.parse_stmt_maybe(&mut props) {
             // a hard error while parsing (rare)
-            Err(Error::Hard(err)) => Err(err),
+            Err(DecodeError::Hard(err)) => Err(err),
             // a "soft" error: thrown at runtime as E000
-            Err(Error::Soft(srcline)) => {
+            Err(DecodeError::Soft(srcline)) => {
                 let body = StmtBody::Error(
-                    err::full(&err::IE000, Some(self.lines[srcline - 1].clone()), srcline));
+                    IE000.new(Some(self.lines[srcline - 1].clone()), srcline));
                 // jump over tokens until the next statement beginning
                 loop {
                     match self.tokens.peek() {
@@ -126,7 +127,7 @@ impl<'p> Parser<'p> {
         }
         // parse percentage
         if self.take(TT::OHOHSEVEN) {
-            let schance = try!(self.req_number(100, &err::IE017));
+            let schance = try!(self.req_number(100, &IE017));
             props.chance = schance as u8;
         }
         // parse statement meat
@@ -180,7 +181,7 @@ impl<'p> Parser<'p> {
     /// Maybe parse a line label (N).
     fn parse_label_maybe(&mut self) -> ParseRes<Option<ast::Label>> {
         if self.take(TT::WAX) {
-            let lbl = try!(self.req_number(u16::MAX, &err::IE197));
+            let lbl = try!(self.req_number(u16::MAX, &IE197));
             try!(self.req(TT::WANE));
             Ok(Some(lbl))
         } else {
@@ -196,15 +197,15 @@ impl<'p> Parser<'p> {
     /// Maybe parse a variable reference [.:,;]N {SUB X}.
     fn parse_var_maybe(&mut self, subs_allowed: bool) -> ParseRes<Option<Var>> {
         if self.take(TT::SPOT) {
-            let val = try!(self.req_number(u16::MAX, &err::IE200));
+            let val = try!(self.req_number(u16::MAX, &IE200));
             return Ok(Some(Var::I16(val as usize)));
         }
         if self.take(TT::TWOSPOT) {
-            let val = try!(self.req_number(u16::MAX, &err::IE200));
+            let val = try!(self.req_number(u16::MAX, &IE200));
             return Ok(Some(Var::I32(val as usize)));
         }
         if self.take(TT::TAIL) {
-            let val = try!(self.req_number(u16::MAX, &err::IE200));
+            let val = try!(self.req_number(u16::MAX, &IE200));
             let subs = if subs_allowed {
                 try!(self.parse_subs())
             } else {
@@ -213,7 +214,7 @@ impl<'p> Parser<'p> {
             return Ok(Some(Var::A16(val as usize, subs)));
         }
         if self.take(TT::HYBRID) {
-            let val = try!(self.req_number(u16::MAX, &err::IE200));
+            let val = try!(self.req_number(u16::MAX, &IE200));
             let subs = if subs_allowed {
                 try!(self.parse_subs())
             } else {
@@ -240,7 +241,7 @@ impl<'p> Parser<'p> {
                 let state = self.stash.len();
                 match self.parse_expr() {
                     Ok(expr) => res.push(expr),
-                    Err(Error::Soft(_)) => {
+                    Err(DecodeError::Soft(_)) => {
                         // now backtrack:
                         while self.stash.len() > state {
                             self.tokens.push(self.stash.pop().unwrap());
@@ -268,14 +269,14 @@ impl<'p> Parser<'p> {
     fn parse_readlist(&mut self) -> ParseRes<Vec<Expr>> {
         let mut res = Vec::new();
         if self.take(TT::MESH) {
-            let val = try!(self.req_number(u16::MAX, &err::IE017));
+            let val = try!(self.req_number(u16::MAX, &IE017));
             res.push(Expr::Num(ast::Val::I16(val)));
         } else {
             res.push(Expr::Var(try!(self.parse_var(true))));
         }
         while self.take(TT::INTERSECTION) {
             if self.take(TT::MESH) {
-                let val = try!(self.req_number(u16::MAX, &err::IE017));
+                let val = try!(self.req_number(u16::MAX, &IE017));
                 res.push(Expr::Num(ast::Val::I16(val)));
             } else {
                 res.push(Expr::Var(try!(self.parse_var(true))));
@@ -346,7 +347,7 @@ impl<'p> Parser<'p> {
 
     fn parse_expr2(&mut self) -> ParseRes<Expr> {
         if self.take(TT::MESH) {
-            let val = try!(self.req_number(u16::MAX, &err::IE017));
+            let val = try!(self.req_number(u16::MAX, &IE017));
             return Ok(Expr::Num(ast::Val::I16(val)))
         }
         if let Some(var) = try!(self.parse_var_maybe(true)) {
@@ -386,11 +387,11 @@ impl<'p> Parser<'p> {
     }
 
     /// Require a number as next token, with bounds checking.
-    fn req_number(&mut self, max: u16, err: &'static err::ErrDesc) -> ParseRes<u16> {
+    fn req_number(&mut self, max: u16, err: &'static ErrDesc) -> ParseRes<u16> {
         match self.tokens.next() {
             Some(TT::NUMBER(x)) => {
                 if x > max as u32 {
-                    Err(Error::Hard(err::with_line(err, self.tokens.lineno())))
+                    Err(DecodeError::Hard(err.new(None, self.tokens.lineno())))
                 } else {
                     self.stash.push(TT::NUMBER(x));
                     Ok(x as u16)
@@ -420,8 +421,8 @@ impl<'p> Parser<'p> {
     }
 
     #[inline]
-    fn invalid(&mut self) -> Error {
-        Error::Soft(self.tokens.lineno())
+    fn invalid(&mut self) -> DecodeError {
+        DecodeError::Soft(self.tokens.lineno())
     }
 
     /// Add the syslib to `stmts` if necessary.
@@ -543,7 +544,7 @@ impl<'p> Parser<'p> {
         });
     }
 
-    fn post_process(&self, stmts: Vec<Stmt>) -> Result<Program, err::Error> {
+    fn post_process(&self, stmts: Vec<Stmt>) -> Res<Program> {
         let mut stmts = self.add_syslib(stmts);
         // here we:
         // - count polite statements
@@ -559,7 +560,7 @@ impl<'p> Parser<'p> {
             types.push(stmt.stype());
             if stmt.props.label > 0 {
                 if labels.contains_key(&stmt.props.label) {
-                    return Err(err::with_line(&err::IE182, stmt.props.srcline));
+                    return Err(IE182.new(None, stmt.props.srcline));
                 }
                 labels.insert(stmt.props.label, i as u16);
             }
@@ -571,9 +572,9 @@ impl<'p> Parser<'p> {
         // check politeness
         if stmts.len() > 2 {
             if npolite == 0 || stmts.len() / npolite >= 5 {
-                return Err(err::new(&err::IE079));
+                return IE079.err();
             } else if stmts.len() / npolite < 3 {
-                return Err(err::new(&err::IE099));
+                return IE099.err();
             }
         }
         // here we:
@@ -583,17 +584,17 @@ impl<'p> Parser<'p> {
         for (i, mut stmt) in stmts.iter_mut().enumerate() {
             if let StmtBody::ComeFrom(n) = stmt.body {
                 if !labels.contains_key(&n) {
-                    return Err(err::with_line(&err::IE444, stmt.props.srcline));
+                    return Err(IE444.new(None, stmt.props.srcline));
                 }
                 if comefroms.contains_key(&n) {
-                    return Err(err::with_line(&err::IE555, stmt.props.srcline));
+                    return Err(IE555.new(None, stmt.props.srcline));
                 }
                 comefroms.insert(n, i as u16);
             }
             self.rename_vars(&vars, &mut stmt);
             if let StmtBody::Abstain(Abstain::Label(n)) = stmt.body {
                 if !labels.contains_key(&n) {
-                    return Err(err::with_line(&err::IE139, stmt.props.srcline));
+                    return Err(IE139.new(None, stmt.props.srcline));
                 }
             }
         }

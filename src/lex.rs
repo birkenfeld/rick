@@ -19,8 +19,10 @@ use std::io::Read;
 use std::u32;
 
 
+pub type SrcLine = usize;
+
 #[derive(PartialEq, Eq, Clone, Debug)]
-pub struct Token(pub TT, pub usize);
+pub struct Token(pub TT, pub SrcLine);
 
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub enum TT {
@@ -98,7 +100,7 @@ pub enum TT {
 type Lx<'a, R> = &'a mut RawLexer<R>;
 
 rustlex! RawLexer {
-    property line: usize = 1;
+    property line: SrcLine = 1;
 
     let ANY = .;
     let NUM = ['0'-'9']+;
@@ -182,7 +184,7 @@ impl<R: Read> RawLexer<R> {
 pub struct Lexer<R: Read> {
     inner: RawLexer<R>,
     stash: Vec<Token>,
-    line:  usize,
+    line:  SrcLine,
 }
 
 impl<R: Read> Iterator for Lexer<R> {
@@ -234,7 +236,7 @@ impl<R: Read> Lexer<R> {
         self.stash.push(Token(t, self.line));
     }
 
-    pub fn lineno(&self) -> usize {
+    pub fn lineno(&self) -> SrcLine {
         self.line
     }
 }

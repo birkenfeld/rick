@@ -22,7 +22,7 @@ use std::u16;
 use std::u32;
 use rand::{ random, Closed01 };
 
-use err::{ self, Res };
+use err::{ Res, IE240, IE241, IE436, IE533, IE562, IE579 };
 
 #[derive(Clone)]
 pub struct Array<T> {
@@ -68,7 +68,7 @@ impl<T: Clone> Bind<T> {
 
     pub fn retrieve(&mut self) -> Res<()> {
         match self.stack.pop() {
-            None => Err(err::new(&err::IE436)),
+            None => IE436.err(),
             Some(v) => {
                 self.val = v;
                 Ok(())
@@ -94,13 +94,13 @@ impl<T: LikeU16 + Default> Bind<Array<T>> {
     /// Helper to calculate an array index.
     fn get_index(&self, subs: Vec<usize>) -> Res<usize> {
         if subs.len() != self.val.dims.len() {
-            return Err(err::new(&err::IE241));
+            return IE241.err();
         }
         let mut ix = 0;
         let mut prev_dim = 1;
         for (sub, dim) in subs.iter().zip(&self.val.dims) {
             if *sub > *dim {
-                return Err(err::new(&err::IE241));
+                return IE241.err();
             }
             ix += (sub - 1) * prev_dim;
             prev_dim *= *dim;
@@ -110,7 +110,7 @@ impl<T: LikeU16 + Default> Bind<Array<T>> {
 
     pub fn dimension(&mut self, dims: Vec<usize>) -> Res<()> {
         if dims.iter().product::<usize>() == 0 {
-            return Err(err::new(&err::IE240));
+            return IE240.err();
         }
         if self.rw {
             self.val = Array::new(dims);
@@ -121,7 +121,7 @@ impl<T: LikeU16 + Default> Bind<Array<T>> {
     pub fn readout(&self, state: &mut u8) -> Res<()> {
         if self.val.dims.len() != 1 {
             // only dimension-1 arrays can be output
-            return Err(err::new(&err::IE241));
+            return IE241.err();
         }
         for val in self.val.elems.iter() {
             let byte = ((*state as i16 - val.to_u16() as i16) as u16 % 256) as u8;
@@ -138,7 +138,7 @@ impl<T: LikeU16 + Default> Bind<Array<T>> {
     pub fn writein(&mut self, state: &mut u8) -> Res<()> {
         if self.val.dims.len() != 1 {
             // only dimension-1 arrays can be input
-            return Err(err::new(&err::IE241));
+            return IE241.err();
         }
         for place in self.val.elems.iter_mut() {
             let byte = read_byte();
@@ -249,7 +249,7 @@ pub fn from_english(v: &str) -> Res<u32> {
             }
         }
         if !found {
-            return Err(err::with_str(&err::IE579, word));
+            return IE579.err_with(Some(word), 0);
         }
     }
     let mut res = 0;
@@ -257,7 +257,7 @@ pub fn from_english(v: &str) -> Res<u32> {
         res += (*digit as u64) * (10 as u64).pow(digits.len() as u32 - 1 - i as u32);
     }
     if res > (u32::MAX as u64) {
-        Err(err::new(&err::IE533))
+        IE533.err()
     } else {
         Ok(res as u32)
     }
@@ -280,7 +280,7 @@ pub fn read_number() -> Res<u32> {
     let mut buf = String::new();
     match slock.read_line(&mut buf) {
         Ok(n) if n > 0 => from_english(&buf),
-        _              => Err(err::new(&err::IE562))
+        _              => IE562.err()
     }
 }
 
@@ -298,7 +298,7 @@ pub fn read_byte() -> u16 {
 /// Implements the Mingle operator.
 pub fn mingle(mut v: u32, mut w: u32) -> Res<u32> {
     if v > (u16::MAX as u32) || w > (u16::MAX as u32) {
-        return Err(err::new(&err::IE533));
+        return IE533.err();
     }
     v = ((v & 0x0000ff00) << 8) | (v & 0x000000ff);
     v = ((v & 0x00f000f0) << 4) | (v & 0x000f000f);

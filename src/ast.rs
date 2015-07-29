@@ -20,7 +20,7 @@ use std::default::Default;
 use std::fmt::{ Display, Error, Formatter };
 use std::u16;
 
-use err;
+use err::{ Res, RtError, IE275 };
 
 
 pub type Label = u16;
@@ -56,7 +56,7 @@ pub struct StmtProps {
 /// Type-of-statement dependent data.
 #[derive(PartialEq, Eq, Debug)]
 pub enum StmtBody {
-    Error(err::Error),
+    Error(RtError),
     Calc(Var, Expr),
     Dim(Var, Vec<Expr>),
     DoNext(Label),
@@ -192,12 +192,12 @@ impl Var {
 
 impl Val {
     /// Cast as a 16-bit value; returns an Error if 32-bit and too big.
-    pub fn as_u16(&self) -> Result<u16, err::Error> {
+    pub fn as_u16(&self) -> Res<u16> {
         match *self {
             Val::I16(v) => Ok(v),
             Val::I32(v) => {
                 if v > (u16::MAX as u32) {
-                    return Err(err::new(&err::IE275));
+                    return IE275.err();
                 }
                 Ok(v as u16)
             }

@@ -18,7 +18,7 @@
 #![rick_embed_module_code]
 
 /// Result of a statement.
-pub type Res<T> = Result<T, Error>;
+pub type Res<T> = Result<T, RtError>;
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct ErrDesc {
@@ -28,13 +28,13 @@ pub struct ErrDesc {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct Error {
+pub struct RtError {
     error:  &'static ErrDesc,
     addstr: Option<String>,
     lineno: usize,
 }
 
-impl Error {
+impl RtError {
     pub fn set_line(&mut self, lineno: usize) {
         self.lineno = lineno;
     }
@@ -61,28 +61,24 @@ impl Error {
     }
 }
 
-pub fn full(desc: &'static ErrDesc, addstr: Option<String>, line: usize) -> Error {
-    Error { error: desc,
-            addstr: addstr,
-            lineno: line }
-}
+impl ErrDesc {
+    pub fn new(&'static self, addstr: Option<String>, line: usize) -> RtError {
+        RtError { error: &self,
+                  addstr: addstr,
+                  lineno: line }
+    }
 
-pub fn with_line(desc: &'static ErrDesc, line: usize) -> Error {
-    Error { error: desc,
-            addstr: None,
-            lineno: line }
-}
+    pub fn err<T>(&'static self) -> Result<T, RtError> {
+        Err(RtError { error: &self,
+                      addstr: None,
+                      lineno: 0 })
+    }
 
-pub fn with_str(desc: &'static ErrDesc, addstr: &str) -> Error {
-    Error { error: desc,
-            addstr: Some(addstr.into()),
-            lineno: 0 }
-}
-
-pub fn new(desc: &'static ErrDesc) -> Error {
-    Error { error: desc,
-            addstr: None,
-            lineno: 0 }
+    pub fn err_with<T>(&'static self, addstr: Option<&str>, line: usize) -> Result<T, RtError> {
+        Err(RtError { error: &self,
+                      addstr: addstr.map(|v| v.into()),
+                      lineno: line })
+    }
 }
 
 

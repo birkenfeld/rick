@@ -17,7 +17,7 @@
 
 use std::rc::Rc;
 
-use err::{ self, Res };
+use err::{ Res, IE123, IE129, IE621, IE632, IE663 };
 use ast::{ self, Program, Stmt, StmtBody, Expr, Val, Var };
 use stdops::{ Bind, Array, write_number, read_number, check_chance,
               mingle, select, and_16, and_32, or_16, or_32, xor_16, xor_32 };
@@ -68,7 +68,8 @@ impl Eval {
         loop {
             // check for falling off the end
             if pctr >= nstmts {
-                return Err(err::with_line(&err::IE663, nstmts));
+                let last_stmt = &program.stmts[program.stmts.len() - 1];
+                return IE663.err_with(None, last_stmt.props.srcline);
             }
             self.stmt_ctr += 1;
             // execute statement if not abstained
@@ -130,9 +131,9 @@ impl Eval {
                 let j = self.jumps.len();
                 match self.program.labels.get(&n) {
                     // too many jumps on stack already?
-                    Some(_) if j >= 80 => Err(err::new(&err::IE123)),
+                    Some(_) if j >= 80 => IE123.err(),
                     Some(i)            => Ok(StmtRes::Jump(*i as usize)),
-                    None               => Err(err::new(&err::IE129)),
+                    None               => IE129.err(),
                 }
             }
             StmtBody::ComeFrom(_) => {
@@ -214,11 +215,11 @@ impl Eval {
     /// Pop "n" jumps from the jump stack and return the last one.
     fn pop_jumps(&mut self, n: u32, strict: bool) -> Res<Option<u16>> {
         if n == 0 {
-            return Err(err::new(&err::IE621));
+            return IE621.err();
         }
         if self.jumps.len() < n as usize {
             if strict {
-                return Err(err::new(&err::IE632));
+                return IE632.err();
             } else {
                 self.jumps.clear();
                 return Ok(None);
