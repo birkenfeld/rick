@@ -86,7 +86,7 @@ impl Eval {
             twospot:  vec![Bind::new(0); nvars.1],
             tail:     vec![Bind::new(Array::empty()); nvars.2],
             hybrid:   vec![Bind::new(Array::empty()); nvars.3],
-            jumps:    Vec::new(),
+            jumps:    Vec::with_capacity(80),
             abstentions: abs,
             last_in:  0,
             last_out: 0,
