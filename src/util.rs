@@ -63,13 +63,14 @@ const ROMAN_DIGIT_TBL: [[(char, char); 4]; 10] = [
     [(' ', 'c'), (' ', 'c'), (' ', 'd'), (' ', 'm')],
     [(' ', 'm'), ('_', 'i'), ('_', 'v'), ('_', 'x')]];
 
+/// Convert a number into Roman numeral representation.
 pub fn to_roman(mut val: u32) -> String {
     if val == 0 {
         // zero is just a lone overbar
-        return format!("_\n\n");
+        return "_\n\n".into();
     }
-    let mut l1 = Vec::new();
-    let mut l2 = Vec::new();
+    let mut l1 = Vec::new();  // collect overbars
+    let mut l2 = Vec::new();  // collect digits
     let mut place = 0;
     while val > 0 {
         let digit = (val % 10) as usize;
@@ -81,11 +82,9 @@ pub fn to_roman(mut val: u32) -> String {
         place += 1;
         val /= 10;
     }
-    l1.reverse();
-    l2.reverse();
     format!("{}\n{}\n",
-            l1.into_iter().collect::<String>(),
-            l2.into_iter().collect::<String>())
+            l1.into_iter().rev().collect::<String>(),
+            l2.into_iter().rev().collect::<String>())
 }
 
 const ENGLISH_DIGITS: [(&'static str, u8); 12] = [
@@ -102,6 +101,7 @@ const ENGLISH_DIGITS: [(&'static str, u8); 12] = [
     ("NINE",  9),
     ("NINER", 9)];
 
+/// Convert a number represented as digits spelled out in English.
 pub fn from_english(v: &str) -> Result<u32, err::Error> {
     let mut digits = Vec::new();
     for word in v.split_whitespace() {
@@ -128,14 +128,17 @@ pub fn from_english(v: &str) -> Result<u32, err::Error> {
     }
 }
 
+/// Output a number in Roman format.
 pub fn write_number(val: u32) {
     print!("{}", to_roman(val));
 }
 
+/// Output a byte.
 pub fn write_byte(val: u8) {
     print!("{}", val as char);
 }
 
+/// Read a number in spelled out English format.
 pub fn read_number() -> Result<u32, err::Error> {
     let stdin = stdin();
     let mut slock = stdin.lock();
@@ -146,6 +149,7 @@ pub fn read_number() -> Result<u32, err::Error> {
     }
 }
 
+/// Read a byte from stdin.
 pub fn read_byte() -> u16 {
     let stdin = stdin();
     let mut slock = stdin.lock();
@@ -156,6 +160,7 @@ pub fn read_byte() -> u16 {
     }
 }
 
+/// Implements the Mingle operator.
 pub fn mingle(mut v: u32, mut w: u32) -> Result<u32, err::Error> {
     if v > (u16::MAX as u32) || w > (u16::MAX as u32) {
         return Err(err::new(&err::IE533));
@@ -171,6 +176,7 @@ pub fn mingle(mut v: u32, mut w: u32) -> Result<u32, err::Error> {
     Ok((v << 1) | w)
 }
 
+/// Implements the Select operator.
 pub fn select(mut v: u32, mut w: u32) -> Result<u32, err::Error> {
     let mut i = 1;
     let mut t = 0;
