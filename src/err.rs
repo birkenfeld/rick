@@ -238,6 +238,13 @@ pub static IE663: ErrDesc = ErrDesc {
     way: Some("THE NEW WORLD"),
 };
 
+/* Can't open C output file. */
+pub static IE888: ErrDesc = ErrDesc {
+    num: 888,
+    msg: "I HAVE NO FILE AND I MUST SCREAM",
+    way: None,
+};
+
 /* Unimplemented feature used. This should never come up, hopefully. */
 // pub static IE995: ErrDesc = ErrDesc {
 //     num: 995,

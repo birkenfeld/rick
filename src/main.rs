@@ -24,12 +24,13 @@ extern crate rustlex;
 extern crate rand;
 extern crate time;
 
-mod ast;
 mod err;
 mod lex;
 mod parse;
-mod eval;
+mod ast;
 mod opt;
+mod eval;
+mod codegen;
 mod stdops;
 mod syslib;
 
@@ -40,6 +41,7 @@ use std::fs::File;
 use parse::Parser;
 use opt::Optimizer;
 use eval::Eval;
+use codegen::Generator;
 
 
 fn main() {
@@ -75,25 +77,35 @@ fn main() {
         v = Vec::new();
         f.read_to_end(&mut v).unwrap();
     }
+    let flag_compile = true;
 
     let t0 = time::get_time();
     let program = match Parser::new(&v).get_program() {
-        Ok(program) => { println!("{}", program); program }
+        Ok(program) => { //println!("{}", program);
+            program }
         Err(err)    => { println!("{}", err.to_string()); return }
     };
 
     let t1 = time::get_time();
     let program = Optimizer::new(program).optimize();
-    println!("Optimized:\n\n{}", program);
+    //println!("Optimized:\n\n{}", program);
 
     let t2 = time::get_time();
-    match Eval::new(program).eval() {
-        Err(err) => println!("{}", err.to_string()),
-        Ok(num)  => println!("#stmts:     {}", num)
+    if flag_compile {
+        let mut output = File::create("out.rs").unwrap();
+        match Generator::new(program, &mut output).generate() {
+            Err(err) => println!("{}", err.to_string()),
+            Ok(_)    => { }
+        }
+    } else {
+        match Eval::new(program).eval() {
+            Err(err) => println!("{}", err.to_string()),
+            Ok(num)  => println!("#stmts:     {}", num)
+        }
     }
 
     let t3 = time::get_time();
     println!("parsing:    {}", (t1 - t0));
     println!("optimizing: {}", (t2 - t1));
-    println!("execution:  {}", (t3 - t2));
+    println!("exec/write: {}", (t3 - t2));
 }

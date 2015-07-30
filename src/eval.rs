@@ -266,11 +266,6 @@ impl Eval {
         }
     }
 
-    /// Evaluate a whole list of expressions.
-    fn eval_exprlist(&self, exprs: &Vec<Expr>) -> Res<Vec<Val>> {
-        exprs.iter().map(|v| self.eval_expr(v)).collect()
-    }
-
     #[inline]
     fn eval_subs(&self, subs: &Vec<Expr>) -> Res<Vec<usize>> {
         subs.iter().map(|v| self.eval_expr(v).map(|w| w.as_usize())).collect()
