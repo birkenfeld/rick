@@ -18,11 +18,10 @@
 #![rick_embed_module_code]
 
 use std::io::{ BufRead, Read, stdin };
-use std::u16;
-use std::u32;
-use rand::{ random, Closed01 };
+use std::{ u16, u32 };
+//use rand::{ random, Closed01 };
 
-use err::{ Res, IE240, IE241, IE436, IE533, IE562, IE579 };
+use err::{ Res, IE240, IE241, IE436, IE533, IE562, IE579, IE621, IE632 };
 
 #[derive(Clone)]
 pub struct Array<T> {
@@ -61,9 +60,8 @@ impl<T: Clone> Bind<T> {
         Ok(())
     }
 
-    pub fn stash(&mut self) -> Res<()> {
+    pub fn stash(&mut self) {
         self.stack.push(self.val.clone());
-        Ok(())
     }
 
     pub fn retrieve(&mut self) -> Res<()> {
@@ -163,8 +161,26 @@ pub fn check_chance(chance: u8) -> bool {
     if chance == 100 {
         return true;
     }
-    let Closed01(val) = random::<Closed01<f32>>();
-    val <= (chance as f32) / 100.
+    //let Closed01(val) = random::<Closed01<f32>>();
+    50. <= (chance as f32) / 100.
+}
+
+/// Pop "n" jumps from the jump stack and return the last one.
+pub fn pop_jumps<T>(jumps: &mut Vec<T>, n: u32, strict: bool) -> Res<Option<T>> {
+    if n == 0 {
+        return IE621.err();
+    }
+    if jumps.len() < n as usize {
+        if strict {
+            return IE632.err();
+        } else {
+            jumps.clear();
+            return Ok(None);
+        }
+    }
+    let newlen = jumps.len() - (n as usize - 1);
+    jumps.truncate(newlen);
+    Ok(jumps.pop())
 }
 
 /// Which roman digits from the digit_tbl to put together for each
@@ -295,11 +311,17 @@ pub fn read_byte() -> u16 {
     }
 }
 
-/// Implements the Mingle operator.
-pub fn mingle(mut v: u32, mut w: u32) -> Res<u32> {
-    if v > (u16::MAX as u32) || w > (u16::MAX as u32) {
-        return IE533.err();
+/// Check for 16-bit overflow.
+pub fn check_ovf(v: u32, line: usize) -> Res<u32> {
+    if v > (u16::MAX as u32) {
+        IE533.err_with(None, line)
+    } else {
+        Ok(v)
     }
+}
+
+/// Implements the Mingle operator.
+pub fn mingle(mut v: u32, mut w: u32) -> u32 {
     v = ((v & 0x0000ff00) << 8) | (v & 0x000000ff);
     v = ((v & 0x00f000f0) << 4) | (v & 0x000f000f);
     v = ((v & 0x0c0c0c0c) << 2) | (v & 0x03030303);
@@ -308,11 +330,11 @@ pub fn mingle(mut v: u32, mut w: u32) -> Res<u32> {
     w = ((w & 0x00f000f0) << 4) | (w & 0x000f000f);
     w = ((w & 0x0c0c0c0c) << 2) | (w & 0x03030303);
     w = ((w & 0x22222222) << 1) | (w & 0x11111111);
-    Ok((v << 1) | w)
+    (v << 1) | w
 }
 
 /// Implements the Select operator.
-pub fn select(mut v: u32, mut w: u32) -> Res<u32> {
+pub fn select(mut v: u32, mut w: u32) -> u32 {
     let mut i = 1;
     let mut t = 0;
     while w > 0 {
@@ -325,10 +347,10 @@ pub fn select(mut v: u32, mut w: u32) -> Res<u32> {
             v >>= 1;
         }
     }
-    Ok(t)
+    t
 }
 
-pub fn and_16(v: u16) -> u16 {
+pub fn and_16(v: u32) -> u32 {
     let mut w = v >> 1;
     if v & 1 > 0 {
         w |= 0x8000;
@@ -344,7 +366,7 @@ pub fn and_32(v: u32) -> u32 {
     w & v
 }
 
-pub fn or_16(v: u16) -> u16 {
+pub fn or_16(v: u32) -> u32 {
     let mut w = v >> 1;
     if v & 1 > 0 {
         w |= 0x8000;
@@ -360,7 +382,7 @@ pub fn or_32(v: u32) -> u32 {
     w | v
 }
 
-pub fn xor_16(v: u16) -> u16 {
+pub fn xor_16(v: u32) -> u32 {
     let mut w = v >> 1;
     if v & 1 > 0 {
         w |= 0x8000;

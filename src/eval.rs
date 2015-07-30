@@ -16,11 +16,57 @@
 // -------------------------------------------------------------------------------------------------
 
 use std::rc::Rc;
+use std::u16;
 
-use err::{ Res, IE123, IE129, IE621, IE632, IE663 };
-use ast::{ self, Program, Stmt, StmtBody, Expr, Val, Var };
-use stdops::{ Bind, Array, write_number, read_number, check_chance,
+use err::{ Res, IE123, IE129, IE275, IE663 };
+use ast::{ self, Program, Stmt, StmtBody, Expr, Var, VType };
+use stdops::{ Bind, Array, write_number, read_number, check_chance, check_ovf, pop_jumps,
               mingle, select, and_16, and_32, or_16, or_32, xor_16, xor_32 };
+
+
+/// Type of an expression.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum Val {
+    I16(u16),
+    I32(u32),
+}
+
+impl Val {
+    /// Cast as a 16-bit value; returns an Error if 32-bit and too big.
+    pub fn as_u16(&self) -> Res<u16> {
+        match *self {
+            Val::I16(v) => Ok(v),
+            Val::I32(v) => {
+                if v > (u16::MAX as u32) {
+                    return IE275.err();
+                }
+                Ok(v as u16)
+            }
+        }
+    }
+
+    /// Cast as a 32-bit value; always succeeds.
+    pub fn as_u32(&self) -> u32 {
+        match *self {
+            Val::I16(v) => v as u32,
+            Val::I32(v) => v
+        }
+    }
+
+    /// Cast as an usize value; always succeeds.
+    pub fn as_usize(&self) -> usize {
+        self.as_u32() as usize
+    }
+
+    /// Create from a 32-bit value; will select the smallest possible type.
+    pub fn from_u32(v: u32) -> Val {
+        if v & 0xFFFF == v {
+            Val::I16(v as u16)
+        } else {
+            Val::I32(v)
+        }
+    }
+}
 
 
 pub struct Eval {
@@ -142,12 +188,12 @@ impl Eval {
             }
             StmtBody::Resume(ref expr) => {
                 let n = try!(self.eval_expr(expr)).as_u32();
-                let next = try!(self.pop_jumps(n, true)).unwrap();
+                let next = try!(pop_jumps(&mut self.jumps, n, true)).unwrap();
                 Ok(StmtRes::Back(next as usize))
             }
             StmtBody::Forget(ref expr) => {
                 let n = try!(self.eval_expr(expr)).as_u32();
-                try!(self.pop_jumps(n, false));
+                try!(pop_jumps(&mut self.jumps, n, false));
                 Ok(StmtRes::Next)
             }
             StmtBody::Ignore(ref vars) => {
@@ -164,7 +210,7 @@ impl Eval {
             }
             StmtBody::Stash(ref vars) => {
                 for var in vars {
-                    try!(self.stash(var));
+                    self.stash(var);
                 }
                 Ok(StmtRes::Next)
             }
@@ -192,7 +238,7 @@ impl Eval {
                             let varval = try!(self.lookup(var));
                             write_number(varval.as_u32());
                         }
-                        Expr::Num(ref n) => write_number(n.as_u32()),
+                        Expr::Num(_, v) => write_number(v),
                         _ => unreachable!(),
                     };
                 }
@@ -212,54 +258,41 @@ impl Eval {
         }
     }
 
-    /// Pop "n" jumps from the jump stack and return the last one.
-    fn pop_jumps(&mut self, n: u32, strict: bool) -> Res<Option<u16>> {
-        if n == 0 {
-            return IE621.err();
-        }
-        if self.jumps.len() < n as usize {
-            if strict {
-                return IE632.err();
-            } else {
-                self.jumps.clear();
-                return Ok(None);
-            }
-        }
-        let newlen = self.jumps.len() - (n as usize - 1);
-        self.jumps.truncate(newlen);
-        Ok(self.jumps.pop())
-    }
-
     /// Evaluate an expression to a value.
     fn eval_expr(&self, expr: &Expr) -> Res<Val> {
         match *expr {
-            Expr::Num(ref n) => Ok(n.clone()),
+            Expr::Num(vtype, v) => match vtype {
+                VType::I16 => Ok(Val::I16(v as u16)),
+                VType::I32 => Ok(Val::I32(v)),
+            },
             Expr::Var(ref var) => self.lookup(var),
             Expr::Mingle(ref vx, ref wx) => {
-                let v = try!(self.eval_expr(vx));
-                let w = try!(self.eval_expr(wx));
-                mingle(v.as_u32(), w.as_u32()).map(Val::I32)
+                let v = try!(self.eval_expr(vx)).as_u32();
+                let w = try!(self.eval_expr(wx)).as_u32();
+                let v = try!(check_ovf(v, 0));
+                let w = try!(check_ovf(w, 0));
+                Ok(Val::I32(mingle(v, w)))
             }
             Expr::Select(ref vx, ref wx) => {
                 let v = try!(self.eval_expr(vx));
                 let w = try!(self.eval_expr(wx));
-                select(v.as_u32(), w.as_u32()).map(Val::I32)
+                Ok(Val::I32(select(v.as_u32(), w.as_u32())))
             }
-            Expr::And(ref vx) => {
+            Expr::And(_, ref vx) => {
                 match try!(self.eval_expr(vx)) {
-                    Val::I16(v) => Ok(Val::I16(and_16(v))),
+                    Val::I16(v) => Ok(Val::I16(and_16(v as u32) as u16)),
                     Val::I32(v) => Ok(Val::I32(and_32(v))),
                 }
             }
-            Expr::Or(ref vx) => {
+            Expr::Or(_, ref vx) => {
                 match try!(self.eval_expr(vx)) {
-                    Val::I16(v) => Ok(Val::I16(or_16(v))),
+                    Val::I16(v) => Ok(Val::I16(or_16(v as u32) as u16)),
                     Val::I32(v) => Ok(Val::I32(or_32(v))),
                 }
             }
-            Expr::Xor(ref vx) => {
+            Expr::Xor(_, ref vx) => {
                 match try!(self.eval_expr(vx)) {
-                    Val::I16(v) => Ok(Val::I16(xor_16(v))),
+                    Val::I16(v) => Ok(Val::I16(xor_16(v as u32) as u16)),
                     Val::I32(v) => Ok(Val::I32(xor_32(v))),
                 }
             }
@@ -315,7 +348,7 @@ impl Eval {
     }
 
     /// Process a STASH statement.
-    fn stash(&mut self, var: &Var) -> Res<()> {
+    fn stash(&mut self, var: &Var) {
         match *var {
             Var::I16(n) => self.spot[n].stash(),
             Var::I32(n) => self.twospot[n].stash(),

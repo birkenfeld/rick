@@ -19,7 +19,7 @@ use std::collections::{ BTreeMap, HashMap };
 use std::io::{ Read, BufRead, BufReader, Cursor };
 use std::u16;
 
-use ast::{ self, Program, Stmt, StmtBody, StmtProps, Expr, Abstain, Var };
+use ast::{ self, Program, Stmt, StmtBody, StmtProps, Expr, Abstain, Var, VType };
 use err::{ Res, RtError, ErrDesc, IE000, IE017, IE079, IE099, IE139, IE182, IE197, IE200,
            IE444, IE555 };
 use lex::{ lex, Lexer, SrcLine, TT };
@@ -270,14 +270,14 @@ impl<'p> Parser<'p> {
         let mut res = Vec::new();
         if self.take(TT::MESH) {
             let val = try!(self.req_number(u16::MAX, &IE017));
-            res.push(Expr::Num(ast::Val::I16(val)));
+            res.push(Expr::Num(VType::I16, val as u32));
         } else {
             res.push(Expr::Var(try!(self.parse_var(true))));
         }
         while self.take(TT::INTERSECTION) {
             if self.take(TT::MESH) {
                 let val = try!(self.req_number(u16::MAX, &IE017));
-                res.push(Expr::Num(ast::Val::I16(val)));
+                res.push(Expr::Num(VType::I16, val as u32));
             } else {
                 res.push(Expr::Var(try!(self.parse_var(true))));
             }
@@ -348,7 +348,7 @@ impl<'p> Parser<'p> {
     fn parse_expr2(&mut self) -> ParseRes<Expr> {
         if self.take(TT::MESH) {
             let val = try!(self.req_number(u16::MAX, &IE017));
-            return Ok(Expr::Num(ast::Val::I16(val)))
+            return Ok(Expr::Num(VType::I16, val as u32))
         }
         if let Some(var) = try!(self.parse_var_maybe(true)) {
             return Ok(Expr::Var(var));
@@ -363,13 +363,13 @@ impl<'p> Parser<'p> {
             Ok(expr)
         } else if self.take(TT::AMPERSAND) {
             let expr = try!(self.parse_expr());
-            Ok(Expr::And(box expr))
+            Ok(Expr::And(expr.get_vtype(), box expr))
         } else if self.take(TT::BOOK) {
             let expr = try!(self.parse_expr());
-            Ok(Expr::Or(box expr))
+            Ok(Expr::Or(expr.get_vtype(), box expr))
         } else if self.take(TT::WHAT) {
             let expr = try!(self.parse_expr());
-            Ok(Expr::Xor(box expr))
+            Ok(Expr::Xor(expr.get_vtype(), box expr))
         } else {
             Err(self.invalid())
         }
@@ -477,15 +477,15 @@ impl<'p> Parser<'p> {
         {
             match *expr {
                 Expr::Var(ref mut v) => walk_var(v, visitor),
-                Expr::And(ref mut e) |
-                Expr::Or(ref mut e) |
-                Expr::Xor(ref mut e) => walk_expr(e, visitor),
+                Expr::And(_, ref mut e) |
+                Expr::Or(_, ref mut e) |
+                Expr::Xor(_, ref mut e) => walk_expr(e, visitor),
                 Expr::Mingle(ref mut e, ref mut e2) |
                 Expr::Select(ref mut e, ref mut e2) => {
                     walk_expr(e, visitor);
                     walk_expr(e2, visitor);
                 }
-                Expr::Num(_) => { }
+                Expr::Num(_, _) => { }
             }
         }
 

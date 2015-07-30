@@ -15,9 +15,10 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
+use std::u16;
+
 use ast;
 use stdops::{ mingle, select, and_16, and_32, or_16, or_32, xor_16, xor_32 };
-
 
 
 pub struct Optimizer {
@@ -55,10 +56,12 @@ impl Optimizer {
             ast::Expr::Mingle(ref mut vx, ref mut wx) => {
                 Optimizer::fold(vx);
                 Optimizer::fold(wx);
-                if let box ast::Expr::Num(ref v) = *vx {
-                    if let box ast::Expr::Num(ref w) = *wx {
-                        if let Ok(z) = mingle(v.as_u32(), w.as_u32()) {
-                            result = Some(ast::Expr::Num(ast::Val::I32(z)));
+                if let box ast::Expr::Num(_, v) = *vx {
+                    if let box ast::Expr::Num(_, w) = *wx {
+                        if v <= (u16::MAX as u32) &&
+                           w <= (u16::MAX as u32) {
+                            let z = mingle(v, w);
+                            result = Some(ast::Expr::Num(ast::VType::I32, z));
                         }
                     }
                 }
@@ -66,39 +69,38 @@ impl Optimizer {
             ast::Expr::Select(ref mut vx, ref mut wx) => {
                 Optimizer::fold(vx);
                 Optimizer::fold(wx);
-                if let box ast::Expr::Num(ref v) = *vx {
-                    if let box ast::Expr::Num(ref w) = *wx {
-                        if let Ok(z) = select(v.as_u32(), w.as_u32()) {
-                            result = Some(ast::Expr::Num(ast::Val::I32(z)));
-                        }
+                if let box ast::Expr::Num(_, v) = *vx {
+                    if let box ast::Expr::Num(_, w) = *wx {
+                        let z = select(v, w);
+                        result = Some(ast::Expr::Num(ast::VType::I32, z));
                     }
                 }
             }
-            ast::Expr::And(ref mut vx) => {
+            ast::Expr::And(_, ref mut vx) => {
                 Optimizer::fold(vx);
-                if let box ast::Expr::Num(ref v) = *vx {
-                    result = Some(ast::Expr::Num(match v {
-                        &ast::Val::I16(v) => ast::Val::I16(and_16(v)),
-                        &ast::Val::I32(v) => ast::Val::I32(and_32(v)),
-                    }));
+                if let box ast::Expr::Num(vtype, v) = *vx {
+                    result = Some(match vtype {
+                        ast::VType::I16 => ast::Expr::Num(vtype, and_16(v)),
+                        ast::VType::I32 => ast::Expr::Num(vtype, and_32(v)),
+                    });
                 }
             }
-            ast::Expr::Or(ref mut vx) => {
+            ast::Expr::Or(_, ref mut vx) => {
                 Optimizer::fold(vx);
-                if let box ast::Expr::Num(ref v) = *vx {
-                    result = Some(ast::Expr::Num(match v {
-                        &ast::Val::I16(v) => ast::Val::I16(or_16(v)),
-                        &ast::Val::I32(v) => ast::Val::I32(or_32(v)),
-                    }));
+                if let box ast::Expr::Num(vtype, v) = *vx {
+                    result = Some(match vtype {
+                        ast::VType::I16 => ast::Expr::Num(vtype, or_16(v)),
+                        ast::VType::I32 => ast::Expr::Num(vtype, or_32(v)),
+                    });
                 }
             }
-            ast::Expr::Xor(ref mut vx) => {
+            ast::Expr::Xor(_, ref mut vx) => {
                 Optimizer::fold(vx);
-                if let box ast::Expr::Num(ref v) = *vx {
-                    result = Some(ast::Expr::Num(match v {
-                        &ast::Val::I16(v) => ast::Val::I16(xor_16(v)),
-                        &ast::Val::I32(v) => ast::Val::I32(xor_32(v)),
-                    }));
+                if let box ast::Expr::Num(vtype, v) = *vx {
+                    result = Some(match vtype {
+                        ast::VType::I16 => ast::Expr::Num(vtype, xor_16(v)),
+                        ast::VType::I32 => ast::Expr::Num(vtype, xor_32(v)),
+                    });
                 }
             }
             _ => {}

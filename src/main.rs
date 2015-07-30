@@ -92,8 +92,8 @@ fn main() {
 
     let t2 = time::get_time();
     if flag_compile {
-        let mut output = File::create("out.rs").unwrap();
-        match Generator::new(program, &mut output).generate() {
+        let output = File::create("out.rs").unwrap();
+        match Generator::new(program, output).generate() {
             Err(err) => println!("{}", err.to_string()),
             Ok(_)    => { }
         }

@@ -17,6 +17,8 @@
 
 #![rick_embed_module_code]
 
+use std::io;
+
 /// Result of a statement.
 pub type Res<T> = Result<T, RtError>;
 
@@ -58,6 +60,17 @@ impl RtError {
             Some(ref s) => s,
             None        => "???"
         }
+    }
+
+    pub fn to_code(&self) -> String {
+        format!("err::IE{:03}.err_with({:?}, {:?})",
+                self.error.num, self.addstr, self.lineno)
+    }
+}
+
+impl From<io::Error> for RtError {
+    fn from(_: io::Error) -> RtError {
+        IE888.new(None, 0)
     }
 }
 

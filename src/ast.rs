@@ -18,10 +18,9 @@
 use std::collections::BTreeMap;
 use std::default::Default;
 use std::fmt::{ Display, Error, Formatter };
-use std::u16;
 
-use err::{ Res, RtError, IE275 };
-
+use err::RtError;
+use lex::SrcLine;
 
 pub type Label = u16;
 pub type LogLine = u16;
@@ -47,7 +46,7 @@ pub struct Stmt {
 #[derive(PartialEq, Eq, Debug)]
 pub struct StmtProps {
     pub label: Label,
-    pub srcline: usize,
+    pub srcline: SrcLine,
     pub chance: u8,
     pub polite: bool,
     pub disabled: bool,
@@ -86,20 +85,20 @@ pub enum Var {
 /// An expression.
 #[derive(PartialEq, Eq, Debug)]
 pub enum Expr {
-    Num(Val),
+    Num(VType, u32),
     Var(Var),
     Mingle(Box<Expr>, Box<Expr>),
     Select(Box<Expr>, Box<Expr>),
-    And(Box<Expr>),
-    Or(Box<Expr>),
-    Xor(Box<Expr>),
+    And(VType, Box<Expr>),
+    Or(VType, Box<Expr>),
+    Xor(VType, Box<Expr>),
 }
 
-/// An evaluated value.
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub enum Val {
-    I16(u16),
-    I32(u32),
+/// Type of an expression.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum VType {
+    I16,
+    I32,
 }
 
 /// Specification for an ABSTAIN or REINSTATE.
@@ -157,6 +156,17 @@ impl StmtBody {
     }
 }
 
+impl Expr {
+    pub fn get_vtype(&self) -> VType {
+        match *self {
+            Expr::Num(vtype, _) => vtype,
+            Expr::And(vtype, _) | Expr::Or(vtype, _) | Expr::Xor(vtype, _) => vtype,
+            Expr::Select(..) | Expr::Mingle(..) => VType::I32,
+            Expr::Var(ref v) => v.get_vtype(),
+        }
+    }
+}
+
 impl Var {
     /// Is this Var a dimensioning access (array without subscript)?
     pub fn is_dim(&self) -> bool {
@@ -188,45 +198,15 @@ impl Var {
             }
         }
     }
-}
 
-impl Val {
-    /// Cast as a 16-bit value; returns an Error if 32-bit and too big.
-    pub fn as_u16(&self) -> Res<u16> {
+    /// Get the VType for this Var.
+    pub fn get_vtype(&self) -> VType {
         match *self {
-            Val::I16(v) => Ok(v),
-            Val::I32(v) => {
-                if v > (u16::MAX as u32) {
-                    return IE275.err();
-                }
-                Ok(v as u16)
-            }
-        }
-    }
-
-    /// Cast as a 32-bit value; always succeeds.
-    pub fn as_u32(&self) -> u32 {
-        match *self {
-            Val::I16(v) => v as u32,
-            Val::I32(v) => v
-        }
-    }
-
-    /// Cast as an usize value; always succeeds.
-    pub fn as_usize(&self) -> usize {
-        self.as_u32() as usize
-    }
-
-    /// Create from a 32-bit value; will select the smallest possible type.
-    pub fn from_u32(v: u32) -> Val {
-        if v & 0xFFFF == v {
-            Val::I16(v as u16)
-        } else {
-            Val::I32(v)
+            Var::I16(..) | Var::A16(..) => VType::I16,
+            Var::I32(..) | Var::A32(..) => VType::I32,
         }
     }
 }
-
 
 impl Default for StmtProps {
     fn default() -> StmtProps {
@@ -323,22 +303,16 @@ impl Display for Var {
 impl Display for Expr {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         match *self {
-            Expr::Num(ref n) => write!(fmt, "{}", n),
+            Expr::Num(vtype, ref n) => match vtype {
+                VType::I16 => write!(fmt, "#{}", n),
+                VType::I32 => write!(fmt, "##{}", n),
+            },
             Expr::Var(ref v) => v.fmt(fmt),
             Expr::Mingle(ref x, ref y) => write!(fmt, "({})$({})", x, y),
             Expr::Select(ref x, ref y) => write!(fmt, "({})~({})", x, y),
-            Expr::And(ref x) => write!(fmt, "&({})", x),
-            Expr::Or(ref x) => write!(fmt, "V({})", x),
-            Expr::Xor(ref x) => write!(fmt, "?({})", x),
-        }
-    }
-}
-
-impl Display for Val {
-    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        match *self {
-            Val::I16(n) => write!(fmt, "#{}", n),
-            Val::I32(n) => write!(fmt, "##{}", n),
+            Expr::And(_, ref x) => write!(fmt, "&({})", x),
+            Expr::Or(_, ref x) => write!(fmt, "V({})", x),
+            Expr::Xor(_, ref x) => write!(fmt, "?({})", x),
         }
     }
 }
