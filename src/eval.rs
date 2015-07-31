@@ -225,12 +225,16 @@ impl Eval {
                 }
                 Ok(StmtRes::Next)
             }
-            StmtBody::Abstain(ref what) => {
-                self.abstain(what, true);
+            StmtBody::Abstain(ref whats) => {
+                for what in whats {
+                    self.abstain(what, true);
+                }
                 Ok(StmtRes::Next)
             }
-            StmtBody::Reinstate(ref what) => {
-                self.abstain(what, false);
+            StmtBody::Reinstate(ref whats) => {
+                for what in whats {
+                    self.abstain(what, false);
+                }
                 Ok(StmtRes::Next)
             }
             StmtBody::ReadOut(ref vars) => {

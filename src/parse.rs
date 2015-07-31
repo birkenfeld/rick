@@ -286,10 +286,22 @@ impl<'p> Parser<'p> {
     }
 
     /// Parse an ABSTAIN and REINSTATE statement.
-    fn parse_abstain(&mut self) -> ParseRes<Abstain> {
+    fn parse_abstain(&mut self) -> ParseRes<Vec<Abstain>> {
+        // first form: a single line label
         if let Some(lbl) = try!(self.parse_label_maybe()) {
-            return Ok(Abstain::Label(lbl));
+            return Ok(vec![Abstain::Label(lbl)]);
         }
+        // second form: one or more gerunds
+        let mut res = Vec::new();
+        res.push(try!(self.parse_gerund()));
+        while self.take(TT::INTERSECTION) {
+            res.push(try!(self.parse_gerund()));
+        }
+        Ok(res)
+    }
+
+    /// Parse a single gerund after ABSTAIN or REINSTATE.
+    fn parse_gerund(&mut self) -> ParseRes<Abstain> {
         if self.take(TT::CALCULATING) {
             Ok(Abstain::Calc)
         } else if self.take(TT::NEXTING) {
@@ -592,9 +604,11 @@ impl<'p> Parser<'p> {
                 comefroms.insert(n, i as u16);
             }
             self.rename_vars(&vars, &mut stmt);
-            if let StmtBody::Abstain(Abstain::Label(n)) = stmt.body {
-                if !labels.contains_key(&n) {
-                    return Err(IE139.new(None, stmt.props.srcline));
+            if let StmtBody::Abstain(ref v) = stmt.body {
+                if let Abstain::Label(n) = v[0] {
+                    if !labels.contains_key(&n) {
+                        return Err(IE139.new(None, stmt.props.srcline));
+                    }
                 }
             }
         }

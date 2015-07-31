@@ -206,11 +206,15 @@ impl Generator {
                     w!(self.o, 20; "try!({}.retrieve());", Generator::get_varname(var));
                 }
             }
-            StmtBody::Abstain(ref what) => {
-                try!(self.gen_abstain(what, "true"));
+            StmtBody::Abstain(ref whats) => {
+                for what in whats {
+                    try!(self.gen_abstain(what, "true"));
+                }
             }
-            StmtBody::Reinstate(ref what) => {
-                try!(self.gen_abstain(what, "false"));
+            StmtBody::Reinstate(ref whats) => {
+                for what in whats {
+                    try!(self.gen_abstain(what, "false"));
+                }
             }
             StmtBody::ReadOut(ref exprs) => {
                 for expr in exprs {

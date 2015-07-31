@@ -15,7 +15,7 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
-#![feature(plugin, iter_arith, box_syntax, box_patterns, append)]
+#![feature(plugin, iter_arith, box_syntax, box_patterns, append, slice_patterns)]
 #![plugin(rustlex)]
 #![plugin(rick_syntex)]
 
@@ -47,6 +47,12 @@ use codegen::Generator;
 
 // XXX introduce E774
 // XXX remove unstable for generated code
+// XXX test suite
+// XXX make user comfortable while rustc is running
+// XXX syntax extensions:
+// - computed come from
+// - computed abstain (line number, #abstentions)
+// - ONCE, AGAIN
 fn main() {
     let args: Vec<String> = args().collect();
     let mut opts = getopts::Options::new();
@@ -101,7 +107,12 @@ fn main() {
     // parse source
     let t0 = time::get_time();
     let mut program = match Parser::new(&code).get_program() {
-        Ok(program) => program,
+        Ok(program) => {
+            if debug_flag {
+                println!("Parsed program:\n{}", program);
+            }
+            program
+        }
         Err(err)    => { print!("{}", err.to_string()); return }
     };
 
@@ -114,6 +125,8 @@ fn main() {
     // compile or run
     let t2 = time::get_time();
     if compile_flag {
+        // PLEASE NOTE the selection of errors generated on different conditions
+        // is a bit random
         let outname = String::from(&infile[..infile.len()-2]) + ".rs";
         let output = match File::create(&outname) {
             Err(_) => { print!("{}", err::IE888.new(None, 0).to_string()); return },
