@@ -1,0 +1,132 @@
+"Intersections & Splats" is an INTERCAL implementation of one of my
+favorite games, "Cows & Bulls," now more commonly known by the
+commercial version, "Mastermind."
+
+	Rules of the Game
+
+The idea of the game is that one person selects a "code" in the form
+of a short string of digits, typically four. ("Mastermind" used colors
+in place of numbers.) The other person has a limited number of chances
+to guess what the code is. Every move consists of submitting a guess,
+and the first player replying with a score. Each scoring reveals a
+little more information about the code.  A guess is scored by giving a
+certain number of cows and a certain number of bulls. These correspond
+to Mastermind's white pegs and black pegs, respectively - and, in this
+program, intersections (+) and splats (*).
+
+This game is perfect for a computer because the person who makes the
+code has nothing to do but score the other player's guesses - a
+mechanical task.
+
+Here's how the scoring works. For every number in the code that is
+matched by the same number in the same position in the guess, a splat
+is scored. And for every number in the code that is matched by the
+same number in the guess, but in the wrong position, an intersection,
+is scored.
+
+For example: with a code of "3451" and a guess of "2465", one splat
+and one intersection would be earned. The splat is for the 4, and the
+intersection is for the 5. Of course, the player making the guesses
+isn't told which numbers earned what - that's what they have to
+deduce. A guess of "6152" gets exactly the same score, even though the
+intersection and splat correspond to completely different digits.
+
+The game continues until the code is discovered or the player runs out
+of guesses.
+
+Note that there can be some confusion about how the scoring works with
+repeated digits. In absence of a better standards body, I have stuck
+with the version described in the Mastermind rules, which is that a
+digit in the guess can match up with more than one digit in the code.
+Another example is in order. Say the code is "2412". A guess of "2544"
+would earn one splat and two intersections. The splat is for having a
+2 in the guess in the right position, and one of the intersections is
+also for having a 2 in the guess, but now in the wrong position. The
+final intersection is earned by having a 4 in the guess, again in the
+wrong position. The second 4 in the guess, however, does not affect
+the scoring.
+
+Here is an algorithmic description of how scoring is done. The player
+looks at each digit in the code in turn. If the digit under
+consideration is matched by the same digit in the same place, a splat
+is earned. Otherwise, if any other digit in the guess is the same, an
+intersection is earned.
+
+For those conversant in C, here is an even more algorithmic
+description:
+
+	for (i = 0 ; i < digits ; ++i)
+	    if (guess[i] == code[i])
+	        ++splats;
+	    else
+	        for (j = 0 ; j < digits ; ++j)
+	            if (guess[j] == code[i]) {
+	                ++intersections;
+	                break;
+	            }
+
+For those conversant in INTERCAL, consult the source code.
+
+Anyway, enough of this. Play the game a few times; you'll get the idea.
+
+	How To Play
+
+At each move the board is displayed, which shows you all of your
+previous guesses. Above each guess are the intersections and splats
+that they earned. Here is an example of a game in progress:
+
+           +    
+ * +  +    * *  
+ (1)  (5)  (2)  ( )  ( )  ( )  ( )  ( )  ( )  ( )   (?)
+ (2)  (4)  (4)  ( )  ( )  ( )  ( )  ( )  ( )  ( )   (?)
+ (4)  (4)  (3)  ( )  ( )  ( )  ( )  ( )  ( )  ( )   (?)
+ (2)  (6)  (5)  ( )  ( )  ( )  ( )  ( )  ( )  ( )   (?)
+
+The first guess "1242" earned one splat and one intersection. The
+third guess "2435" earned two splats and one intersection. The player
+has seven more guesses left. Guesses are typed in at the "MOVE:"
+prompt.
+
+At the end of the game, the questions marks at the right are replaced
+with the code. You are then prompted with "[CNQ]". Enter N to start a
+new game, Q to quit playing, or C to configure the game (see below). N
+is the default, so if you just hit enter, or type anything except C or
+Q, it has the same effect. You can also use any of these commands at
+the "MOVE:" prompt, if you wish to abandon the current game. In
+addition, R can be entered during a game to redraw the board.
+
+	Configuring the Game
+
+The game is set up originally to have ten guesses in a game, four
+digits in the code, and to use the digits 1 through 6. (This matches
+the setup of the "Mastermind" game.) The C command can be used to
+modify these settings, so as to change the difficulty of the game.
+
+When you enter the C command, you are first prompted for the X
+setting, the number of guesses allowed; then the Y setting, which is
+the number of digits in the code; and finally the N setting, the
+number of digits used in the game. Each number is entered using
+standard INTERCAL numeric entry. (Yes, I could have used my own numio
+routines here, but the program is big enough as it is. Besides, I
+didn't want you to completely forget that you were using an INTERCAL
+program.) You can enter ZERO at any three prompts to abort the
+configuration and return to the current game. If any values are higher
+than ONE FIVE, the value modulo 16 will be used instead. Note that
+while you can enter a value higher than NINE for the number of digits,
+you may need to have an ASCII chart handy. (By the way, if anyone
+wants an EBCDIC version, drop me a line.)
+
+	Other Versions
+
+I enjoyed writing this program so much, that I created two others
+based on it. First, there is a colorized version, which requires a
+VT100/ANSI color terminal, or something compatible. And second, there
+is a CGI script version that plays this game. A package containing all
+three versions is available at ftp.muppetlabs.com under
+/pub/intercal/ins.tar.gz. In addition, you can play the CGI script at
+http://www.muppetlabs.com/~breadbox/intercal/ins/insstart.html.
+
+	Coda
+
+That's it. Have fun. Questions, comments, and concerns for my mental
+health can be directed to breadbox@muppetlabs.com.

@@ -1,0 +1,16 @@
+
+From: jlm@cco.caltech.edu (Jacob Mandelson)
+Newsgroups: alt.lang.intercal
+Subject: Re: ROT-13
+Date: 7 Jun 1993 21:36:40 GMT
+Organization: California Institute of Technology, Pasadena
+Message-ID: <1v0cd9INN8gk@gap.caltech.edu>
+
+Here's an intercal program that encodes/decodes rot13 documents:
+
+[Program moved to separate file and modified to satisfy the
+ politeness rules, LHH 5/11/96.]
+ 
+-- 
+	Jacob Mandelson			jlm@cco.caltech.edu
+	Electrical engineers do it with less resistance.

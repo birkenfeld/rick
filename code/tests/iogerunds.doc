@@ -1,0 +1,10 @@
+Jan-Pieter Cornet <cornet@OTech.fgg.EUR.nl> writes:
+
+You might want to try the following program (I've just been hacking this up,
+and it costed me considerable more time than adding the gerund I/O things.
+But that's the power of intercal...) This program will ask for a number
+and might print it then, except that it doesn't ask the first time but
+                                              _ 
+assumes ONE TWO THREE. Oh and it never prints    but just exits in case that
+would've been printed (I did my best to make that part as unreadable as
+possible. did it work? :)

@@ -1,0 +1,18 @@
+primes.i is a simple program for printing out a list of prime numbers.
+It has an outer loop variable .11 and an inner loop variable .13, both
+of which start at #3 and advance through odd numbers.  .13 contains the
+numbers being tested as possible divisors of .11, which is the number
+being tested for primality.  Each time through the inner loop a 16-bit
+division with remainder routine (2030) is called to divide .11 by .13.
+If .13 is greater than the quotient then .11 is known to be prime and
+is printed out.  If the remainder is #0, on the other hand, then .11
+is known to be composite and the inner loop is terminated prematurely.
+
+The termination test for the outer loop is controlled by statement (22),
+which tests to see if the high bit of (.11-#1)/#2 is set.  You can
+modify this statement to test some other bit if you want the program
+to terminate sooner.  It took over 17 hours on a Sparc 1 for this
+program to find all 16-bit primes.
+
+				Louis Howell
+				December 30, 1991

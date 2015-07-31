@@ -1,0 +1,173 @@
+This is the directory of programs written in INTERCAL.  Most of these
+are no doubt full of bugs.  Don't complain, you're lucky if anything
+written in INTERCAL works at all.
+
+Some of these programs are explicitly licenced under the GNU GPL, just
+like the C-INTERCAL compiler is; therefore, remember to include
+COPYING.txt from the main installation directory if you want to
+redistribute these separately from that compiler.
+
+The subdirectory lib contains code fragments that are not complete
+programs; the programs in explib are expansion libraries written in C,
+which serve as examples of the C-INTERCAL to C interface as well as
+potentially being useful.
+
+Programs marked with + have associated .chk files (and, if they take
+input, corresponding .tst files) and are part of the regression-test
+suite.
+
+Contents:
+
+from original manual:
+  sample.i		Returns absolute value of a 16-bit 2s-complement number
+  lib/syslib-orig.i	Standard library (original buggy version)
+
+by Jon Blow <jon@sampo.com>
+  tests/sink.i		+ Simple test program, should sink into the Black Lagoon
+  random.i		Random number program
+  lib/plus.i		Increment .1
+
+by Hans Olsson <f88ho@efd.lth.se>
+  lib/1910.doc		Listing of a random number routine.  Hans said he wrote
+			this because he couldn't find (1910) in the system 
+			library, but it's there in our lib/syslib.i.  We keep 
+			this around as an example.  (What? Throw away INTERCAL 
+			code? Perish the thought!)
+
+by Louis Howell <nazgul@netcom.com>
+  life.i		Conway's game of Life, standard INTERCAL version
+  life2.i		This version uses COME FROM and character output
+    blinkers
+    t_tet
+    glider
+    gun			Input files for both Life programs
+  bubble.i		+ Bubble sort. List of numbers to be sorted must
+  			be preceded with the length of the list.
+  icat.i		+ Sends input to output
+  lib/lib2.i		New library routines: decrement, decrement and branch 
+  			on 0, add bit, 16-bit division with remainder, 
+			exponentiation
+  pi.i			+ Calculate pi to a specified number of digits
+  primes.i		Find prime numbers
+  pow.i			+ Prints a list of nth powers using old exponentiation 
+  			routine. Expect this to fail with overflow.
+  lib/syslib.i		Corrected version of system library
+  iching1.i     	Generates I Ching hexagrams
+  iching2.i     	This version uses a lookup table to find the sequence 
+  			number
+  iching.doc   		Description of the two I Ching programs
+  change.i      	Count up different ways to make change
+  change.doc    	Description of change.i
+  tests/testsplat.i	+ Tests behavior of comments and things resembling
+			comments.
+
+by Matt Dimeo <mdimeo@brooktree.com>
+  beer.i		+ Print out lyrics to "99 Bottles of Beer On The Wall"
+
+by Stinglai Ka'abi <stinglai@bureau.World.GOV>:
+  random2.i		Another random-number generator
+
+by Jacob Mandelson <jlm@cco.caltech.edu>
+  rot13.i		+ Prints ROT-13 of its input
+
+by Jan-Pieter Cornet <johnpc@xs4all.nl>
+  hail_mary.3i	        + Print 1,000,000 Hail Marys
+  tests/count.3i        + Count from 1 to 10 in TriINTERCAL
+  tests/iogerunds.i	Demonstrate gerund abstention
+
+by Clemens Meier <clmeier@lili.uni-bielefeld.de>
+  rot13b.i		+ Another ROT-13 program
+
+By Brian Raiter <breadbox@muppetlabs.com>
+  lib/numio.i		I/O routines
+  lib/numio.doc		Description of the I/O routines
+  lib/syslib3.3i
+  lib/syslib4.4i
+  lib/syslib5.5i
+  lib/syslib6.6i	Translations of the standard library to
+  lib/syslib7.7i	C-INTERCAL's other bases.
+  lib/syslib3-7.doc	Documentation for same
+  tests/hello.i		+ The traditional hello world program
+  ins.i			Intersections & Splats, a Mastermind-style game
+  ins.doc		Documentation for I&S
+  yapp.i		+ Prints an INTERCAL program that prints
+  yapp.doc		Description of yapp.i
+  quine.i		+ Prints itself
+  lib/floatlib.i	Floating-point routines
+  lib/floatlib.doc	Documentation for the floating-point routines
+  flonck.i		+ An RPN calculator
+  flonck.doc		Documentation for flonck.i (requires floatlib)
+  fft.i			+ Fast Fourier Transform (requires syslib and floatlib)
+  fft.doc		Description of fft.i
+
+by Donald Knuth
+  tpk.i			+ Don Knuth's implementation of the TPK algorithm
+  tpk.doc		Don's note about the algorithm
+
+by Oerjan Johansen
+  unlambda.i		+ An Unlambda interpreter in INTERCAL
+  unlambda.doc		Better-commented version of the above
+
+by Jeffrey Lee
+  interfunge.i		+ A Befunge-93 interpreter in INTERCAL
+
+by Brendan Gregg
+  guess.i		Guessing game implementation in INTERCAL
+
+The subdirectory tests contains some programs written only to test the
+compiler.
+
+by David Moews
+  tests/test1.i		+ Prints DO THIS TEST HAS BEEN SUCCESSFULLY COMPLETED
+  tests/test2.i		+ Reads in two numbers and reports their product
+
+by Alex Smith
+  tests/ais1.i		+ Reads in numbers terminated with zero and
+  			writes them back out, testing COME FROM/NEXT
+			interaction.
+  tests/ais2.i		+ A demonstration of computed ABSTAIN's power.
+  			Computes the Fibinacci sequence; in the innput file,
+			ONE means compute the nextvterm and ZERO means stop.
+  tests/compucome.i	A program to test computed COME FROM
+  tests/onceagain.i	+ A single-threaded program testing ONCE and AGAIN.
+  			Output just tracks the program control flow.
+  tests/arrtest.i	A program to test some changes I made to the grammar.
+  			No output expected as it's just a parser test.
+  tests/arrtest.doc	The history behind those changes
+  tests/permute.i	+ A permutation-printing program to test backtracking
+  tests/permute.doc	Information about the permutation-printer
+  tests/whileadd.i	+ Adds two input numbers with a single WHILE statement
+  tests/ignorret.i	+ Testing interactions of IGNORE and RETRIEVE
+  tests/ignorearray.i   + Checking that IGNORE works correctly on arrays
+  tests/ignorret.doc	What ignorret does on several compilers
+  tests/normaldist.i	Checking the standard deviation of (1910)
+  tests/testcreate.i	+ A test for the CREATE statement
+  tests/iffit1.i	The INTERCAL side of the INTERCAL/Funge-98 test
+  tests/iffit2.b98	The Funge side of the INTERCAL/Funge-98 test
+  tests/iffit.doc	Documentation for the INTERCAL/Funge-98 test
+  explib/syslibc.c	The INTERCAL base 2 syslib, optimised version in C
+  explib/compunex.c	An example flow-control routine (computed NEXT)
+  explib/ecto_b98.c	A library that links INTERCAL and Funge-98 code
+  sort.i		+ An insertion-sort program testing computed ABSTAIN
+  continuation.i	A continuation library and example program
+  continuation.doc	About usage and internals of the continuation library
+
+by Malcom Ryan
+  tests/testonce.i	+ A single-threaded program that tests all permutations
+			of the ONCE modifier; the output is simply to verify 
+			that the program flow follows the sequence expected.
+  pass.i		+ A multithread program illustrating communications
+  			between threads.  Simply reads in a list of
+			numbers (terminated by ZERO) and writes them out.
+
+The programs test16bit.i, testarray.i, testcf.i, testlib2.i, limits.*,
+testops*i, were all written by Louis Howell.  Of these, testcf.i might
+be considered an interesting puzzle---try to figure out what it's
+doing.  The others are pretty boring, but are included as diagnostics
+and because so few other example programs exist.  Not all of these
+even produce interesting diagnostic output; it may be necessary to
+look at the degenerated C code to determine if the compiler is doing
+the right thing.
+
+End of file CATALOG
+-------------------

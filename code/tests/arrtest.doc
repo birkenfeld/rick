@@ -1,0 +1,104 @@
+arrtest.i is a program I wrote to test my correction to a nasty
+ambiguity in grammar that was rendering many programs incompilable.
+
+The problem is:
+
+sublist1 : unambig _
+sublist : unambig _ sublist
+sublist : unambig _ sublist1
+
+Token received: SPARK or EARS.
+
+Shift/reduce conflict.
+
+This is an example from numio.i:
+
+DO .5 <- '?"'#65535~"'?.7$",2SUB.1"'~#21845"'~#1"$#1'~#3
+                                  ^
+                              ambiguity
+
+The problem is that it's unclear whether the spark/ears is the end of
+an expression around the array reference (reduce), or whether it's the
+start of a new subscript (shift).
+
+In this case, the reduction is wanted. With the shift taking priority,
+there seems to be no way to write this statement without splitting
+it. The grammar as of INTERCAL 0.24 uses the shift by default. This is
+because multidimensional arrays may do this sort of thing:
+
+DO .1 <- ',2SUB.1".2~.3"'~#1
+
+where the shift is needed to parse the ".2~.3" construct. In the first
+case, there is no information within the next two characters that
+indicates that it was the shift that was wanted; in the second case,
+the fact that it's an ears, not a spark, indicates to humans that the
+reduce is needed, but yacc/bison cannot determine this as they don't
+have information about whether the current spark/ears level was
+introduced with sparks or ears. 
+
+At first I thought that scanning past all spark/ears to find the first
+non-sparkears character could solve the problem, even if it could not
+be coded in yacc, but the following code shows the problem:
+
+DO .1 <- ,3SUB",2SUB.1".2 (reduce required)
+
+(It could be the start of this statement:
+
+DO .1 <- ,3SUB",2SUB.1".2~.3"".4 (shift required))
+
+The two statements above are the same for several tokens after the
+ambiguity, and are even the same for 2 tokens after the forward
+scan. This sort of problem is probably why the original manual
+suggested alternating sparks and ears in various levels of expression
+grouping. The only solution I can think of is:
+
+Determine somehow whether we are on a spark level or an ears level
+
+Force alternation of sparks and ears (constraint on the programmer)
+at different levels of expression grouping when dealing with
+near-ambiguous expressions involving spark/ears and arrays, like the
+ones above (so the fourth statement above would be illegal)
+
+Look at whether we see a spark or an ears to determine whether to
+shift or reduce
+
+In other words, reduce whenever it would be a legal way to close the
+current spark/ears level, otherwise shift.
+
+So how to determine whether we're on a spark level or an ears level?
+The solution is for the lexer to place all the sparks and ears it
+encounters on a spark/ears stack, and for the parser to pop two
+sparkears off the stack whenever it reduces a SPARK [unary] <expr>
+SPARK or EARS [unary] <expr> EARS.
+
+Once the determination is in place, all that is required is a way of
+determining whether to shift or reduce based on a variable in the
+program, rather than just a priority (which wouldn't work). This
+doesn't seem to fit into yacc's syntax, so it's possible that after
+all, yacc can't work with the INTERCAL syntax. But there is a solution
+(one that I used to determine COMPUCOME from COME_FROM): syntax
+analysis in the lexer! The idea is that legal closing spark/ears have
+different tokens from illegal closing spark/ears, so that the reduce
+is impossible in situations where it would be illegal (the production
+looks something like eitherspark <expr> CLOSESPARK), and the default
+in all other situations (sort of like 'auto' in C, which noone ever
+uses, because it's the default everywhere it isn't illegal).
+
+The solution I've used places a limit on the maximum nesting depth of
+an expression. Strangely, it also limits the number of sparks and ears
+that can be written into a 'comment' to 256. As care has to be taken
+anyway that malformed abstained statements don't look sufficiently
+like real statements to cause errors, this should be a trivial extra
+addition.
+
+(Incidentally, I strongly suspect this sort of fix was used in the
+original INTERCAL-72 compiler, because there is a very similar
+restriction documented in the manual. Besides, it's needed to make
+INTERCAL into an LALR(1) language.)
+
+The program arrtest.i will not actually run, but it will compile as
+far as degenerating C code. I don't believe every line would have come
+out as a valid statement in any version of INTERCAL 0.24 or earlier
+(except the one labeled as invalid, which would have come out as valid
+but is really bad style anyway).
+

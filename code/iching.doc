@@ -1,0 +1,21 @@
+
+Notes on iching1.i and iching2.i:
+
+Both versions (1 and 2) use the same code for generating lines of the
+hexagram, a simulation of the "coin oracle" method.  (Six separate
+unconditional calls to (1020) were used since I thought lumping them
+all together by starting .1 at #6 would be disrespectful.)
+Implementation of the yarrow-stalk oracle is left as an exercise for
+the student.  Note that in converting the numbers from the program into
+the lines of a hexagram, one should work from the bottom up.  The last
+number gives the top line.
+
+The traditional sequence of the hexagrams does not have a consistent
+mathematical explanation.  Version 2 of the program therefore uses a
+lookup table to determine the number of each hexagram in sequence.  The
+six lines are printed as in version 1, then the sequence number for the
+hexagram, and finally the sequence number for the derived hexagram
+obtained by replacing moving lines (9 and 6) by their opposites.
+
+Louis Howell
+September 10, 1996

@@ -1,0 +1,35 @@
+
+lib2.i contains general-purpose library routines that are not included
+in the standard library.
+
+The first section, with entry at lines (2000), (2010) and (2020),
+was written for the Life program.  Line (2000) is the entry point
+for a decrement routine setting .1 <- .1 minus #1.  This is very
+similar to the increment routine (1020) in the system library,
+which I also use.  Line (2010) is the decrement and branch on zero
+operation.  It decrements .1, then if .1 is not zero returns to the
+calling point, but if .1 is zero pops an additional entry off the
+RESUME stack and returns to that point instead.  Line (2020) is an
+alternative entry point to the (1020) routine which performs an add
+bit operation.  It sets .1 <- .1 plus .2, where .2 is already known
+to be either #0 or #1.
+
+For the pi and primes programs I added the (2030) routine, which
+performs a 16-bit division with remainder.  It is faster than the
+(1040) routine for two reasons:  First, it is a true 16-bit version,
+whereas the (1040) routine just shifts over its operands and then
+calls the 32-bit division routine (1550).  Second, the (1550) routine
+generates a remainder as part of the computation, but then simply
+throws it away.  I needed the remainder, so I have my (2030) routine
+return it in .4 and the quotient in .3.  In other respects this is
+just a 16-bit translation of the (1550) routine.
+
+(2040) and (2049) are entry points to an exponentiation routine that
+raises .1 to the .2 power and returns the answer in :1.  If entered
+through (2040) the routine dies with an error on overflow.  If entered
+through (2049) then .4 is set to #2 if there is an overflow, otherwise
+.4 is set to #1.  There is a more detailed description of how this
+routine works on the web page.
+
+                                Louis Howell
+                                May 27, 1996

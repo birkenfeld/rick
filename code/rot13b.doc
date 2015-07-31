@@ -1,0 +1,117 @@
+
+Newsgroups: alt.folklore.computers,alt.lang.intercal
+From: clmeier@lili6.lili.uni-bielefeld.de (Clemens Meier)
+Subject: Re: Duplicated programming language names?
+Message-ID: <q991k5451s.fsf@lili6.lili.uni-bielefeld.de>
+Date: Fri, 22 Dec 1995 13:11:11 GMT
+Organization: Universitaet Bielefeld, Linguistik und Literaturwissenschaft, Germany
+
+> Mahlzeit
+
+Wohl bekomm's!
+
+> > Programming Language (someone wrote an INTERCAL ROT-13 program which
+> > takes about 4 pages of completely indecipherable code).
+> 
+> Where can I get it???!!!
+
+What?
+
+INTERCAL? At the Retrocomputing Museum:
+	http://www.ccil.org/retro/retromuseum.html
+
+The ROT-13 program? Exercise is left to the reader.
+
+My solution is only slightly bigger than one page
+and could be further shortened. It is, of course,
+ROT-13 encoded and has a kind of Welsh touch, IMHO.
+
+Happy Chrismas and New Year, or, for
+Kenneth: Chrismas Year New and Happy!
+
+Clemens
+
+---------------------------------------------------------->8---------
+	QB ,1 <- #1
+	QB .4 <- #0
+	QB .5 <- #0
+	QB PBZR SEBZ (30)
+	QB JEVGR VA ,1
+	QB .1 <- ,1FHO#1
+	QB (10) ARKG
+	CYRNFR TVIR HC
+(20)	CYRNFR ERFHZR '?.1$#256'~'#256$#256'
+(10)	QB (20) ARKG
+	QB SBETRG #1
+	QB .2 <- .4
+	QB (1000) ARKG
+	QB .4 <- .3~#255
+	QB (50) ARKG
+	QB .3 <- !3~#15'$!3~#240'
+	QB .3 <- !3~#15'$!3~#240'
+	QB .2 <- !3~#15'$!3~#240'
+	QB .1 <- .5
+	QB (1010) ARKG
+	QB .5 <- .2
+	CYRNFR QB ,1FHO#1 <- .3
+(30)	CYRNFR ERNQ BHG ,1
+
+(50)	CYRNFR FGNFU .1 + .2 + .4 + .5 + .11+.12+.13+.14+.15+.16+.17+.18
+	CYRNFR QB .5 <- .4
+	CYRNFR QB .1 <- .5
+	QB .2 <- #65
+	QB (500) ARKG
+	QB .11 <- .3~#2
+	QB .2 <- #78
+	QB (500) ARKG
+	QB .12 <- .3~#2
+	QB .2 <- #97
+	QB (500) ARKG
+	QB .13 <- .3~#2
+	QB .2 <- #110
+	QB (500) ARKG
+	QB .14 <- .3~#2
+	CYRNFR QB .2 <- .5
+	QB .1 <- #77
+	QB (500) ARKG
+	QB .15 <- .3~#2
+	QB .1 <- #90
+	QB (500) ARKG
+	QB .16 <- .3~#2
+	QB .1 <- #109
+	QB (500) ARKG
+	QB .17 <- .3~#2
+	QB .1 <- #122
+	QB (500) ARKG
+	QB .18 <- .3~#2
+	CYRNFR QB .1 <- ' "'"!12$.11'~#3"$"!14$.13'~#3"'~#15"
+                         $"'"!16$.15'~#3"$"!18$.17'~#3"'~#15" '~#255
+	CYRNFR QB .1 <- 'I"!&1'~#85"'~#5
+	QB .2 <- "!1~#2'$!1~#2'"~#3
+	QB .1 <- !2$.1'~#15
+	QB .2 <- !2$.2'~#15
+	QB .2 <- "!1$.2'$!1$"'"I!2$.1'"~#15'"'"~#65535
+	QB .1 <- .5
+	CYRNFR QB (1009) ARKG 
+	CYRNFR ERGEVRIR .1 + .2 + .4 + .5 + .11+.12+.13+.14+.15+.16+.17+.18
+	CYRNFR ERFHZR #1
+	
+(500)	CYRNFR FGNFU .4
+	QB .3 <- "?!1$.2'"~"#0$#65535"
+	QB .4 <- .3~.3
+	QB .4 <- '&"!?4'$.4"'~'#0$#65535'
+	QB .3 <- '"'&"!1~.3'$.4"'~'#0$#65535'"~.4'
+	        $'"'&"!2~.3'$.4"'~'#0$#65535'"~.4'
+	QB .3 <- "?'"!3~#1'$!3~#2'"$"#1$!3~#1'"'"~#5
+	CYRNFR ERGEVRIR .4
+	QB ERFHZR #1
+---------------------------------------------------------->8---------
+
+> I LOVE MY PDP-11/34A!
+
+Then you'll be right at home in this group.
+-- 
+----------------------------------------------------------------------------
+> Wo ist denn der Objoke ???                                   Clemens Meier
+Bei Clemens? Nie!! Ok, ok, aber fast nie.      clmeier@lili.uni-bielefeld.de
+    GO C+ UL P- L+>++>+++ 3$ E++>+++ N++ R+>+++ G'''' !tv b++ D f? TWERPS+++

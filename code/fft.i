@@ -1,0 +1,264 @@
+	PLEASE WRITE IN .9
+	DO .5 <- '?"'#65535~".9~#65532"'~#1"$#2'~#3
+	DO (91) NEXT
+	DO .5 <- '?.&9$#2'~#3
+	DO (91) NEXT
+	DO .5 <- '?"#3~.9"$#1'~#3
+	DO (91) NEXT
+	PLEASE WRITE IN .10
+	DO .5 <- '?"!10~.10'~#2"$#2'~#3
+	DO (93) NEXT
+	DO .5 <- '?"'#65535~".10~#65534"'~#1"$#1'~#3
+	DO (92) NEXT
+	PLEASE DO ;1 <- .10 BY #2
+	DO .1 <- #1
+	DO (10) NEXT
+(11)	DO (1001) NEXT
+(10)	PLEASE FORGET #1
+	PLEASE WRITE IN :1
+	DO (5090) NEXT
+	DO .5 <- '?".5~#2"$#2'~#3
+	DO (94) NEXT
+	PLEASE DO ;1SUB.1#1 <- :2
+	PLEASE WRITE IN :1
+	DO (5090) NEXT
+	DO .5 <- '?".5~#2"$#2'~#3
+	DO (94) NEXT
+	PLEASE DO ;1SUB.1#2 <- :2
+	DO .5 <- '?".1~.10"$#1'~#3
+	DO (1020) NEXT
+	DO (11) NEXT
+	PLEASE DO (100) NEXT
+	PLEASE READ OUT .9 + .10
+	DO .1 <- #1
+	DO (15) NEXT
+(16)	DO (1001) NEXT
+(15)	PLEASE FORGET #1
+	DO :1 <- ;1SUB.1#1
+	DO (5080) NEXT
+	PLEASE READ OUT :2
+	DO :1 <- ;1SUB.1#2
+	DO (5080) NEXT
+	PLEASE READ OUT :2
+	DO .5 <- '?".1~.10"$#1'~#3
+	DO (1020) NEXT
+	DO (16) NEXT
+	PLEASE GIVE UP
+
+(91)	DO (1001) NEXT
+	PLEASE ENTER ONE OR TWO TO SPECIFY THE TRANSFORM.
+(92)	DO (1001) NEXT
+	DO YOU REALLY WANT TO TRANSFORM A VECTOR OF ONE NUMBER?
+(93)	DO (1001) NEXT
+	DOES "POWER OF TWO" MEAN ANYTHING TO YOU?
+(94)	DO (1001) NEXT
+	DOCUMENTATION EXISTS. PERHAPS YOU SHOULD READ IT.
+	PLEASE DON'T GIVE UP
+
+(100)	PLEASE STASH .1 + .2 + .3 + .4 + .5 + .6 + .7 + :1 + :2 +
+		:3 + :4 + :5 + :6 + :7 + .11 + :10 + :11 + :12 + :13
+	DO .11 <- #32768
+	DO .1 <- #1
+	DO .2 <- .10~#65532
+	DO (101) NEXT
+(102)	DO (1001) NEXT
+	PLEASE DO .11 <- .V11
+	DO (1020) NEXT
+	DO .2 <- .2~#65534
+(101)	PLEASE FORGET #1
+	DO .5 <- '?".2~.2"$#2'~#3
+	DO (102) NEXT
+	PLEASE STASH .1
+	DO .1 <- #1
+	DO .2 <- #1
+	DO (105) NEXT
+(106)	DO (1001) NEXT
+(105)	PLEASE FORGET #1
+	DO .5 <- '?.1$.2'~'#0$#65535'
+	DO .5 <- '?"!2~.5'~'"?.5~.5"~#32767'"$#1'~#3
+	DO (107) NEXT
+	PLEASE DO :1 <- ;1SUB.1#1
+	DO ;1SUB.1#1 <- ;1SUB.2#1
+	DO ;1SUB.2#1 <- :1
+	PLEASE DO :1 <- ;1SUB.1#2
+	DO ;1SUB.1#2 <- ;1SUB.2#2
+	DO ;1SUB.2#2 <- :1
+	DO (108) NEXT
+(107)	DO (1001) NEXT
+(108)	PLEASE FORGET #1
+	DO .5 <- .1
+	DO .1 <- !1~#255'$!1~#65280'
+	DO .1 <- !1~#255'$!1~#65280'
+	DO .1 <- !1~#255'$!1~#65280'
+	DO .1 <- !1~#255'$!1~#65280'
+	DO .1 <- .1~.11
+	DO (1020) NEXT
+	DO .2 <- .1
+	DO .1 <- .5
+	DO (1020) NEXT
+	DO .5 <- '?".1~.10"$#1'~#3
+	DO (106) NEXT
+	DO .6 <- #1
+	PLEASE DO :7 <- '"'V.9~#2'$#571"~"#32768$#32767"'$#35133
+	DO (110) NEXT
+(111)	DO (1001) NEXT
+(110)	PLEASE FORGET #1
+	DO .7 <- !6$#0'~'#32767$#1'
+	DO :1 <- :7
+	PLEASE DO (5200) NEXT
+	DO :13 <- :2
+	PLEASE DO :2 <- #63488$#61440
+	DO (1509) NEXT
+	DO :7 <- :3
+	DO :1 <- :3
+	PLEASE DO (5200) NEXT
+	DO :1 <- :2
+	PLEASE DO (530) NEXT
+	DO :1 <- :3
+	PLEASE DO :2 <- #34816$#0
+	PLEASE DO (1509) NEXT
+	DO :12 <- :3
+	DO :11 <- #0
+	PLEASE DO :10 <- #30720$#28672
+	DO .1 <- #1
+	DO (120) NEXT
+(120)	PLEASE FORGET #1
+	DO .4 <- .1
+	DO (130) NEXT
+(131)	DO (1001) NEXT
+(130)	PLEASE FORGET #1
+	DO .2 <- .6
+	DO (1000) NEXT
+	PLEASE DON'T GIVE UP
+	DO :1 <- :10
+	DO :2 <- ;1SUB.3#1
+	PLEASE DO (530) NEXT
+	DO :4 <- :3
+	DO :1 <- :11
+	DO :2 <- ;1SUB.3#2
+	PLEASE DO (530) NEXT
+	DO :1 <- :4
+	DO :2 <- :3
+	PLEASE DO (5010) NEXT
+	DO :5 <- :3
+	DO :1 <- :10
+	DO :2 <- ;1SUB.3#2
+	PLEASE DO (530) NEXT
+	DO :4 <- :3
+	DO :1 <- :11
+	DO :2 <- ;1SUB.3#1
+	PLEASE DO (530) NEXT
+	DO :1 <- :4
+	DO :2 <- :3
+	PLEASE DO (5000) NEXT
+	DO :6 <- :3
+	DO :1 <- ;1SUB.1#1
+	DO :2 <- :5
+	PLEASE DO (5010) NEXT
+	PLEASE DO ;1SUB.3#1 <- :3
+	DO :1 <- ;1SUB.1#2
+	DO :2 <- :6
+	PLEASE DO (5010) NEXT
+	PLEASE DO ;1SUB.3#2 <- :3
+	DO :1 <- ;1SUB.1#1
+	DO :2 <- :5
+	PLEASE DO (5000) NEXT
+	PLEASE DO ;1SUB.1#1 <- :3
+	DO :1 <- ;1SUB.1#2
+	DO :2 <- :6
+	PLEASE DO (5000) NEXT
+	PLEASE DO ;1SUB.1#2 <- :3
+	DO .2 <- .7
+	DO (1000) NEXT
+	DO .1 <- .3
+	DO .5 <- '?.1$.10'~'#0$#65535'
+	DO .5 <- '?"!1~.5'~'"?.5~.5"~#32767'"$#1'~#3
+	DO (131) NEXT
+	DO :1 <- :10
+	DO :2 <- :12
+	PLEASE DO (530) NEXT
+	DO :4 <- :3
+	DO :1 <- :11
+	DO :2 <- :13
+	PLEASE DO (530) NEXT
+	DO :1 <- :10
+	DO :2 <- :3
+	PLEASE DO (5010) NEXT
+	DO :1 <- :3
+	DO :2 <- :4
+	PLEASE DO (5000) NEXT
+	DO :1 <- :10
+	DO :2 <- :13
+	PLEASE DO :10 <- :3
+	PLEASE DO (530) NEXT
+	DO :4 <- :3
+	DO :1 <- :11
+	DO :2 <- :12
+	PLEASE DO (530) NEXT
+	DO :1 <- :11
+	DO :2 <- :3
+	PLEASE DO (5000) NEXT
+	DO :1 <- :3
+	DO :2 <- :4
+	PLEASE DO (5000) NEXT
+	DO :11 <- :3
+	DO .5 <- '?".4~.6"$#2'~#3
+	DO (121) NEXT
+	DO .1 <- .4
+	DO (1020) NEXT
+	DO (120) NEXT
+(121)	DO (1001) NEXT
+	PLEASE FORGET #1
+	DO .6 <- .7
+	DO .5 <- '?".6~.10"$#1'~#3
+	DO (111) NEXT
+	PLEASE RETRIEVE .1
+	DO .5 <- .9
+	DO (140) NEXT
+	DO .1 <- '?.1$#65535'~'#0$#65535'
+	DO (1020) NEXT
+	DO :2 <- '"'"'"!1$#0'~'#511$#1'"$#0'~'#1023$#3'"$#0'~'#4095$
+		#15'"$#0'~'#65535$#31'
+	DO :2 <- ':2~"#31$#2047"'$':2~"#1023$#63"'
+	DO .1 <- #1
+	DO (145) NEXT
+(145)	PLEASE FORGET #1
+	DO :1 <- ;1SUB.1#1
+	DO .5 <- '?"':1~":1~'#32767$#65535'"'~#1"$#1'~#3
+	DO (146) NEXT
+	PLEASE DO (1509) NEXT
+	DO ;1SUB.1#1 <- :3
+	DO (147) NEXT
+(146)	DO (1001) NEXT
+(147)	PLEASE FORGET #1
+	DO :1 <- ;1SUB.1#2
+	DO .5 <- '?"':1~":1~'#32767$#65535'"'~#1"$#1'~#3
+	DO (148) NEXT
+	PLEASE DO (1509) NEXT
+	DO ;1SUB.1#2 <- :3
+	DO (149) NEXT
+(148)	DO (1001) NEXT
+(149)	PLEASE FORGET #1
+	DO .5 <- '?".1~.10"$#2'~#3
+	DO (140) NEXT
+	DO (1020) NEXT
+	DO (145) NEXT
+(140)	DO (1001) NEXT
+(141)	PLEASE FORGET #1
+	DO .9 <- !9~#1'$!9~#2'
+	PLEASE RETRIEVE .1 + .2 + .3 + .4 + .5 + .6 + .7 + :1 + :2 +
+		:3 + :4 + :5 + :6 + :7 + .11 + :10 + :11 + :12 + :13
+	PLEASE RESUME #1
+
+(530)	DO (5030) NEXT
+	DO (531) NEXT
+	DO :3 <- '"':3~"#65535$#0"'$#32767"~"#32768$#32767"'$#65535
+	PLEASE RESUME #1
+(531)	DO (532) NEXT
+	DO :3 <- '"':3~"#65535$#0"'$':3~"#2047$#0"'"~"#32768$#32767"'$
+		':3~"#0$#4095"'
+	PLEASE RESUME #2
+(532)	DO (1001) NEXT
+	PLEASE RESUME #3
+
+	PLEASE APPEND THE FLOATING-POINT LIBRARY ROUTINES

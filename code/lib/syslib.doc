@@ -1,0 +1,103 @@
+
+The file syslib_old.i is the version of the system library included
+in the original manual.  RTFM for descriptions of the routines.  Only
+minimal changes have been made in the current version, as follows:
+
+1.  Someone added
+                PLEASE KNOCK BEFORE ENTERING
+as the first line, presumably to prevent programs from running off the
+end and into the first library routine by mistake.
+
+The other two changes are bug fixes.  The bugs appear in all copies of
+the library that I have, including the manual from Don Woods (via Mike
+Ernst) with carriage controls in the first column.  Unless a still more
+ancient copy of the library can be found (like in the Dead Sea Scrolls,
+perhaps?) we have to assume these bugs have been in there from the
+beginning, or at least since the library was converted from EBCDIC to
+ASCII and incorporated into the manual.
+
+2.  Jacob Mandelson found a bug in the 32-bit division routine where a
+select (~) had been substituted for a mingle ($) by mistake.  This is at
+the end of line 229 of syslib_old.i.  I have not checked or tested this
+correction, but it seems reasonable since select at that position would
+be pointless, but mingle is plausible.
+
+3.  I have found either two or three bugs in the 32-bit multiplication
+routines, depending on how you count.  These only affected the overflow
+checking, but the effect was that every single call to (1540) or (1549)
+would behave as if there were an overflow.
+
+The first is straightforward.  The statement
+		PLEASE DO :1 <- ":3~'#65280$#65280'"$":5~'#652
+	    80$#65280'"
+must be changed to
+		PLEASE DO :1 <- ":3~'#65280$#65280'"$":4~'#652
+	    80$#65280'"
+Not only is this the "right thing to do", but the position of this
+statement just after :4 has been computed suggests that it was what
+the original author intended.
+
+The remaining problems, however, are not so clearly due to typos.  The
+32-bit multiplication is done by splitting each input into its low and
+high 16-bit halves, computing partial products with the (1530) 16 to
+32-bit multiplication routine, and then adding them together using
+(1509), addition with overflow check.  The statements to look at are
+the ones where the overflow flags from successive steps are accumulated
+in .5, as follows:
+
+	[a]	DO .5 <- ':1~:1'~#1
+                ...
+
+	[b]	PLEASE DO .5 <- '"':1~:1'~#1"$.5'~#3
+                ...
+
+		DO (1509) NEXT
+	[c]	DO .5 <- !5$":4~#3"'~#15
+                ...
+
+		DO (1509) NEXT
+	[d]	PLEASE DO .5 <- !5$":4~#3"'~#63
+		DO .5 <- '?"!5~.5'~#1"$#1'~#3
+
+.5 gets a bit if the high-high product is nonzero (wasteful to even compute
+this product, actually), and another if either of the high-low products
+overflows (that's the statement with the previous bug, above).  It then
+gets combined with the overflow flags in :4 from the two addition calls.
+Each new flag is mingled with the ones already in .5, so various bits of
+.5 correspond to the different possible overflows.  Finally, .5 is tested
+to see if it is nonzero, and if so an overflow results.
+
+Note the expressions ":4~#3".  :4 is returned by (1509) as #2 if there is
+an overflow, #1 if not.  It either case a bit is set in .5.  This is why
+the routines signaled an overflow every time.  Note also the ~#63 in line
+[d].  At this point the bit representing existence of the high-high
+product has shifted out to the 128-bit, so ~#63 will miss it.
+
+I see three ways out, none of which are obviously the author's intent:
+
+  (1) At statement [d] the bit pattern is 101011XX, where 1's indicate
+  overflows and X's are set by (1509) without overflow.  If we replace
+  ~#63 with ~#172 we test exactly the bits we want.  This is the one
+  I've used since it is the minimal change.
+
+  (2) If we replace ":4~#3" with ":4~#2" we only have bits set on overflow,
+  which seems cleaner.  The bit pattern is 10001011 so we still can't use
+  ~#63, we have to use ~#139 or ~#255 or something similar to get all the
+  bits.  Actually, the final selects in lines [b], [c] and [d] are all
+  superfluous in this case since the bits discarded are all zero and the
+  selected quantity can be safely assigned to the 16-bit .5.
+
+  (3) If we replace ":4~#3" with ":4~#2" and reverse the mingles to look
+  like '":4~#2"$.5' then the final bit pattern is 10111 and ~#63 will work,
+  though it is not necessary.
+
+There are other solutions, of course, but I don't see any simpler ones
+than these.  If you think ":4~#3" accomplishes nothing, so ":4~#2" must be
+meant, note that ":4~#3" converts :4 to 16-bit.  The original compiler
+apparently required arguments to mingle to be 16-bit, whereas I think
+the C-INTERCAL compiler only requires them to be less than #0$#256.
+":4$.5" would thus be technically illegal, even though it might work in
+C-INTERCAL.
+
+                                Louis Howell
+                                May 25, 1996

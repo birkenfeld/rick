@@ -1,0 +1,56 @@
+        PLEASE NOTE THIS PROGRAM USES NO NEXTING + FORGETTING + RESUMING
+
+(5)	DO .1 <- #0
+(6)	DO .2 <- #1
+(7)	DO .9 <- #1	
+	DON'T .1 <- .2
+	DON'T .2 <- .3
+	DON'T READ OUT .1
+	DON'T WRITE IN .9
+        PLEASE NOTE THAT WE EXIT IF WE READ ZERO
+	DO REINSTATE (15)
+	DO REINSTATE (14)
+(14)	DO ABSTAIN FROM (16)
+(15)  	DO ABSTAIN '"'.9~.9'~#1"$#1'~#3 FROM (16)
+	PLEASE NOTE THAT LINE 16 IS NOW ABSTAINED FROM TWICE OR FOUR TIMES
+	DO REINSTATE (16)
+	DO REINSTATE (16)
+(16)	DON'T ABSTAIN FROM CALCULATING + REINSTATING + ABSTAINING + TRYING AGAIN
+	DO REINSTATE (16)
+	DO REINSTATE (16)
+	
+(10)   	PLEASE DO REINSTATE CALCULATING + READING OUT + WRITING IN
+	DO ABSTAIN FROM (5)
+	DO ABSTAIN FROM (6)
+	DO ABSTAIN FROM (7)
+	DO ABSTAIN FROM (10)
+	DO ABSTAIN FROM ABSTAINING
+	
+       	DO .3 <- .1
+	DO .4 <- .2
+	
+	PLEASE NOTE THAT WE ARE PERFORMING .3 <- .3 (arithmetic +) .4
+	NOTE ALSO THAT THIS CAN BE SUPRESSED BY IGNORING .3
+        AND ALSO THAT .5, .6 ARE USED AS TEMPORARIES
+	AND THAT THIS DISCARDS THE HIGH BIT ON OVERFLOW
+	DON'T FORGET THAT THIS CONTAINS 16 REPETITIONS OF THE SAME LINE
+	DO .5 <- .4
+	PLEASE DO .6 <- "&!3$.5'"~'#0$#65535' DO .3 <- "?!3$.5'"~'#0$#65535' DO .5 <- !6$#0'~"#32767$#1"
+	PLEASE DO .6 <- "&!3$.5'"~'#0$#65535' DO .3 <- "?!3$.5'"~'#0$#65535' DO .5 <- !6$#0'~"#32767$#1"
+	PLEASE DO .6 <- "&!3$.5'"~'#0$#65535' DO .3 <- "?!3$.5'"~'#0$#65535' DO .5 <- !6$#0'~"#32767$#1"
+	PLEASE DO .6 <- "&!3$.5'"~'#0$#65535' DO .3 <- "?!3$.5'"~'#0$#65535' DO .5 <- !6$#0'~"#32767$#1"
+	PLEASE DO .6 <- "&!3$.5'"~'#0$#65535' DO .3 <- "?!3$.5'"~'#0$#65535' DO .5 <- !6$#0'~"#32767$#1"
+	PLEASE DO .6 <- "&!3$.5'"~'#0$#65535' DO .3 <- "?!3$.5'"~'#0$#65535' DO .5 <- !6$#0'~"#32767$#1"
+	PLEASE DO .6 <- "&!3$.5'"~'#0$#65535' DO .3 <- "?!3$.5'"~'#0$#65535' DO .5 <- !6$#0'~"#32767$#1"
+	PLEASE DO .6 <- "&!3$.5'"~'#0$#65535' DO .3 <- "?!3$.5'"~'#0$#65535' DO .5 <- !6$#0'~"#32767$#1"
+	PLEASE DO .6 <- "&!3$.5'"~'#0$#65535' DO .3 <- "?!3$.5'"~'#0$#65535' DO .5 <- !6$#0'~"#32767$#1"
+	PLEASE DO .6 <- "&!3$.5'"~'#0$#65535' DO .3 <- "?!3$.5'"~'#0$#65535' DO .5 <- !6$#0'~"#32767$#1"
+	PLEASE DO .6 <- "&!3$.5'"~'#0$#65535' DO .3 <- "?!3$.5'"~'#0$#65535' DO .5 <- !6$#0'~"#32767$#1"
+	PLEASE DO .6 <- "&!3$.5'"~'#0$#65535' DO .3 <- "?!3$.5'"~'#0$#65535' DO .5 <- !6$#0'~"#32767$#1"
+	PLEASE DO .6 <- "&!3$.5'"~'#0$#65535' DO .3 <- "?!3$.5'"~'#0$#65535' DO .5 <- !6$#0'~"#32767$#1"
+	PLEASE DO .6 <- "&!3$.5'"~'#0$#65535' DO .3 <- "?!3$.5'"~'#0$#65535' DO .5 <- !6$#0'~"#32767$#1"
+	PLEASE DO .6 <- "&!3$.5'"~'#0$#65535' DO .3 <- "?!3$.5'"~'#0$#65535' DO .5 <- !6$#0'~"#32767$#1"
+	PLEASE DO .6 <- "&!3$.5'"~'#0$#65535' DO .3 <- "?!3$.5'"~'#0$#65535' DO .5 <- !6$#0'~"#32767$#1"
+	
+	PLEASE TRY AGAIN
+	

@@ -1,0 +1,109 @@
+permute.i prints the permutations of the set {1,2,3,4,5,6}, using
+backtracking (and therefore must be compiled with the -m compiler
+option).  In the output, numbers in a permutation are given one per line,
+with each digit list followed by XXX.
+
+This program is an excellent regression test because it uses a large
+crossection of INTERCAL control structures; computed COME FROM,
+ordinary COME FROM, ABSTAIN/REINSTATE, AGAIN, NEXT, and MAYBE/GO
+AHEAD/GO BACK are all used. Only ONCE (which is implied in the program
+due to the abstention/reinstatement of an AGAIN line) and IGNORE are
+left unused (at least until someone invents a new even nastier control
+structure). Unusually, it only contains three nontrivial expressions
+(those other than a single constant or a single variable).
+
+The following is the program translated into a mix of Prolog
+and C, with some INTERCAL operations (gets, stash, retrieve, giveup)
+scattered throughout the program.
+
+goal :- gets(.1, #0),
+	gennumber,
+	checklist,
+	gennumber,
+	checklist,
+	gennumber,
+	checklist,
+	gennumber,
+	checklist,
+	gennumber,
+	checklist,
+	gennumber,
+	checklist,
+	readout(.1),
+	retrieve(.1),
+	readout(.1),
+	retrieve(.1),
+	readout(.1),
+	retrieve(.1),
+	readout(.1),
+	retrieve(.1),
+	readout(.1),
+	retrieve(.1),
+	readout(.1),
+	readout(#30),
+	fail.
+goal :- giveup.
+
+gennumber :- stash(.1), gets(.1, #1).
+gennumber :- stash(.1), gets(.1, #2).
+gennumber :- stash(.1), gets(.1, #3).
+gennumber :- stash(.1), gets(.1, #4).
+gennumber :- stash(.1), gets(.1, #5).
+gennumber :- stash(.1), gets(.1, #6).
+
+checklist :- gets(.2, .1),
+	     while(.1 != #0)
+	     {
+		retrieve(.1),
+		if(.1 == .2) {!, fail.}
+	     },
+	     fail.
+checklist.
+
+The backtracking reverses all the stashing and retrieving that is
+done, so that at the end of the program .1 is #0 again and there is no
+stash on .1. The INTERCAL has a somewhat Prolog-like attitude: it
+never uses GO BACK to remove a choicepoint except when GOING BACK to
+an earlier choicepoint (just like Prolog). The checklist. at the end
+of the pseudo-Prolog source is actually an attempt to replicate the
+semantics of MAYBE COME FROM; MAYBE COME FROM...GO BACK continues as
+if nothing had happened, except for leaving a stale choicepoint on the
+stack (but the program runs GO BACK in a loop whenever there is a risk
+of encountering a stale choicepoint on top of the stack), but MAYBE
+COME FROM...GO AHEAD, GO BACK causes the line that was come from to
+fail. (The GO AHEAD, GO BACK was translated as !, fail in the
+pseudo-Prolog above, as it has a similar effect). The program clearly
+shows that INTERCAL's variables are more general than Prolog's (you
+can rebind a variable in INTERCAL, and the rebinding is undone on
+backtracking), especially when stashes are taken into account. On the
+other hand, the program couldn't work as written in C, because
+checklist destroys all the information about the permutations so far!
+(In both the Prolog source above and in the INTERCAL, this destruction
+is always cancelled out by backtracking past it). This program
+probably could be translated into Prolog, but there would be a lot
+more passing-around of variables, and probably more predicates
+involved (I think gets, stash, and retrieve might be possible in terms
+of assert/retract). However, I think that the INTERCAL source is the
+clearest available implementation of the exact program flow above.
+Note also the way that I translated the if() and while() into
+INTERCAL.
+
+if(<1 or 2>==1) something
+becomes
+DO ABSTAIN <1 or 2> FROM (label)
+DO REINSTATE (label)
+(label) DO something AGAIN
+which is the shortest way to do an if() statement in INTERCAL that I
+have discovered (yes! ABSTAIN and REINSTATE have a purpose again!).
+
+do {block} while(<0 or 1>) becomes
+
+DO COME FROM <0 or 1>$label
+most of block
+(1$label) last statement of block
+
+which is pretty clear when written like this, but amazingly confusing
+to track in the INTERCAL, and also prevents the user using 0$label as
+a line number, without any obvious clue to this effect in the source
+code. while() can often be transformed into do..while(), and even in
+situations where it can't, an extra COME FROM does the trick.

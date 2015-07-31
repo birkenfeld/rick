@@ -1,0 +1,5 @@
+ONE
+ONE
+ONE
+ONE
+ZERO

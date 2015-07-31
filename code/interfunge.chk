@@ -1,0 +1,36 @@
+_
+
+ 
+I
+  
+II
+   
+III
+  
+IV
+ 
+V
+  
+VI
+   
+VII
+
+GOOD: , works
+GOOD: : duplicates
+GOOD: empty stack pops zero
+GOOD: 2-2 = 0
+GOOD: | works
+GOOD: 0! = 1
+GOOD: 7! = 0
+GOOD: 8*0 = 0
+GOOD: # < jumps into <
+GOOD: \ swaps
+GOOD: 01` = 0
+GOOD: 10` = 1
+GOOD: 900pg gets 9
+GOOD: p modifies space
+GOOD: wraparound works
+UNDEF: edge # hits column 80
+GOOD: Funge-93 spaces
+The Befunge-93 version of the Mycology test suite is done.
+Quitting...

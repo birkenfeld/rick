@@ -1,0 +1,46 @@
+
+life2.i is a revised version of my Life program, differing in two
+ways from the original.  First, throughout the program I have
+streamlined the loops by using COME FROM statements and combining
+initialization and re-initialization phases where practical.  Second,
+instead of just printing the coordinates of live cells, I use the new
+binary output feature to print out the board as an array of .'s and
+O's.  This new output section is made into a subroutine---entry point
+(300)---which I call from within the main loop as well as at the end of
+the program.  If you don't want to see the position at every time step,
+just remove the call to (300) from within the main loop, and only the
+final position will be printed.
+
+Notes for programmers:  The output routine prints the state matrix a
+full line at a time, using a 1-D array one cell longer than a row of
+the matrix.  This final cell is used to print a line feed (ASCII 012)
+at the end of each line.  Live cells are represented as O's (0117),
+while dead cells are shown as .'s (056).  If your machine does not
+use ASCII or does not use LF to terminate lines this may not work.
+The INTERCAL output routine reverses the order of bits in each of
+these characters, so the constants hard-coded into the program are
+#242 for 'O', #116 for '.', and #80 for '\n'.  The value of the last
+character output, which is needed by the Turing Text output model,
+is stored in .2.  This variable is initialized to #0 and then STASHed
+at the beginning of the program, then RETRIEVEd by the output routine
+each time it is called.  This is opposite from the usual way STASH is
+used, but I was feeling a little twisted the day I wrote all this.
+
+There is still considerable room for improvement in the (300) output
+algorithm.  With printing at each time step the program spends
+roughly two-thirds of its time doing output, and I suspect that
+most of that is squandered in the (1010) subtraction routine.  It
+should be possible to greatly speed up the process by precomputing
+and storing all the possible differences.  Except for initialization
+there are only six to consider: "LF-.", ".-LF", "O-.", ".-O", ".-.",
+and "O-O".  Of these the first two occur predictably at the beginning
+and end of each line, and the last two are trivially zero.  The
+necessary program logic would be a little more complex; perhaps it
+could be done with array indexing?  Consider it a challenge!
+
+Despite all its inefficiencies, the INTERCAL version on a Sparc 1 is
+still faster than the first Life program I ever wrote, in BASIC on
+a TRS-80, by a factor of about 50.  Sobering thought.
+
+                           Louis Howell
+                           December 15, 1991

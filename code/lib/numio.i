@@ -1,0 +1,304 @@
+	PLEASE USE THE AUTHORIZED CHANNELS
+
+(3000)	DO STASH .2 + .3 + .5
+	DO .2 <- ,3000SUB#1
+	PLEASE WRITE IN ,3000
+	DO .1 <- ,3000SUB#1
+	DO .5 <- '?".1~#256"$#2'~#3
+	DO (3008) NEXT
+	DO (1000) NEXT
+	DO .1 <- .3~#255
+	DO ,3000SUB#1 <- .1
+	DO (3009) NEXT
+(3008)	DO (1001) NEXT
+(3009)	DO RETRIEVE .2 + .3 + .5
+	PLEASE RESUME #2
+
+(3001)	DO STASH .1 + .3
+	DO .1 <- ,3001SUB#1
+	DO (1010) NEXT
+	DO ,3001SUB#1 <- .3~#255
+	PLEASE READ OUT ,3001
+	DO ,3001SUB#1 <- .2
+	DO .1 <- .2
+	DO RETRIEVE .1 + .3
+	PLEASE RESUME #1
+
+(3010)	PLEASE STASH .1 + .4 + .5
+	PLEASE DO (1020) NEXT
+	DO .2 <- #0
+	DO .3 <- #2
+	DO .4 <- .1
+	DO (3012) NEXT
+(3011)	DO (1001) NEXT
+(3012)	PLEASE FORGET #1
+	DO (3000) NEXT
+	DO .5 <- '?"?.1~#256"$#2'~#3
+	DO (3013) NEXT
+	DO .5 <- '?"'#65535~"'?.1$#10'~#21845"'~#1"$#1'~#3
+	DO (3013) NEXT
+	DO .5 <- .1
+	DO .1 <- .2
+	PLEASE DO (1020) NEXT
+	DO .2 <- .1
+	DO .1 <- .5
+	DO .5 <- .3
+	DO (3011) NEXT
+	DO .5 <- '?"'#65535~"'?.2$.4'~'#0$#65535'"'~#1"$#1'~#3
+	DO .3 <- .5
+	DO (3011) NEXT
+	PLEASE DO ,1SUB.2 <- .1
+	DO (3012) NEXT
+(3013)	DO (1001) NEXT
+	PLEASE RETRIEVE .1 + .4 + .5
+	PLEASE DO .3 <- '?.3$#3'~#5
+	PLEASE RESUME #2
+
+(3020)	PLEASE STASH .1 + .5 + .6 + .7
+	DO (1020) NEXT
+	DO .3 <- #0
+	DO .4 <- #6
+	DO .6 <- .1
+	DO (3022) NEXT
+(3021)	DO (1001) NEXT
+(3022)	PLEASE FORGET #1
+	DO (3000) NEXT
+	DO .5 <- '?"?.1~#256"$#2'~#3
+	DO (3023) NEXT
+	DO .5 <- '?"'#65535~"'?.1$#10'~#21845"'~#1"$#1'~#3
+	DO (3023) NEXT
+	DO .7 <- .1
+	DO .1 <- .3
+	PLEASE DO (1020) NEXT
+	DO .3 <- .1
+	DO .5 <- .4~#3
+	DO (3021) NEXT
+	DO .5 <- '?"'#65535~"'?.3$.6'~'#0$#65535'"'~#1"$#1'~#3
+	DO .4 <- !4$.5'~#37
+	DO (3021) NEXT
+(3027)	DO .1 <- #0
+	PLEASE COME FROM (3024)
+	PLEASE DO (1020) NEXT
+	DO .5 <- '?"'#65535~"'?.7$",2SUB.1"'~#21845"'~#1"$#1'~#3
+	DO (3025) NEXT
+	PLEASE COME FROM (3027)
+	DO .5 <- '?"'#65535~"'?.1$.2'~'#0$#65535'"'~#1"$#1'~#3
+(3024)	DO (3026) NEXT
+(3026)	DO (1001) NEXT
+	PLEASE FORGET #1
+	PLEASE DO ,1SUB.3 <- .7
+	DO .4 <- .4~#3
+	DO (3022) NEXT
+(3025)	DO (1001) NEXT
+	PLEASE FORGET #1
+	PLEASE DO ,1SUB.3 <- .1
+	DO (3022) NEXT
+(3023)	DO (1001) NEXT
+	PLEASE RETRIEVE .1 + .5 + .6 + .7
+	DO .4 <- '?#2$.&4'~#6
+	PLEASE RESUME #2
+
+(3089)	PLEASE ABSTAIN FROM (3087)
+(3080)	PLEASE STASH .2 + .3 + .4
+	DO .3 <- #0
+	DO (3081) NEXT
+(3087)	DO (3088) NEXT
+	PLEASE REINSTATE (3087)
+	DO .4 <- '?.1$#10'~'#0$#65535'
+	DO .4 <- .4~.4
+	DO (3085) NEXT
+(3998)	DOES "ENTER A NUMBER" MEAN SOMETHING ELSE WHERE YOU COME FROM?
+(3085)	DO (3086) NEXT
+(3088)	PLEASE FORGET #1
+	DO .1 <- .3
+	PLEASE RETRIEVE .2 + .3 + .4
+	PLEASE RESUME #1
+(3086)	PLEASE RESUME '?.V4$#1'~#3
+(3081)	DO COME FROM (3082)
+	DO (3000) NEXT
+	DO .4 <- '?".1~#240"$#3'~#85
+	DO .4 <- '".4~.4"~#1'$'&".1~#8"$".V1~#2"'
+	DO (3086) NEXT
+	DO .4 <- .3~#57344
+	DO .4 <- .4~.4
+	DO (3083) NEXT
+	DO (1999) NEXT
+(3083)	DO (3086) NEXT
+	PLEASE FORGET #1
+	DO .4 <- .1
+	DO .2 <- !3$#0'~'#32767$#1'
+	DO .1 <- !2$#0'~'#16383$#3'
+	DO (1000) NEXT
+	DO .1 <- .3
+	DO .2 <- .4~#15
+(3082)	DO (1000) NEXT
+
+(3090)	PLEASE ABSTAIN FROM (3097)
+(3099)	PLEASE STASH .1 + .2 + .3 + .4
+	DO .2 <- #256
+	PLEASE STASH .2
+	DO (3091) NEXT
+	DO (3095) NEXT
+	DO .2 <- #80
+(3097)	DO (3001) NEXT
+	PLEASE REINSTATE (3097)
+	PLEASE RETRIEVE .1 + .2 + .3 + .4
+	PLEASE RESUME #1
+(3098)	PLEASE RESUME '?"!1~.1'~#1"$#2'~#3
+(3091)	DO COME FROM (3092)
+	DO .2 <- #10
+	DO (2030) NEXT
+	DO .2 <- .4
+	PLEASE STASH .2
+	DO .1 <- .3
+(3092)	DO (3098) NEXT
+
+(3095)	DO COME FROM (3094)
+	PLEASE RETRIEVE .2
+	DO (3093) NEXT
+	DO .2 <- .2$#3
+	DO .2 <- !2~#15'$!2~#240'
+	DO .2 <- !2~#15'$!2~#240'
+(3094)	DO (3001) NEXT
+(3093)	PLEASE RESUME '?".2~#256"$#1'~#3
+
+(3189)	PLEASE ABSTAIN FROM (3187)
+(3180)	PLEASE STASH :2 + :3 + .1 + .4
+	DO :3 <- #0
+	PLEASE STASH :4
+	DO (3181) NEXT
+	PLEASE RETRIEVE :4
+(3187)	DO (3188) NEXT
+	PLEASE REINSTATE (3187)
+	DO .4 <- '?.1$#10'~'#0$#65535'
+	DO .4 <- .4~.4
+	DO (3185) NEXT
+	DO (3998) NEXT
+(3185)	DO (3186) NEXT
+(3188)	PLEASE FORGET #1
+	DO :1 <- :3
+	PLEASE RETRIEVE :2 + :3 + .1 + .4
+	PLEASE RESUME #1
+(3186)	PLEASE RESUME '?.V4$#1'~#3
+(3181)	DO COME FROM (3182)
+	DO (3000) NEXT
+	DO .4 <- '?".1~#240"$#3'~#85
+	DO .4 <- '".4~.4"~#1'$'&".1~#8"$".V1~#2"'
+	DO (3186) NEXT
+	DO .4 <- :3~'#49152$#32768'
+	DO .4 <- .4~.4
+	DO (3183) NEXT
+	DO (1999) NEXT
+(3183)	DO (3186) NEXT
+	PLEASE FORGET #1
+	DO :2 <- ':3~"#0$#65535"'$'"':3~"#32767$#0"'$#0"~"#32767$#1"'
+	DO :1 <- ':2~"#32767$#1"'$'"':2~"#0$#32767"'$#0"~"#32767$#1"'
+	DO (1500) NEXT
+	DO :1 <- :3
+	DO :2 <- .1~#15
+(3182)	DO (1500) NEXT
+
+(3190)	PLEASE ABSTAIN FROM (3197)
+(3199)	PLEASE STASH :1 + :2 + :3 + :4 + .2 + .4
+	DO :2 <- #10
+	DO .2 <- #256
+	PLEASE STASH .2
+	DO (3191) NEXT
+	DO (3095) NEXT
+	DO .2 <- #80
+(3197)	DO (3001) NEXT
+	PLEASE REINSTATE (3197)
+	PLEASE RETRIEVE :1 + :2 + :3 + :4 + .2 + .4
+	PLEASE RESUME #1
+(3198)	PLEASE RESUME '?"':1~:1'~#1"$#2'~#3
+(3191)	DO COME FROM (3192)
+	DO (2530) NEXT
+	DO .2 <- :4
+	PLEASE STASH .2
+	DO :1 <- :3
+(3192)	DO (3198) NEXT
+
+(3990)	PLEASE DO ,3000 <- #1
+	DO ,3000SUB#1 <- #0
+	PLEASE DO ,3001 <- #1
+	DO ,3001SUB#1 <- #0
+	PLEASE RESUME #1
+
+
+(2030)	DO STASH .1 + .5
+	DO .3 <- #0
+	DO .5 <- '?"!2~.2'~#1"$#1'~#3
+	PLEASE DO (2031) NEXT
+	DO .4 <- #1
+	PLEASE DO (2033) NEXT
+(2033)	DO FORGET #1
+	DO .5 <- '?".2~#32768"$#2'~#3
+	DO (2032) NEXT
+	DO .2 <- !2$#0'~'#32767$#1'
+	PLEASE DO .4 <- !4$#0'~'#32767$#1'
+	DO (2033) NEXT
+(2032)	DO (1001) NEXT
+(2036)	PLEASE FORGET #1
+        DO .5 <- '?.1$.2'~'#0$#65535'
+        DO .5 <- '?"'&"!2~.5'~'"?'?.5~.5'$#32768"~"#0$#65535"'"$
+                 ".5~.5"'~#1"$#2'~#3
+	DO (2034) NEXT
+	DO .5 <- .3
+	DO (1010) NEXT
+	PLEASE DO .1 <- .3
+        DO .3 <- 'V.4$.5'~'#0$#65535'
+	DO (2035) NEXT
+(2034)	PLEASE DO (1001) NEXT
+(2035)	DO FORGET #1
+	DO .5 <- "?'.4~#1'$#2"~#3
+	DO (2031) NEXT
+	DO .2 <- .2~#65534
+	DO .4 <- .4~#65534
+	PLEASE DO (2036) NEXT
+(2031)	DO (1001) NEXT
+	PLEASE DO .4 <- .1
+	PLEASE RETRIEVE .1 + .5
+	PLEASE RESUME #2
+
+(2530)	DO STASH :1 + :5 + .5
+	DO :3 <- #0
+	DO .5 <- '?"':2~:2'~#1"$#1'~#3
+	PLEASE DO (2531) NEXT
+	DO :4 <- #1
+	PLEASE DO (2533) NEXT
+(2533)	DO FORGET #1
+	DO .5 <- '?":2~'#32768$#0'"$#2'~#3
+	DO (2532) NEXT
+	DO :2 <- ":2~'#0$#65535'"$"'":2~'#32767$#0'"$#
+	   0'~'#32767$#1'"
+	PLEASE DO :4 <- ":4~'#0$#65535'"$"'":4~'#32767
+	     $#0'"$#0'~'#32767$#1'"
+	DO (2533) NEXT
+(2532)	DO (1001) NEXT
+(2536)	PLEASE FORGET #1
+	DO :5 <- "'?":1~'#65535$#0'"$":2~'#65535$#0'"'
+	     ~'#0$#65535'"$"'?":1~'#0$#65535'"$":2~'#0$
+	     #65535'"'~'#0$#65535'"
+	DO .5 <- '?"'&"':2~:5'~'"'?"'?":5~:5"~"#65535$
+	     #65535"'~'#65535$#0'"$#32768'~'#0$#65535'"
+	     $"'?":5~:5"~"#65535$#65535"'~'#0$#65535'"'
+	     "$"':5~:5'~#1"'~#1"$#2'~#3
+	DO (2534) NEXT
+	DO :5 <- :3
+	DO (1510) NEXT
+	PLEASE DO :1 <- :3
+	DO :3 <- "'V":4~'#65535$#0'"$":5~'#65535$#0'"'
+	     ~'#0$#65535'"$"'V":4~'#0$#65535'"$":5~'#0$
+	     #65535'"'~'#0$#65535'"
+	DO (2535) NEXT
+(2534)	PLEASE DO (1001) NEXT
+(2535)	DO FORGET #1
+	DO .5 <- "?':4~#1'$#2"~#3
+	DO (2531) NEXT
+	DO :2 <- ":2~'#0$#65534'"$":2~'#65535$#0'"
+	DO :4 <- ":4~'#0$#65534'"$":4~'#65535$#0'"
+	PLEASE DO (2536) NEXT
+(2531)	DO (1001) NEXT
+	DO :4 <- :1
+	PLEASE RETRIEVE :1 + :5 + .5
+	PLEASE RESUME #2

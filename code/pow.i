@@ -1,0 +1,50 @@
+	PLEASE WRITE IN .2
+	DO .1 <- #0
+	PLEASE COME FROM (1)
+	DO (2040) NEXT
+	DO NOT (2049) NEXT
+        DO READ OUT :1
+        DO NOT READ OUT .4
+(1)	DO (1020) NEXT
+	PLEASE GIVE UP
+	
+
+(2040)  PLEASE STASH .4
+	DO ABSTAIN FROM (2047)
+(2049)  DO STASH .1 + .2 + :2 + :3 + :4 + :5 + :6
+	PLEASE DO .4 <- #1
+	DO :5 <- .1
+	DO :6 <- #1
+	DO (2044) NEXT
+(2047)	DO (2048) NEXT
+	DO .1 <- .4
+	DO (2046) NEXT
+	DO (1999) NEXT
+(2046)  DO (2042) NEXT
+	PLEASE REINSTATE (2047)
+	PLEASE RETRIEVE .4
+(2048)	DO :1 <- :6
+	DO RETRIEVE .1 + .2 + :2 + :3 + :4 + :5 + :6
+	PLEASE RESUME #2
+(2044)  DO (2045) NEXT
+(2045)	PLEASE FORGET #1
+	DO .1 <- "?!2~#1'$#1"~#3
+	DO (2041) NEXT
+	PLEASE DO :1 <- :6
+	PLEASE DO :2 <- :5
+	DO (1549) NEXT
+	DO :6 <- :3
+	DO .4 <- '?"'V.4$":4~#3"'~#4"$#1'~#3
+	DO (2043) NEXT
+(2042)  PLEASE RESUME .1
+(2041)  DO (2042) NEXT
+(2043)	PLEASE FORGET #1
+	DO .2 <- .2~#65534
+	DO .1 <- '?"!2~.2'~#1"$#2'~#3
+	DO (2042) NEXT
+	PLEASE DO :1 <- :5
+	PLEASE DO :2 <- :5
+	DO (1549) NEXT
+	DO :5 <- :3
+	DO .4 <- '?"'V.4$":4~#3"'~#4"$#1'~#3
+	DO (2045) NEXT

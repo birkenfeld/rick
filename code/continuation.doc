@@ -1,0 +1,120 @@
+Alex Smith, 2008
+
+continuation.i is a continuation library for INTERCAL, and a small
+program at the end to demonstrate how it is used and as a test. (Your
+most likely use of this is to delete the test program at the end and
+use the rest as a library in your own source code.) It requires at
+least the command line options -am to work (so is unfortunately, but
+inevitably, incompatible with -e). All line numbers in the library
+part are in the range 8200-8299; there's a dependence on syslib, but
+only for (1020), so it would be easy to make it a truly independent
+library. I have avoided computed COME FROM in writing it, because its
+performance is bad enough as it is, and NEXT FROM didn't turn up, but
+there is a lot of ABSTAINING, REINSTATING, COMING FROM and NEXTING
+going on in the code, as well as ONCE and AGAIN (this time I used both
+of them; AGAIN is normally more useful but ONCE works better for
+mutexes) and lots and lots of threading.
+
+A continuation is a copy of the internal state of a program, that can
+be rewound back to at a later stage. What exactly is copied depends on
+the language; in INTERCAL, it's everything except the abstention
+status of commands, as you might expect.
+
+As INTERCAL doesn't have first-class functions, continuations are
+represented by onespot numbers; they can send a single one-spot number
+as their return value (and more data can be sent by ABSTAINING FROM
+things in a prearranged pattern).
+
+The library CREATEs three statements:
+
+    GET CONTINUATION IN .1 GETTING .2
+
+This statement creates a continuation, storing a number that can be
+used to access it later in .1, and leaves .2 untouched. If that
+continuation is invoked later, the statement will instead appear to
+be equivalent to a RESUME #1, but after setting the value of .2 to be
+whatever value was sent when invoking the continuation (note that only
+onespot-range values can be sent). So:
+
+    DO (3) NEXT
+(1) DO GET CONTINUATION IN .1 GETTING .2
+    <do things here>
+(2) DO FORGET #1
+(3) DO (1) NEXT
+
+is effectively a call/cc to <do things here>, with .1 being used as
+its argument and .2 as its return value. (There are other equivalent
+ways to properly guard this statement; one simple one is to put the
+GET CONTINUATION call just /inside/ the procedure that's call/ccd.)
+
+    DO CONTINUE WITH .1 SENDING .2
+
+This statement invokes a continuation, returning the program to the
+time that it was created. The first argument is the continuation
+number (not supplying a number that corresponds to a continuation is
+undefined behaviour, but most likely an infinite loop); the second
+argument is a onespot number to send back as 'payload', which will be
+assigned to the second argument of the GET CONTINUATION IN command
+that created the continuation in the first place.
+
+    DO KILL ALL THREADS
+
+Because the continuation system creates a whole load of threads to do
+its work, a normal GIVE UP will not end the program. Instead, this is
+provided as an alternative; it's a horrible hack but will usually work
+if no threads are inside the system library at the time, or after the
+last PLEASE GIVE UP in the program. (I may implement a DO ABSTAIN FROM
+ONCING at some point, which would make it possible to make this sort
+of thing a lot more robust.)
+
+
+There are several interesting features of the program. The start shows
+how to CREATE statements that can take a range of different argument
+types; here I've chosen to cause the GET CONTINUATION statement to
+accept only lvalues that don't require reverse assignment, and the
+CONTINUE statement to accept any expression.
+
+A separate thread is used to keep track of the lowest unused
+continuation number; it shows how to implement a truly global variable
+in INTERCAL, and the relevant code (from 8250 to 8299) may be useful
+in its own right. The routines at (8276) and (8277) are an improvement
+over those in pass.i in terms of length, and show how to implement the
+INTERCAL equivalent of a named pipe (that is, data flows along it when
+one end is being read by one thread and the other end is being read by
+another thread). The ability to stash/retrieve the global variable
+(which is remarkably simple to do the way I've implemented it) is also
+used; see below.
+
+Continuations are themselves implemented as separate threads, each of
+which spends most of its time in an infinite loop at (8211); they're
+created by the simple method of determining a unique number, and
+splitting off a thread. Most of the non-global-variable-implementing
+part of the library is taken up with the code for invoking or
+'unfreezing' a continuation thread. When (8210) is invoked (i.e. the
+implementation of the CONTINUE command), it STASHes the global
+variable and assigns the continuation number to it. It then releases
+the loop at 8211, and all the remaining threads simultaneously (due to
+the timing guarantees) start trying to read the global variable. There
+are two problems to overcome: first, the fact that they can't all read
+the global variable at once (this is solved by the routine (8275),
+which shows how to use ONCE to implement a mutex), and second, the
+fact that each thread needs to wait until all the others have finished
+reading before continuing (because otherwise a fast series of
+continuation operations in the main program could try to access a
+thread before it was ready). The second problem is solved by a limited
+kind of semaphore on the line (8214); its abstention count is
+incremented by each thread before it starts reading (almost
+simultaneously due to the timing restrictions), and decreased once the
+thread has finished. All the threads then block until all of them have
+finished, which they can do by monitoring the semaphore until it
+reaches 0. (Normal semaphores can also block below 0 as well as
+unblocking at 0.) This method means that the threads don't need to
+know how many other threads are available. The thread that is being
+unfrozen then RETRIEVES the global variable, uses (8276) and (8277)
+with the thread that called CONTINUE to get the payload value, then
+the original CONTINUE-calling thread dies and the unfrozen thread
+continues in its place.
+
+Of course, all this thread creation is completely lousy from a
+performance perspective. Maybe some day I should try to optimise
+spinlocks somehow...

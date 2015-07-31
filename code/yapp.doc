@@ -1,0 +1,26 @@
+yapp stands for "yet another program printer", or "yet another
+printing program", or maybe "yet another printer printer". yapp is a
+program that prints out programs that print out.
+
+That is, yapp takes whatever is piped into its standard input, and
+produces on its standard output the source code for an INTERCAL
+program that will, when compiled, produce the original file. The
+created program will be self-contained; it will not need the system
+library to compile. The reason for this is to maximize the amount of
+data that yapp can encode into an INTERCAL program. The current
+compiler has an upper bound on the number of commands one program can
+have; thus yapp will not produce a compilable program if given more
+than 3880 bytes.
+
+Though yapp was intended to create standalone programs, it can also be
+used to generate subroutines. (In fact, the first working version of
+this program was used to generate the lines for the final draft.)  In
+such a case, it is convenient to specify what character the data will
+"follow". The easiest way to accomplish this is to replace the "DO .9
+<- #0" in line 22 with "DO .9 <- <num>", where <num> is the
+bit-reversed code of the character preceeding the data (#80 in the
+case of a newline, for example). A more versatile modification is to
+change line 22 to "DO WRITE IN .9", and then insert the character code
+at the top of the file that is to be fed to yapp. Thus, if the data in
+the file would follow a newline, the line "EIGHT OH" would be added to
+the top of the data file.

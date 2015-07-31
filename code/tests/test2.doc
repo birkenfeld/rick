@@ -1,0 +1,8 @@
+David Moews wrote this about test2.i:
+
+The following program reads in two numbers and then prints their product.
+It consists of a trivial calling program followed by a cleaned-up version
+of a portion of the INTERCAL subroutine library.  (Only a portion of
+the INTERCAL subroutine library is present in the posted manual, and
+that portion is full of typos.)
+

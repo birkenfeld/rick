@@ -1,0 +1,109 @@
+
+As documentation for the program bubble.i, I am including below the
+original posting message, with the program itself deleted.  The
+present program bubble.i is nearly identical to the one that was
+posted.  The only difference is that I have now fixed the compiler
+bug that made the temporary variable .4 necessary, so that variable
+has been eliminated from the current version of the program.  The
+old version of the compare-and-exchange routine, where this variable
+was used, is included at the end of the file.
+
+                           Louis Howell
+                           November 24, 1991
+
+-----------------------------------------------------------------------------
+
+Subject: Bubble sort routine
+Newsgroups: alt.lang.intercal
+From: Louis Howell
+Date: Thu, 7 Feb 91 18:56:34 PST
+
+I am including below an Intercal bubble sort routine along with a
+program to call it, which you may find amusing.  The program first
+reads the number of elements to be sorted, then reads that many
+numbers, then sorts those numbers and prints them out from highest
+to lowest.  There must be at least two elements to be sorted.
+
+There are several interesting things about this program.  First, it
+uses a new version of the (2000) and (2010) decrement routine.  This
+one is functionally identical to the one included with the Life program,
+but is streamlined by eliminating the need for the temporary variable .3,
+and thus should run significantly faster.
+
+The program itself uses my best effort towards passing a routine as an
+argument to another routine.  I have separated out the compare-and-exchange
+routine from the rest of the bubble sort on the assumption that people
+might want to sort different things in different ways.  You could also
+use this bubble sort to sort 32 bit arrays, for example, or to sort arrays
+in the opposite order, or to sort arrays starting at some index other
+than 1.  It was therefore desirable to not only separate out the
+compare-and-exchange function, but avoid telling the bubble sort routine
+where this function is, or even what array it is sorting.  (This reduces
+the bubble sort to nothing more than a nested pair of loops, but one
+can easily envision wanting to do something similar with more complicated
+routines.)
+
+The program therefore operates as follows:  Main program initializes array,
+then jumps to head of c-and-e routine, which immediately jumps to bubble
+sort.  Return addresses for both the main program and the subroutine are
+now available on the RESUME stack.  The bubble sort expects .1 to contain
+the number of elements to be sorted, and proceeds to go through the
+necessary loops.  Each time through the loop, the bubble sort returns to
+the c-and-e routine with the indices of the elements to be compared
+stored in .1 and .2; the c-and-e routine does its job then jumps back
+into the bubble sort.  When the bubble sort finishes its loops it jumps
+back to the main program using the return address which has been sitting
+on the bottom of the stack all this time.  Main program prints out results.
+
+The loops used by the bubble sort are equivalent to the Fortran
+       DO 20 I = N,2,-1
+          DO 10 J = N-1,1,-1
+The way this is accomplished is pretty incomprehensible, as the loop
+tests aren't independent---they share some code between them.  See how
+fast you can figure out how they work.  Hint:  If you can't see why the
+last statement is DO RESUME #4 (instead of #3), you have not yet
+achieved enlightenment.
+
+In the c-and-e routine the temporary variable .4 is not really necessary.
+It is used to work around a bug in the array implementation which prevents
+you from using two different subscripts on the same array in the same
+statement.  Chances are this will be fixed before the array stuff is
+released, in which case .4 should be eliminated by folding the pairs of
+statements together in the obvious way.
+
+On with the program---
+
+
+  [Program deleted, see bubble.i for the current version.]
+
+
+This is the original version of the compare-and-exchange routine:
+
+	PLEASE NOTE COMPARE AND EXCHANGE ROUTINE
+(500)	PLEASE ABSTAIN FROM (502)
+	DO (3000) NEXT
+	DO (501) NEXT
+(501)   PLEASE FORGET #1
+(502)   DO (3010) NEXT
+	PLEASE REINSTATE (502)
+	DO .4 <- ",1SUB.1"
+        DO .3 <- '?.4$,1SUB.2'~'#0$#65535'
+        DO .3 <- '?"'& "'",1SUB.1"~.3'~'"?'?.3~.3'$#32768"~"#0$#65535"'" $
+                       ".3~.3"'~#1" $
+	           #1'~#3
+	DO (503) NEXT
+	DO .3 <- ,1 SUB .1
+	DO .4 <- ,1 SUB .2
+	DO ,1 SUB .1 <- .4
+	DO ,1 SUB .2 <- .3
+	DO (501) NEXT
+(504)   PLEASE RESUME .3
+(503)   DO (504) NEXT
+	PLEASE FORGET #1
+	DO (501) NEXT
+
+-- 
+Louis Howell
+
+  "But when we got into the street I viddied that thinking is for the gloopy
+ones and that the oomny ones use like inspiration and what Bog sends."

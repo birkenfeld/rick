@@ -1,0 +1,56 @@
+The program fft.i provides a basic complex Fast Fourier Transform,
+along with a simple write-in-read-out wrapper. This program requires
+the floating-point library in lib/floatlib.i; C-INTERCAL will detect
+this and include it.
+
+
+The first number to enter specifies the direction of the transform.
+Enter ONE to transform from time to frequency, or TWO for the inverse
+transform. The second number to enter is the number of complex pairs.
+This number must be a power of two, between TWO and THREE TWO SEVEN
+SIX EIGHT inclusive. After this comes the actual data. Each entry must
+consist of two floating-point numbers, the real value followed by the
+imaginary value.
+
+After the data has been entered, the FFT is performed on it. When it
+is completed, the resulting data will be output. The data is preceded
+by I or II to indicate time or frequency data (i.e., the opposite of
+the number input at the start), and a second integer giving the
+number of pairs being output.
+
+Included are two files that produce simple curves when transformed.
+delta.fft, the sum of two delta functions, transforms into a cosine
+wave, and tophat.fft's output traces the sinc function.
+
+INTERCAL brings new meaning to the "fast" in Fast Fourier Transform.
+On Muppetlabs' Pentium, 133MHz, a transform of 2048 data points takes
+over 5 minutes of CPU time.
+
+
+The actual FFT routine is at line label (100), and is self-contained
+other than its dependence on the standard and floating-point
+libraries, and a small subroutine described below. Its three arguments
+are .9, .10, and ;1. .9 must contain #1 or #2 to select the forward or
+inverse transform, respectively. .10 must contain the length of the
+input data, and ;1 the data itself. ;1 must have the dimensions .10 BY
+#2. No error checking is done on the parameters within the routine.
+(The wrapper routine sanity-checks the user's input.) On exit, .9 will
+contain #2 if it was #1 originally and vice versa, and ;1 will contain
+the transformed data.
+
+The FFT algorithm was taken from "Numerical Recipes" (Press, et al;
+Cambridge University Press, 1994 edition). For data centered on the
+y-axis, it is usually best to cut the data in half at the axis and
+switch their positions (i.e., enter the data for 0 to N/2 - 1 first,
+followed by the data for -N/2 to -1) and then do the same with the
+output.
+
+The FFT routine uses a subroutine, labelled (153), as a wrapper around
+the multiplication routine (5030). This subroutine is an example of
+how to handle errors as indicated by the .5 variable.
+
+Another noteworthy point is in the first part of the routine, where
+the positions of the data are swapped with the bit-reversals of their
+indices. Amazingly, bit-reversal is one of the few things that
+INTERCAL can do more tersely than most other languages. It is nice to
+see it actually finding a real-world application.

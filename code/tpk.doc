@@ -1,0 +1,16 @@
+I have made my TPK program available on
+  http://www-cs-faculty.stanford.edu/~knuth/programs.html
+and I have no objection if you or other people with INTERCAL sites
+add it to their collection. If you have time to check it out
+(at least a little), I think you'll see that it introduces a few
+new hacks that work only on INTERCAL, including DON'T RESUME #1
+and REINSTATE NEXTING. Also a way to avoid simple branching by using
+an array: Suppose you want to set x<-y if and only if z is true.
+Then keep x in ;X SUB#1 and "shadow x" in ;X SUB#2 and convert
+z to .Z = 1 if true, 2 if false; then set ;X SUB .Z <- y (no branching).
+If you have time to look at only a little bit of the program,
+I recommend the last two subroutines, "CMP" (which is teleprinter
+code for 23438) and "TIX" (29904). Someday I'll publish clues about
+what is going on, in my Fun and Games book; the code is filled with
+jokes that only a true hacker can appreciate.... and I think I've
+used every non-newfangled feature of the language.

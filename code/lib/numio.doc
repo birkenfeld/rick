@@ -1,0 +1,98 @@
+Summary of routines in numio.i:
+
+(3000)   .1 <- character from input
+(3001)   Prints .2 as a character
+(3010)   ,1 <- a string of input from the user, no longer than .1, and
+         excluding the terminating newline.
+         .2 <- the real length of the user input.
+         .3 <- #1 if .2 <= .1 (i.e., no characters were lost).
+         Otherwise, .3 <- #2.
+(3020)   ,1 <- a string of input from the user, no longer than .1,
+         translated (where possible) into indices into ,2
+         .3 <- the real length of the user input.
+         .4 <- #1 if .3 <= .1 and all characters in the input are
+         listed in ,2. Otherwise, .4 <- #2.
+(3080)   .1 <- a 16-bit number from the user
+(3089)   .1 <- a 16-bit number from the user, with an error message if
+         non-digits are encountered
+(3090)   Displays the value in .1
+(3099)   Displays the value in .1 and prints a newline
+(3180)   :1 <- a 32-bit number from the user
+(3189)   :1 <- a 32-bit number from the user, with an error message if
+         non-digits are encountered
+(3190)   Displays the value in :1
+(3199)   Displays the value in :1 and prints a newline
+(3990)   Initializes internal arrays.
+
+numio.i reserves the use of two arrays - ,3000 and ,3001 - for input
+and output respectively. Each array has one dimension of one element,
+and they are used to provide a getchar routine, at (3000), and a
+putchar routine, (3001). Note that (3001) expects that the character
+values have already been bit-reversed.
+
+The arrays are initialized by routine (3990); this should be called
+before using any other routines in this library.
+
+Routines (3010) and (3020) provide line input capabilities. The
+routines write in characters until they see a newline (or
+end-of-file), and store them in ,1. They are called with .1 being the
+number of characters to save; any input after that is thrown
+away. (Already they're better than C's gets()!)
+
+(3010) returns the actual number of characters that were input in .2,
+and .3 is set to #2 if characters were lost (i.e., if .2 is longer
+than .1). I decided to add .3, even though the caller could check for
+this themselves, as inequal comparisons are a bit painful in INTERCAL.
+Or, to be accurate, they're more painful than equal comparisons. Note
+also that if .1 is #0, the routine becomes a press-Enter-to-continue
+type of function, and ,1 need not actually be defined.
+
+(3020) is a filtering, or translating, input routine. When called, the
+array ,2 should contain a set of "approved" characters that are
+expected to be in the input, and .2 should contain the number of
+characters in ,2. As input is retrieved, the routine tries to look up
+each character in ,2. If the character is found, the routine stores in
+,1 the index of the character instead. (Otherwise the actual character
+number is stored, as with (3010).) Upon return, .3 has the number of
+characters that were input, and .4 is set to #2 if characters were
+lost OR if any characters in the input were not in the set of approved
+characters.
+
+The remaining routines are for doing "wimpmode"-style I/O - or in
+other words, the C-INTERCAL equivalent of atoi and itoa. (3080) and
+(3090) translate the ASCII input as a number (yes, a number as in
+[0-9]*), and (3090) and (3190) do the same for displaying numbers in
+ASCII. (By the way, the routines can also be made to support EBCDIC:
+simply replace #3 with #15 on lines 119, 159, and 185.)
+
+Each routine also has a "niner" variation. For itoa, (3099) and (3190)
+print a newline at the end of the number. In the case of atoi, (3089)
+and (3189) make sure that the number ends with a newline. In other
+words, they ensure there are no other non-numeric characters in the
+input line. If there are, a typically snide INTERCAL error message is
+displayed. (The regular versions work like C's atoi in that they
+return as soon as they see any non-digit.)
+
+There's not too much to note about these routines. The atoi routines
+use the shift-and-add trick to avoid multiplying by 10, so they should
+be pretty efficient (snort). itoa has no such shortcuts, and the
+routines use modified division routines which also returns the
+remainder. The 16-bit version is at (2030), and is the familiar one
+created by Louis Howell, copied from lib2.i. The 32-bit version is at
+(2530), and is just a copy of the standard library routine without the
+lines that throw away the remainder at the end.
+
+Note also that for these routines to work properly, they must be used
+more or less exclusively in regards to other array I/O. Otherwise, the
+getchar and putchar subroutines will get out of sync with the
+Turing-text character loop. If you do want to do other I/O while using
+these routines, you can use (3000) and (3001) as a getchar and
+putchar. Or, you can simply re-initialize the ,3000 and/or ,3001
+values after you are done, by storing in them the bit-reversed ASCII
+value of the last character that you wrote in and/or read out. For
+example, if you READ OUT some strings and the last thing to be printed
+was a newline, then:
+
+	DO ,3001SUB#1 <- #80
+
+would then allow you to safely call the itoa routines.

@@ -1,0 +1,61 @@
+Flonck, short for FLOating-point Numerical Calculator, is an INTERCAL
+version of the classic reverse-polish calculator. All values are
+entered and displayed as floating-point numbers. Entering a number
+adds it to the top of the stack. The various operations are indicated
+by integer number, and take their argument(s) off the top of the stack
+and replace it/them with the result. Besides the main stack, flonck
+also includes two separate "registers".
+
+Note that this program requires the floating-point library in
+lib/floatlib.i.  C-INTERCAL will detect this and include it.
+
+Here is the quick-reference chart of available operations:
+
+                        ONE OH     change sign    TWO OH     store in M
+ONE        add          ONE ONE    invert         TWO ONE    add to M
+TWO        subtract     ONE TWO    square root    TWO TWO    push M
+THREE      multiply     ONE THREE  ln             TWO THREE  exchange M
+FOUR       divide       ONE FOUR   exp            TWO FOUR   print M
+FIVE       remainder    ONE FIVE   x^y            TWO FIVE   store in N
+SIX        print        ONE SIX    pop            TWO SIX    add to N
+SEVEN      print all    ONE SEVEN  clear all      TWO SEVEN  push N
+EIGHT      duplicate    ONE EIGHT  int            TWO EIGHT  exchange N
+NINE       twiddle      ONE NINE   random         TWO NINE   print N
+                                                  THREE OH   quit
+
+Functions ONE through FIVE should be self-explanatory. SIX displays
+the topmost number on the stack without removing it. SEVEN displays
+the entire stack, from top to bottom, again without changing anything.
+EIGHT duplicates the topmost number, pushing an extra copy of it. NINE
+causes the top two numbers on the stack to switch places.
+
+The next few functions should be familiar to anyone who's used a
+pocket calculator in recent memory. ONE OH multiplies the topmost
+number by -1. ONE ONE divides the topmost number into 1. ONE TWO is
+the square root function, ONE THREE is the natural logarithm function,
+and ONE FOUR is the exponential function. ONE FIVE raises the topmost
+number to the power of the next-topmost number. ONE SIX throws away
+the topmost number, never to be seen again. ONE SEVEN wipes out the
+entire stack and starts afresh. ONE EIGHT chops off the fractional
+part of the topmost number. ONE NINE causes a randomly chosen number
+between 0 and 1 to be added to the top of the stack.
+
+The twenties are the functions that manipulate the two registers,
+named M and N. (Both registers start out initialized to zero.) TWO OH
+takes the topmost number off of the stack and stores it in M. TWO ONE
+takes the topmost number off of the stack and adds it to whatever is
+already in M. TWO TWO makes a copy of whatever is in M and adds it to
+the top of the stack. TWO THREE swaps the contents of M with the
+topmost number on the stack. TWO FOUR displays the contents of M
+without changing it. Functions TWO FIVE through TWO NINE repeat the
+above five functionalities for the register N.
+
+And finally, as you might have guessed, writing (in) THREE OH causes
+flonck to come to an end.
+
+If an input does not correspond to a floating-point number or an
+instruction, or if a function is input that requires more numbers on
+the stack than currently exist, or if a function overflows or returns
+an error, flonck prints out an error message, namely "XXX", and
+continues. Note that in the latter case, the values used as function
+arguments will still be removed from the stack.

@@ -1,0 +1,44 @@
+One aspect of INTERCAL-72 that was never fully documented was the way
+in which IGNORE and RETRIEVE statements interacted. It turns out that
+the three modern INTERCAL compilers all use slightly different
+definitions.
+
+The associated program ignorret.i stores 1 in a variable's stash, 2 in
+the variable itself, ignores the variable, and retrieves it; it then
+prints out the variable, and tests to see whether the variable is
+ignored.
+
+C-INTERCAL prints:
+
+II
+
+II
+In other words, the interpretation used is that the variable is
+read-only, so a RETRIEVE can't change its value (but instead just
+discards the stash item). The variable remains IGNOREd.
+
+J-INTERCAL prints:
+
+I
+
+I
+J-INTERCAL doesn't take the interaction between IGNORE and RETRIEVE
+into account at all; the RETRIEVE just does what a RETRIEVE would
+normally do, which is to set the variable from its own stack. The
+variable remains IGNOREd.
+
+CLC-INTERCAL prints:
+I
+III
+The interpretation used by CLC-INTERCAL is somewhat different. The
+ignorance status is stashed along with the variable itself; so the
+value of 1 is read from the variable's stash, but doing so also
+removes the read-only status of the variable. This means that the
+third assignment to the variable works, unlike in the other two
+cases. (Note that CLC-INTERCAL will act like C-INTERCAL on the
+ignorret test when running in C-INTERCAL compatibility mode.)
+
+The upshot of all this is: don't RETRIEVE a read-only variable if you
+want your program to be portable!
+
+Alex Smith

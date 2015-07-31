@@ -1,0 +1,162 @@
+
+As documentation for the program life.i, I am including below the original
+posting message, with the program itself deleted.  The present program
+life.i is nearly identical to the one that was posted.  The only two
+changes are that I have fixed a bug where a 32-bit number was assigned
+to a 16-bit variable, and I have streamlined the decrement routine---
+entry points (2000) and (2010)---by eliminating a temporary variable.
+The old versions of these code fragments are included at the end of
+the file.
+
+                           Louis Howell
+                           November 24, 1991
+
+-----------------------------------------------------------------------------
+
+Subject: Life with Intercal (long)
+Newsgroups: alt.lang.intercal
+From: Louis Howell
+Date: Mon, 28 Jan 91 09:17:36 PST
+
+I suppose some of you are wondering if anyone ever actually writes anything
+in Intercal, or if we all just sit around beating on the compiler and
+talking about how wonderful this crock would be if XXX feature were added
+to it.  I submit the following beast as a demonstration that a vaguely
+interesting program can be written in the language.  Of course, none of
+you can actually RUN this program, since the 0.6 compiler doesn't handle
+arrays.  Take my word for it that it works, and I promise to finish up
+a couple of remaining details in the array implementation and send it
+off to Steve Real Soon Now (sometime this week, with luck).
+
+The program first takes three numbers as input:  The dimensions of the
+grid and the desired number of time steps.  It then accepts pairs of
+numbers indicating which cells are live in the initial state; this
+list of pairs is terminated by a ZERO or OH.  Then it plays Life.
+When the final timestep is reached, or when the system overflows the
+grid, the program prints out pairs of numbers indicating which cells
+were live in the last state reached, followed by the number of time
+steps that were actually executed.
+
+The implementation is not as efficient as it could be by a long shot---
+I just wanted to get something that worked.  I use two arrays, ,1 and ,2,
+both with dimensions .11 BY .12.  At each time step the next position
+based on data in ,1 is computed and stored in ,2 for all cells in the
+interior of the grid.  Then this portion of the grid is copied back
+into ,1.  (The cells on the edge of the grid are never changed, they just
+hold zeroes that are seen by the neighborhood calculations of interior
+cells.)  Then the current time step is incremented, and if equal to the
+desired final time step the program jumps to the output routine.  If
+not, it checks the ring of cells next in from the edge cells.  If it
+finds three live cells in a row on one of the interior edges it jumps
+to the output routine, since on the next timestep the configuration
+would overflow into the boundary ring.  Note that this boundary check
+is not done until after the first time step, so the user is responsible
+for providing an input state that is not about to overflow.
+
+An overflow recovery procedure that actually increased the size of the
+grid might be interesting, but wouldn't be terribly practical since
+any configuration that throws off gliders would quickly push it to the
+limit.
+
+The following configuration has four live cells and grows into traffic
+lights.  To see the blinkers in the other position, change the final
+time step from ONE OH to NINE or ONE ONE.
+
+ONE ONE
+ONE ONE
+ONE OH
+FIVE
+SIX
+SIX
+SIX
+SEVEN
+SIX
+SIX
+SEVEN
+OH
+
+This is a glider aimed up the main diagonal.  Specifying ZERO for the
+final timestep tells the program to run until overflow, since the first
+test is at step one.  In this case it halts at step XVI with the glider
+translated four cells up the diagonal.  You can make it run longer by
+increasing the dimensions of the array.
+
+NINE
+NINE
+ZERO
+TWO
+FOUR
+THREE
+FOUR
+FOUR
+FOUR
+FOUR
+THREE
+THREE
+TWO
+OH
+
+Here are a few of the features of the program which may be of interest to
+Intercal programmers.  One obvious one not mentioned in the manual is the
+test for equality:  XOR the two numbers and test if the result is zero.
+There are many examples of indexed loops.  The loops over array indices
+fall into two different classes, decrement and branch on zero, and
+decrement and branch on equal.  The time step loop uses increment and
+branch on equal.  The nested loop computing the next state has three
+indices for each dimension, since it is easier to keep i-1, i and i+1
+around than to recompute them on the fly.  This also allows me to use
+the simpler branch on zero test at the base of these loops since i-1 was
+already available.
+
+Three new subroutines may be of general interest.  Line (2000) is the
+entry point for a decrement routine setting .1 <- .1 minus #1.  This
+is very similar to the increment routine (1020) in the system library,
+which I also use.  Line (2010) is the decrement and branch on zero
+operation.  It decrements .1, then if .1 is not zero returns to the
+calling point, but if .1 is zero pops an additional entry off the
+RESUME stack and returns to that point instead.  Line (2020) is an
+alternative entry point to the (1020) routine which performs an add
+bit operation.  It sets .1 <- .1 plus .2, where .2 is already known
+to be either #0 or #1.
+
+The need for some kind of string I/O is painfully obvious.  It would be
+so much nicer to be able to show the final state using a grid of O's and
+.'s instead of having to print out all the coordinates.  I have some more
+ideas about string I/O which I will post later.
+
+Enough talk, on with the program:
+
+
+  [Program deleted, see life.i for the current version.]
+
+
+This is where the original program had an assignment type error:
+
+	DO .2 <- #0$#65535
+	DO .1 <- "?'"V.1$,1SUB.7.8"~.2'$#3"~.2
+	DO ,2 SUB .7.8 <- "?!1~.1'$#1"~#1
+
+This is the old, less efficient version of the decrement routine:
+
+(2010)  PLEASE ABSTAIN FROM (2004)
+(2000)  PLEASE STASH .2 + .3
+        DO .2 <- #1
+        DO (2001) NEXT
+(2001)  PLEASE FORGET #1
+        DO .1 <- '?.1$.2'~'#0$#65535'
+        DO .3 <- "?!1~.2'$#1"~#3
+        DO (2002) NEXT
+        DO .2 <- !2$#0'~'#32767$#1'
+        DO (2001) NEXT
+(2003)  PLEASE RESUME .3
+(2002)  DO (2003) NEXT
+        PLEASE RETRIEVE .2 + .3
+(2004)	PLEASE RESUME #2
+	PLEASE DO REINSTATE (2004)
+	PLEASE RESUME '?"!1~.1'~#1"$#2'~#6
+
+-- 
+Louis Howell
+
+  "But when we got into the street I viddied that thinking is for the gloopy
+ones and that the oomny ones use like inspiration and what Bog sends."

@@ -1,0 +1,84 @@
+
+pi.i is easily the most twisted and obscure INTERCAL program I've yet
+written.  I say that because even I don't fully understand why it
+works.  The program writes in one number from the input, then prints
+out that many digits of pi.  There are no fancy INTERCAL tricks here;
+all it does is simple integer arithmetic.
+
+The algorithm used comes from an old TECO macro that was recently
+discussed on alt.lang.teco.  Mark Henderson posted a translation
+into C, which at least made it easier to read, if not much easier to
+understand.  I played around with that program a bit, fixed a couple
+of minor bugs which may or may not have existed in the original TECO,
+and modified it a bit to put in into a form that would be easy to
+translate into INTERCAL.  That modified program, which corresponds
+closely to the algorithm in pi.i, is reproduced at the end of this
+file.
+
+The INTERCAL version has only been tested up to a hundred digits,
+which took almost 30 minutes on a Sparc 1.  The C version below,
+with variables declared unsigned short to correspond to the INTERCAL,
+gives up to 535 accurate digits and then starts printing garbage,
+presumably because of an overflow.  If the declarations are changed
+to short only the first 262 digits are accurate, while using int
+yields thousands of accurate digits.  Though I don't understand
+what the inner loop is doing, it looks like the largest numbers
+encountered are O(n), where n is the number of digits requested.
+If, as I expect, the present INTERCAL version does fail after about
+535 digits, it could easily be converted to a 32-bit form which
+would run as long as almost anyone would desire.
+
+The only feature likely to be of utility in other INTERCAL programs
+is the new (2030) routine, which performs a 16-bit division with
+remainder.  It is faster than the (1040) routine for two reasons:
+First, it is a true 16-bit version, whereas the (1040) routine just
+shifts over its operands and then calls the 32-bit division routine
+(1550).  Second, the (1550) routine generates a remainder as part of
+the computation, but then simply throws it away.  I needed the
+remainder, so I have my (2030) routine return it in .4 and the
+quotient in .3.  In other respects this is just a 16-bit translation
+of the (1550) routine.
+
+				Louis Howell
+				December 30, 1991
+
+
+
+#include <stdio.h>
+unsigned short line[10000];
+main(argc,argv)
+int argc;
+char *argv[];
+{
+   unsigned short n, a, i, q, v, dummy, h=0, w=0;
+   
+   if (argc==2)
+     n=atoi(argv[1]);
+   else
+     n=20;
+
+   n+=2;
+
+   for (i=(n*10)/3 ; i > 0 ; i--) {
+     line[i-1] = 2;
+   }
+
+   for (dummy=0; dummy < n; dummy++) {
+      q=0;
+      for (i=(n*10)/3 ; i > 0 ; i--) {
+         a = line[i-1] * 10 + (q*i);
+         q=a/(i*2-1);
+         line[i-1] = a%(i*2-1);
+      }
+      v = w;
+      w = h+(q/10);
+      h = q%10;
+      if (w==10) {
+         w=0;
+         v++;
+      }
+      if (dummy!=0)
+         printf("%d", v);
+   }
+   printf("\n");
+}
