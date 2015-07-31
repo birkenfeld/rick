@@ -48,10 +48,10 @@ impl RtError {
         }
         let lineno = match self.error.way {
             Some(s) => String::from(s),
-            None => format!("{}", self.lineno + 1),  // "on the way to..."
+            None => format!("ON THE WAY TO {}", self.lineno + 1),
         };
-        format!("ICL{:03}I {}\n        ON THE WAY TO {}\
-                 \n        CORRECT SOURCE AND RESUBNIT\n",
+        format!("ICL{:03}I {}\n\t{}\
+                 \n\tCORRECT SOURCE AND RESUBNIT\n",
                 self.error.num, msg, lineno)
     }
 
@@ -127,14 +127,14 @@ pub static IE099: ErrDesc = ErrDesc {
 pub static IE123: ErrDesc = ErrDesc {
     num: 123,
     msg: "PROGRAM HAS DISAPPEARED INTO THE BLACK LAGOON",
-    way: Some("WHO KNOWS WHERE"),
+    way: None,
 };
 
 /* Program has attempted to transfer to a non-existent line label */
 pub static IE129: ErrDesc = ErrDesc {
     num: 129,
     msg: "PROGRAM HAS GOTTEN LOST",
-    way: Some("WHO KNOWS WHERE"),
+    way: Some("ON THE WAY TO WHO KNOWS WHERE"),
 };
 
 /* An ABSTAIN or REINSTATE statement references a non-existent line label */
@@ -248,7 +248,21 @@ pub static IE632: ErrDesc = ErrDesc {
 pub static IE663: ErrDesc = ErrDesc {
     num: 663,
     msg: "PROGRAM FELL OFF THE EDGE",
-    way: Some("THE NEW WORLD"),
+    way: Some("ON THE WAY TO THE NEW WORLD"),
+};
+
+/* Error executing rustc. */
+pub static IE666: ErrDesc = ErrDesc {
+    num: 666,
+    msg: "COMPILER HAS INDIGESTION",
+    way: Some("ON THE WAY TO THE RESTROOM"),
+};
+
+/* No such source file. */
+pub static IE777: ErrDesc = ErrDesc {
+    num: 777,
+    msg: "A SOURCE IS A SOURCE, OF COURSE, OF COURSE",
+    way: None,
 };
 
 /* Can't open C output file. */
@@ -258,9 +272,9 @@ pub static IE888: ErrDesc = ErrDesc {
     way: None,
 };
 
-/* Unimplemented feature used. This should never come up, hopefully. */
-// pub static IE995: ErrDesc = ErrDesc {
-//     num: 995,
-//     msg: "DO YOU REALLY EXPECT ME TO HAVE IMPLEMENTED THAT?",
-//     way: None,
-// };
+/* Source file name with invalid extension (use .i). */
+pub static IE998: ErrDesc = ErrDesc {
+    num: 998,
+    msg: "EXCUSE ME",
+    way: Some("YOU MUST HAVE ME CONFUSED WITH SOME OTHER COMPILER"),
+};

@@ -21,6 +21,7 @@
 
 #[allow(plugin_as_library)]
 extern crate rustlex;
+extern crate getopts;
 extern crate time;
 
 mod err;
@@ -36,6 +37,7 @@ mod syslib;
 use std::env::args;
 use std::io::Read;
 use std::fs::File;
+use std::process::{ Command, Stdio };
 
 use parse::Parser;
 use opt::Optimizer;
@@ -43,70 +45,118 @@ use eval::Eval;
 use codegen::Generator;
 
 
+// XXX introduce E774
 fn main() {
-    // "iching1.i" from C-INTERCAL
-    let demo_prog = r##"
-        DO .2 <- #32
-        PLEASE COME FROM (10)
-        DO .1 <- #0
-        DO (1020) NEXT
-        DO (1020) NEXT
-        PLEASE DO %50 (1020) NEXT
-        DO (1020) NEXT
-        DO (1020) NEXT
-        PLEASE DO %50 (1020) NEXT
-        DO (1020) NEXT
-        DO (1020) NEXT
-        PLEASE DO %50 (1020) NEXT
-        DO READ OUT .1
-        DO (30) NEXT
-(10)    DO .2 <- .2~#62
-(20)    DO RESUME "?.2$#2"~#3
-(30)    DO (20) NEXT
-        PLEASE FORGET #1
-        PLEASE GIVE UP
-"##;
+    let args: Vec<String> = args().collect();
+    let mut opts = getopts::Options::new();
+    opts.optflag("i", "interpret", "interpret code instead of compiling");
+    opts.optflag("d", "debug", "activate printing out debug messages");
+    opts.optflag("c", "no-compile", "do not call rustc");
+    opts.optflag("o", "opt", "optimize parsed code");
+    opts.optflag("O", "rustc-opt", "run rustc in optimized mode");
+    opts.optflag("h", "help", "print help message");
 
-    let mut v;
-    let argv = args().collect::<Vec<_>>();
-    if argv.len() < 2 {
-        v = demo_prog.as_bytes().to_vec();
-    } else {
-        let mut f = File::open(&argv[1]).unwrap();
-        v = Vec::new();
-        f.read_to_end(&mut v).unwrap();
-    }
-    let flag_compile = true;
-
-    stdops::seed_chance();
-
-    let t0 = time::get_time();
-    let program = match Parser::new(&v).get_program() {
-        Ok(program) => { //println!("{}", program);
-            program }
-        Err(err)    => { println!("{}", err.to_string()); return }
+    // parse args
+    let matches = match opts.parse(&args[1..]) {
+        Ok(m)  => m,
+        Err(e) => panic!(e.to_string()),
     };
 
-    let t1 = time::get_time();
-    let program = Optimizer::new(program).optimize();
-    //println!("Optimized:\n\n{}", program);
-
-    let t2 = time::get_time();
-    if flag_compile {
-        let output = File::create("out.rs").unwrap();
-        match Generator::new(program, output).generate() {
-            Err(err) => println!("{}", err.to_string()),
-            Ok(_)    => { }
-        }
-    } else {
-        match Eval::new(program).eval() {
-            Err(err) => println!("{}", err.to_string()),
-            Ok(num)  => println!("#stmts:     {}", num)
-        }
+    // handle help option
+    if matches.opt_present("h") {
+        println!("{}", opts.usage("rick [options] input.i"));
+        return;
     }
 
-    let t3 = time::get_time();
-    println!("parsing:    {}", (t1 - t0));
-    println!("optimizing: {}", (t2 - t1));
-    println!("exec/write: {}", (t3 - t2));
+    let compile_flag = !matches.opt_present("i");
+    let debug_flag = matches.opt_present("d");
+    let opt_flag = matches.opt_present("o");
+    let rustc_flag = !matches.opt_present("c");
+    let rustc_opt_flag = matches.opt_present("O");
+
+    // no input file? -> do nothing
+    if matches.free.is_empty() {
+        return;
+    }
+
+    // verify and open input file
+    let infile = &matches.free[0];
+    if !infile.ends_with(".i") {
+        print!("{}", err::IE998.new(None, 0).to_string());
+        return;
+    }
+    let mut f = match File::open(&infile) {
+        Err(_) => { print!("{}", err::IE777.new(None, 0).to_string()); return },
+        Ok(f)  => f,
+    };
+
+    // read code from input file
+    let mut code = Vec::new();
+    if let Err(_) = f.read_to_end(&mut code) {
+        print!("{}", err::IE777.new(None, 0).to_string());
+        return;
+    }
+
+    // parse source
+    let t0 = time::get_time();
+    let mut program = match Parser::new(&code).get_program() {
+        Ok(program) => program,
+        Err(err)    => { print!("{}", err.to_string()); return }
+    };
+
+    // optimize if wanted
+    let t1 = time::get_time();
+    if opt_flag {
+        program = Optimizer::new(program).optimize();
+    }
+
+    // compile or run
+    let t2 = time::get_time();
+    if compile_flag {
+        let outname = String::from(&infile[..infile.len()-2]) + ".rs";
+        let output = match File::create(&outname) {
+            Err(_) => { print!("{}", err::IE888.new(None, 0).to_string()); return },
+            Ok(f)  => f,
+        };
+        match Generator::new(program, output, debug_flag).generate() {
+            Err(err) => { print!("{}", err.to_string()); return },
+            Ok(_)    => { }
+        }
+        let t3 = time::get_time();
+        if rustc_flag {
+            let mut cmd = Command::new("rustc");
+            if rustc_opt_flag {
+                cmd.arg("-O");
+            }
+            cmd.arg(&outname);
+            cmd.stdout(Stdio::inherit());
+            cmd.stderr(Stdio::inherit());
+            match cmd.output() {
+                Ok(ref s) if s.status.success() => { },
+                _ => {
+                    print!("{}", err::IE666.new(None, 0).to_string());
+                    return;
+                }
+            }
+        }
+        let t4 = time::get_time();
+        if debug_flag {
+            println!("parsing:    {}", (t1 - t0));
+            println!("optimizing: {}", (t2 - t1));
+            println!("code gen:   {}", (t3 - t2));
+            println!("rustc:      {}", (t4 - t3));
+        }
+    } else {
+        let num = match Eval::new(program, debug_flag).eval() {
+            Err(err) => { print!("{}", err.to_string()); return },
+            Ok(num)  => num,
+        };
+        let t3 = time::get_time();
+        if debug_flag {
+            println!("#stmts:     {}", num);
+            println!("parsing:    {}", (t1 - t0));
+            println!("optimizing: {}", (t2 - t1));
+            println!("execute:    {}", (t3 - t2));
+        }
+    }
 }

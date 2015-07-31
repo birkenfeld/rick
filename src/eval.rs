@@ -21,7 +21,7 @@ use std::u16;
 use err::{ Res, IE123, IE129, IE275, IE663 };
 use ast::{ self, Program, Stmt, StmtBody, Expr, Var, VType };
 use stdops::{ Bind, Array, write_number, read_number, check_chance, check_ovf, pop_jumps,
-              mingle, select, and_16, and_32, or_16, or_32, xor_16, xor_32 };
+              seed_chance, mingle, select, and_16, and_32, or_16, or_32, xor_16, xor_32 };
 
 
 /// Type of an expression.
@@ -71,12 +71,13 @@ impl Val {
 
 pub struct Eval {
     program: Rc<Program>,
+    debug: bool,
     spot: Vec<Bind<u16>>,
     twospot: Vec<Bind<u32>>,
     tail: Vec<Bind<Array<u16>>>,
     hybrid: Vec<Bind<Array<u32>>>,
     jumps: Vec<ast::LogLine>,
-    abstentions: Vec<bool>,
+    abstain: Vec<bool>,
     last_in: u8,
     last_out: u8,
     stmt_ctr: usize,
@@ -90,17 +91,18 @@ enum StmtRes {
 }
 
 impl Eval {
-    pub fn new(program: Program) -> Eval {
+    pub fn new(program: Program, debug: bool) -> Eval {
         let abs = program.stmts.iter().map(|stmt| stmt.props.disabled).collect();
         let nvars = program.n_vars;
         Eval {
             program:  Rc::new(program),
+            debug:    debug,
             spot:     vec![Bind::new(0); nvars.0],
             twospot:  vec![Bind::new(0); nvars.1],
             tail:     vec![Bind::new(Array::empty()); nvars.2],
             hybrid:   vec![Bind::new(Array::empty()); nvars.3],
             jumps:    Vec::with_capacity(80),
-            abstentions: abs,
+            abstain:  abs,
             last_in:  0,
             last_out: 0,
             stmt_ctr: 0,
@@ -111,6 +113,7 @@ impl Eval {
         let mut pctr = 0;  // index of current statement
         let program = self.program.clone();
         let nstmts = program.stmts.len();
+        seed_chance();
         loop {
             // check for falling off the end
             if pctr >= nstmts {
@@ -119,7 +122,7 @@ impl Eval {
             }
             self.stmt_ctr += 1;
             // execute statement if not abstained
-            if !self.abstentions[pctr] {
+            if !self.abstain[pctr] {
                 let stmt = &program.stmts[pctr];
                 // check execution chance
                 if check_chance(stmt.props.chance) {
@@ -149,7 +152,7 @@ impl Eval {
             // check for COME FROMs from this line
             if let Some(next) = self.program.stmts[pctr].comefrom {
                 // check for abstained COME FROM
-                if !self.abstentions[next as usize] {
+                if !self.abstain[next as usize] {
                     pctr = next as usize;
                     continue;
                 }
@@ -162,7 +165,9 @@ impl Eval {
 
     /// Process a single statement.
     fn eval_stmt(&mut self, stmt: &Stmt) -> Res<StmtRes> {
-        //println!("{}", stmt);
+        if self.debug {
+            println!("{}", stmt);
+        }
         match stmt.body {
             StmtBody::Calc(ref var, ref expr) => {
                 let val = try!(self.eval_expr(expr));
@@ -381,11 +386,11 @@ impl Eval {
     fn abstain(&mut self, what: &ast::Abstain, abstain: bool) {
         if let &ast::Abstain::Label(lbl) = what {
             let idx = self.program.labels[&lbl];
-            self.abstentions[idx as usize] = abstain;
+            self.abstain[idx as usize] = abstain;
         } else {
             for (i, stype) in self.program.stmt_types.iter().enumerate() {
                 if stype == what {
-                    self.abstentions[i] = abstain;
+                    self.abstain[i] = abstain;
                 }
             }
         }

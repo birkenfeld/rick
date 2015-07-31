@@ -31,6 +31,7 @@ type WRes = Res<()>;  // write result, always unit
 
 pub struct Generator {
     program: Rc<Program>,
+    debug: bool,
     o: BufWriter<File>,
 }
 
@@ -56,9 +57,10 @@ macro_rules! w {
 
 
 impl Generator {
-    pub fn new(program: Program, outfile: File) -> Generator {
+    pub fn new(program: Program, outfile: File, debug: bool) -> Generator {
         Generator {
             program: Rc::new(program),
+            debug: debug,
             o: BufWriter::new(outfile),
         }
     }
@@ -99,7 +101,9 @@ impl Generator {
         // create a match arm
         w!(self.o, 12; "/* {} */", stmt);
         w!(self.o, 12; "{} => {{", i);
-        //w!(self.o, 16; "println!(\"{{}}\", \"{}\");", stmt);
+        if self.debug {
+            w!(self.o, 16; "println!(\"{{}}\", \"{}\");", stmt);
+        }
         // check abstention
         w!(self.o, 16; "if !abstain[{}] {{", i);
         // check chance for statement execution
