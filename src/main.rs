@@ -46,6 +46,8 @@ use codegen::Generator;
 
 
 // XXX introduce E774
+// XXX array for abstains
+// XXX remove unstable for generated code
 fn main() {
     let args: Vec<String> = args().collect();
     let mut opts = getopts::Options::new();
@@ -128,9 +130,9 @@ fn main() {
             if rustc_opt_flag {
                 cmd.arg("-O");
             }
+            cmd.arg("-o").arg(&outname[..outname.len()-3]);
             cmd.arg(&outname);
-            cmd.stdout(Stdio::inherit());
-            cmd.stderr(Stdio::inherit());
+            cmd.stdout(Stdio::inherit()).stderr(Stdio::inherit());
             match cmd.output() {
                 Ok(ref s) if s.status.success() => { },
                 _ => {
