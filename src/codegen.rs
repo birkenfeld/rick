@@ -395,7 +395,7 @@ impl Generator {
         for i in 0..vars.3 {
             w!(self.o, 4; "let mut b{}: Bind<Array<u32>> = Bind::new(Array::empty());", i);
         }
-        w!(self.o, 4; "let mut abstain: Vec<bool> = vec![");
+        w!(self.o, 4; "let mut abstain = [");
         for stmt in &program.stmts {
             w!(self.o, 8; "{},", if stmt.props.disabled { "true" } else { "false" });
         }

@@ -46,7 +46,6 @@ use codegen::Generator;
 
 
 // XXX introduce E774
-// XXX array for abstains
 // XXX remove unstable for generated code
 fn main() {
     let args: Vec<String> = args().collect();
