@@ -163,6 +163,7 @@ impl<T: LikeU16 + Default> Bind<Array<T>> {
             // only dimension-1 arrays can be output
             return IE241.err();
         }
+        let mut res = Vec::with_capacity(self.val.elems.len());
         for val in self.val.elems.iter() {
             let byte = ((*state as i16 - val.to_u16() as i16) as u16 % 256) as u8;
             let mut c = byte;
@@ -170,8 +171,9 @@ impl<T: LikeU16 + Default> Bind<Array<T>> {
             c = (c & 0x0f) << 4 | (c & 0xf0) >> 4;
             c = (c & 0x33) << 2 | (c & 0xcc) >> 2;
             c = (c & 0x55) << 1 | (c & 0xaa) >> 1;
-            write_byte(w, c);
+            res.push(c);
         }
+        write_bytes(w, res);
         Ok(())
     }
 
@@ -370,8 +372,8 @@ pub fn write_number(w: &mut Write, val: u32) {
 }
 
 /// Output a byte.
-pub fn write_byte(w: &mut Write, val: u8) {
-    write!(w, "{}", val as char).unwrap();
+pub fn write_bytes(w: &mut Write, val: Vec<u8>) {
+    w.write(&val).unwrap();
 }
 
 /// Read a number in spelled out English format.
