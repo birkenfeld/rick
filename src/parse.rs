@@ -44,12 +44,24 @@ pub struct Parser<'p> {
 impl<'p> Parser<'p> {
     pub fn new(code: &Vec<u8>, startline: usize) -> Parser {
         let cursor1 = Cursor::new(&code[..]);
-        let lines = BufReader::new(cursor1).lines().map(|v| v.unwrap()).collect();
+        let lines = Parser::get_lines(BufReader::new(cursor1));
         let cursor2 = Cursor::new(&code[..]);
         Parser { lines: lines,
                  tokens: lex(cursor2, startline),
                  stash: Vec::new(),
                  startline: startline }
+    }
+
+    fn get_lines<T: Read>(mut reader: BufReader<T>) -> Vec<String> {
+        let mut buf = Vec::new();
+        let mut res = Vec::new();
+        while let Ok(n) = reader.read_until('\n' as u8, &mut buf) {
+            res.push(String::from_utf8_lossy(&buf).into_owned());
+            if n == 0 {
+                break;
+            }
+        }
+        res
     }
 
     /// Parse the whole file as a program.
