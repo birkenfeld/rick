@@ -75,7 +75,9 @@ impl<T: Clone> Bind<T> {
         match self.stack.pop() {
             None => IE436.err(),
             Some(v) => {
-                self.val = v;
+                if self.rw {
+                    self.val = v;
+                }
                 Ok(())
             }
         }
