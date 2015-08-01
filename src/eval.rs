@@ -15,7 +15,7 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
-use std::rc::Rc;
+use std::io::Write;
 use std::u16;
 
 use err::{ Res, IE123, IE129, IE275, IE663 };
@@ -69,8 +69,9 @@ impl Val {
 }
 
 
-pub struct Eval {
-    program: Rc<Program>,
+pub struct Eval<'a> {
+    program: &'a Program,
+    stdout: &'a mut Write,
     debug: bool,
     spot: Vec<Bind<u16>>,
     twospot: Vec<Bind<u32>>,
@@ -90,15 +91,16 @@ enum StmtRes {
     End,
 }
 
-impl Eval {
-    pub fn new(program: Program, debug: bool) -> Eval {
+impl<'a> Eval<'a> {
+    pub fn new(program: &'a Program, stdout: &'a mut Write, debug: bool) -> Eval<'a> {
         let abs = program.stmts.iter().map(|stmt| stmt.props.disabled).collect();
         let nvars = (program.var_info.0.len(),
                      program.var_info.1.len(),
                      program.var_info.2.len(),
                      program.var_info.3.len());
         Eval {
-            program:  Rc::new(program),
+            program:  program,
+            stdout:   stdout,
             debug:    debug,
             spot:     vec![Bind::new(0); nvars.0],
             twospot:  vec![Bind::new(0); nvars.1],
@@ -248,9 +250,9 @@ impl Eval {
                         }
                         Expr::Var(ref var) => {
                             let varval = try!(self.lookup(var));
-                            write_number(varval.as_u32());
+                            write_number(self.stdout, varval.as_u32());
                         }
-                        Expr::Num(_, v) => write_number(v),
+                        Expr::Num(_, v) => write_number(self.stdout, v),
                         _ => unreachable!(),
                     };
                 }
@@ -263,6 +265,10 @@ impl Eval {
                     let n = try!(read_number());
                     try!(self.assign(var, Val::from_u32(n)));
                 }
+                Ok(StmtRes::Next)
+            }
+            StmtBody::Print(ref s) => {
+                write!(self.stdout, "{}", s).unwrap();
                 Ok(StmtRes::Next)
             }
             StmtBody::GiveUp => Ok(StmtRes::End),
@@ -409,8 +415,8 @@ impl Eval {
     fn array_readout(&mut self, var: &Var) -> Res<()> {
         let state = &mut self.last_out;
         match *var {
-            Var::A16(n, _) => self.tail[n].readout(state),
-            Var::A32(n, _) => self.hybrid[n].readout(state),
+            Var::A16(n, _) => self.tail[n].readout(self.stdout, state),
+            Var::A32(n, _) => self.hybrid[n].readout(self.stdout, state),
             _ => unimplemented!()
         }
     }

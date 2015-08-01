@@ -228,15 +228,15 @@ impl Generator {
                 for expr in exprs {
                     match *expr {
                         Expr::Var(ref var) if var.is_dim() => {
-                            w!(self.o, 20; "try!({}.readout(&mut last_out));",
+                            w!(self.o, 20; "try!({}.readout(&mut stdout, &mut last_out));",
                                Generator::get_varname(var));
                         }
                         Expr::Var(_) => {
                             try!(self.gen_eval_expr(expr, line));
-                            w!(self.o, 20; "write_number(val);");
+                            w!(self.o, 20; "write_number(&mut stdout, val);");
                         }
                         Expr::Num(_, v) => {
-                            w!(self.o, 20; "write_number({})", v)
+                            w!(self.o, 20; "write_number(&mut stdout, {})", v)
                         }
                         _ => unreachable!(),
                     };
@@ -250,6 +250,9 @@ impl Generator {
                     w!(self.o, 20; "let val = try!(read_number());");
                     try!(self.gen_assign(var, line));
                 }
+            }
+            StmtBody::Print(ref s) => {
+                w!(self.o, 20; "print!(\"{{}}\", {:?});", s);
             }
         }
         Ok(())
@@ -273,7 +276,7 @@ impl Generator {
         } { "" } else { "_unchecked" };
         match *var {
             Var::I16(n) => w!(self.o; "
-                    if val > (u16::MAX as u32) {{
+                    if val > (std::u16::MAX as u32) {{
                         return err::IE275.err_with(None, {});
                     }}
                     v{}.assign{}(val as u16);", line, n, suffix),
@@ -281,7 +284,7 @@ impl Generator {
             Var::A16(n, ref subs) => {
                 try!(self.gen_eval_subs(subs, line));
                 w!(self.o; "
-                    if val > (u16::MAX as u32) {{
+                    if val > (std::u16::MAX as u32) {{
                         return err::IE275.err_with(None, {});
                     }}
                     try!(a{}.arr_assign{}(subs, val as u16));", line, n, suffix);
@@ -327,7 +330,7 @@ impl Generator {
 
     fn gen_eval(&mut self, expr: &Expr, line: SrcLine) -> WRes {
         match *expr {
-            Expr::Num(_, v) => w!(self.o; "{}", v),
+            Expr::Num(_, v) => w!(self.o; "{:#X}", v),
             Expr::Var(ref var) => try!(self.gen_lookup(var, line)),
             Expr::Mingle(ref vx, ref wx) => {
                 w!(self.o; "mingle(try!(check_ovf(");
@@ -398,6 +401,7 @@ impl Generator {
     fn gen_program_vars(&mut self, program: &Program) -> WRes {
         let vars = &self.program.var_info;
         w!(self.o, 4; "let mut pctr: usize = 0;");
+        w!(self.o, 4; "let mut stdout = std::io::stdout();");
         w!(self.o, 4; "let mut jumps: Vec<(usize, Option<usize>)> = Vec::with_capacity(80);");
         w!(self.o, 4; "let mut last_in: u8 = 0;");
         w!(self.o, 4; "let mut last_out: u8 = 0;");
@@ -439,8 +443,6 @@ impl Generator {
 
     fn gen_header(&mut self) -> WRes {
         self.write("
-use std::u16;
-
 use stdops::*;
 
 #[allow(unused_mut, unused_variables, unreachable_code)]

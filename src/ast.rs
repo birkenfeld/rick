@@ -32,6 +32,7 @@ pub struct Program {
     pub labels: BTreeMap<Label, LogLine>,
     pub stmt_types: Vec<Abstain>,
     pub var_info: (Vec<VarInfo>, Vec<VarInfo>, Vec<VarInfo>, Vec<VarInfo>),
+    pub added_syslib: bool,
 }
 
 /// A single statement.
@@ -72,6 +73,8 @@ pub enum StmtBody {
     WriteIn(Var),
     ReadOut(Vec<Expr>),
     GiveUp,
+    // only used after optimizing
+    Print(String),
 }
 
 /// A variable reference (store or load).
@@ -130,7 +133,8 @@ pub struct VarInfo {
 
 
 impl Stmt {
-    /// Determine the abstain type for the statement. Label(0) is used as an escape value.
+    /// Determine the abstain type for the statement. Label(0) is used as an
+    /// escape value.
     pub fn stype(&self) -> Abstain {
         match self.body {
             StmtBody::Error(_) => Abstain::Label(0),
@@ -149,7 +153,14 @@ impl Stmt {
             StmtBody::WriteIn(_) => Abstain::WriteIn,
             StmtBody::ReadOut(_) => Abstain::ReadOut,
             StmtBody::GiveUp => Abstain::Label(0),
+            StmtBody::Print(_) => Abstain::Label(0),
         }
+    }
+
+    /// Synthesize a statement with default metadata.
+    pub fn new_with(body: StmtBody) -> Stmt {
+        Stmt { body: body, props: StmtProps::default(),
+               comefrom: None, can_abstain: true }
     }
 }
 
@@ -288,6 +299,7 @@ impl Display for StmtBody {
             StmtBody::WriteIn(ref var) => write!(fmt, "WRITE IN {}", var),
             StmtBody::ReadOut(ref vars) => write!(fmt, "READ OUT {}", self.fmt_pluslist(vars)),
             StmtBody::GiveUp => write!(fmt, "GIVE UP"),
+            StmtBody::Print(_) => write!(fmt, "<PRINT>"),
         }
     }
 }

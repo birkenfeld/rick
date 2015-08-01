@@ -442,7 +442,7 @@ impl<'p> Parser<'p> {
     }
 
     /// Add the syslib to `stmts` if necessary.
-    fn add_syslib(&self, mut stmts: Vec<Stmt>) -> Vec<Stmt> {
+    fn add_syslib(&self, mut stmts: Vec<Stmt>, added: &mut bool) -> Vec<Stmt> {
         let mut need_syslib = false;
         for stmt in &stmts {
             if stmt.props.label >= 1000 && stmt.props.label < 1999 {
@@ -462,6 +462,7 @@ impl<'p> Parser<'p> {
             let mut p = Parser::new(&code);
             let mut syslib_stmts = p.parse().unwrap();
             stmts.append(&mut syslib_stmts);
+            *added = true;
         }
         stmts
     }
@@ -561,7 +562,8 @@ impl<'p> Parser<'p> {
     }
 
     fn post_process(&self, stmts: Vec<Stmt>) -> Res<Program> {
-        let mut stmts = self.add_syslib(stmts);
+        let mut added_syslib = false;
+        let mut stmts = self.add_syslib(stmts, &mut added_syslib);
         // here we:
         // - count polite statements
         // - determine the "abstain" type of each statement
@@ -632,7 +634,8 @@ impl<'p> Parser<'p> {
         Ok(Program { stmts: stmts,
                      labels: labels,
                      stmt_types: types,
-                     var_info: var_info })
+                     var_info: var_info,
+                     added_syslib: added_syslib })
     }
 }
 

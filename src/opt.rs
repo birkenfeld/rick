@@ -15,9 +15,12 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
+use std::collections::BTreeMap;
+use std::io::Cursor;
 use std::u16;
 
 use ast;
+use eval;
 use stdops::{ mingle, select, and_16, and_32, or_16, or_32, xor_16, xor_32 };
 
 
@@ -33,6 +36,7 @@ impl Optimizer {
     pub fn optimize(self) -> ast::Program {
         let program = self.program;
         let program = Optimizer::opt_constant_fold(program);
+        let program = Optimizer::opt_const_output(program);
         let program = Optimizer::opt_abstain_check(program);
         let program = Optimizer::opt_var_check(program);
         program
@@ -109,6 +113,57 @@ impl Optimizer {
         }
         if let Some(result) = result {
             *expr = result;
+        }
+    }
+
+    /// Cleverly check for programs that don't take input and always produce the
+    /// same output; reduce them to a Print statement.
+    pub fn opt_const_output(program: ast::Program) -> ast::Program {
+        let mut possible = true;
+        let mut prev_lbl = 0;
+        for stmt in &program.stmts {
+            // if we have a statement with %, no chance
+            if stmt.props.chance < 100 {
+                // except if it is the syslib itself
+                if !(program.added_syslib && prev_lbl == 1901) {
+                    possible = false;
+                    break;
+                }
+            }
+            match stmt.body {
+                // if we accept input, bail out
+                ast::StmtBody::WriteIn(..) => {
+                    possible = false;
+                    break;
+                }
+                // if we call one of the syslib random routines, bail out
+                ast::StmtBody::DoNext(n)
+                    if (n == 1900 || n == 1910) && !(prev_lbl == 1911) => {
+                    possible = false;
+                    break;
+                }
+                _ => { }
+            }
+            prev_lbl = stmt.props.label;
+        }
+        if !possible {
+            return program;
+        }
+        // we can do it! evaluate the program and replace all statements
+        let out = Vec::new();
+        let mut cursor = Cursor::new(out);
+        if let Err(_) = eval::Eval::new(&program, &mut cursor, false).eval() {
+            // if eval fails, don't pretend to do anything.
+            return program;
+        }
+        let s = String::from_utf8(cursor.into_inner()).unwrap();
+        ast::Program {
+            stmts: vec![ast::Stmt::new_with(ast::StmtBody::Print(s)),
+                        ast::Stmt::new_with(ast::StmtBody::GiveUp)],
+            labels: BTreeMap::new(),
+            stmt_types: vec![ast::Abstain::Label(0)],
+            var_info: (vec![], vec![], vec![], vec![]),
+            added_syslib: false
         }
     }
 

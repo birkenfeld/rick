@@ -37,7 +37,7 @@ mod syslib;
 mod mandel;
 
 use std::env::args;
-use std::io::Read;
+use std::io::{ Read, stdout };
 use std::fs::{ File, remove_file };
 use std::process::{ Command, Stdio };
 use std::sync::mpsc;
@@ -156,7 +156,8 @@ fn main() {
             println!("rustc:      {}", (t4 - t3));
         }
     } else {
-        let num = match Eval::new(program, debug_flag).eval() {
+        let mut stdout = stdout();
+        let num = match Eval::new(&program, &mut stdout, debug_flag).eval() {
             Err(err) => { print!("{}", err.to_string()); return },
             Ok(num)  => num,
         };

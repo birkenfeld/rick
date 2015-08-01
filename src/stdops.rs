@@ -18,7 +18,7 @@
 #![rick_embed_module_code]
 
 use std::fs::File;
-use std::io::{ BufRead, Read, stdin };
+use std::io::{ BufRead, Read, Write, stdin };
 use std::mem;
 use std::os::raw::{ c_int, c_uint };
 use std::{ u16, u32 };
@@ -129,7 +129,7 @@ impl<T: LikeU16 + Default> Bind<Array<T>> {
         Ok(())
     }
 
-    pub fn readout(&self, state: &mut u8) -> Res<()> {
+    pub fn readout(&self, w: &mut Write, state: &mut u8) -> Res<()> {
         if self.val.dims.len() != 1 {
             // only dimension-1 arrays can be output
             return IE241.err();
@@ -141,7 +141,7 @@ impl<T: LikeU16 + Default> Bind<Array<T>> {
             c = (c & 0x0f) << 4 | (c & 0xf0) >> 4;
             c = (c & 0x33) << 2 | (c & 0xcc) >> 2;
             c = (c & 0x55) << 1 | (c & 0xaa) >> 1;
-            write_byte(c);
+            write_byte(w, c);
         }
         Ok(())
     }
@@ -313,13 +313,13 @@ pub fn from_english(v: &str) -> Res<u32> {
 }
 
 /// Output a number in Roman format.
-pub fn write_number(val: u32) {
-    print!("{}", to_roman(val));
+pub fn write_number(w: &mut Write, val: u32) {
+    write!(w, "{}", to_roman(val)).unwrap();
 }
 
 /// Output a byte.
-pub fn write_byte(val: u8) {
-    print!("{}", val as char);
+pub fn write_byte(w: &mut Write, val: u8) {
+    write!(w, "{}", val as char).unwrap();
 }
 
 /// Read a number in spelled out English format.
