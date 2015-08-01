@@ -15,6 +15,7 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
+use std::fmt::{ Debug, Display };
 use std::io::Write;
 use std::u16;
 
@@ -171,6 +172,7 @@ impl<'a> Eval<'a> {
     /// Process a single statement.
     fn eval_stmt(&mut self, stmt: &Stmt) -> Res<StmtRes> {
         if self.debug {
+            println!("\nExecuting Stmt #{} (state before following)", self.stmt_ctr);
             self.dump_state();
             println!("{}", stmt);
         }
@@ -483,21 +485,18 @@ impl<'a> Eval<'a> {
 
     /// Debug helper.
     fn dump_state(&self) {
-        for (i, v) in self.spot.iter().enumerate() {
-            print!(".{} = {}, ", i, v);
+        self.dump_state_one(&self.spot, ".");
+        self.dump_state_one(&self.twospot, ":");
+        self.dump_state_one(&self.tail, ",");
+        self.dump_state_one(&self.hybrid, ";");
+    }
+
+    fn dump_state_one<T: Debug + Display>(&self, vec: &Vec<Bind<T>>, sigil: &str) {
+        if vec.len() > 0 {
+            for (i, v) in vec.iter().enumerate() {
+                print!("{}{} = {}, ", sigil, i, v);
+            }
+            println!("");
         }
-        println!("");
-        for (i, v) in self.twospot.iter().enumerate() {
-            print!(":{} = {}, ", i, v);
-        }
-        println!("");
-        for (i, v) in self.hybrid.iter().enumerate() {
-            print!(",{} = {}, ", i, v);
-        }
-        println!("");
-        for (i, v) in self.tail.iter().enumerate() {
-            print!(";{} = {}, ", i, v);
-        }
-        println!("");
     }
 }

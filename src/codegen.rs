@@ -513,8 +513,11 @@ impl Generator {
             w!(self.o, 4; "let mut b{}: Bind<Array<u32>> = Bind::new(Array::empty());", i);
         }
         w!(self.o, 4; "let mut abstain = [");
-        for stmt in &self.program.stmts {
-            w!(self.o, 8; "{},", if stmt.props.disabled { "true" } else { "false" });
+        for (i, stmt) in self.program.stmts.iter().enumerate() {
+            if i % 10 == 0 {
+                w!(self.o, 7; "");
+            }
+            w!(self.o; " {},", if stmt.props.disabled { "true" } else { "false" });
         }
         w!(self.o, 4; "];");
         Ok(())
