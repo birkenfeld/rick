@@ -19,7 +19,7 @@ use std::fmt::{ Debug, Display };
 use std::io::Write;
 use std::u16;
 
-use err::{ Res, IE123, IE129, IE275, IE663 };
+use err::{ Res, IE123, IE129, IE275, IE633 };
 use ast::{ self, Program, Stmt, StmtBody, Expr, Var, VType };
 use stdops::{ Bind, Array, write_number, read_number, check_chance, check_ovf, pop_jumps,
               seed_chance, mingle, select, and_16, and_32, or_16, or_32, xor_16, xor_32 };
@@ -124,7 +124,7 @@ impl<'a> Eval<'a> {
             // check for falling off the end
             if pctr >= nstmts {
                 let last_stmt = &program.stmts[program.stmts.len() - 1];
-                return IE663.err_with(None, last_stmt.props.srcline);
+                return IE633.err_with(None, last_stmt.props.srcline);
             }
             self.stmt_ctr += 1;
             // execute statement if not abstained

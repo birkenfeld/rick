@@ -245,8 +245,8 @@ pub static IE632: ErrDesc = ErrDesc {
 };
 
 /* Execution has passed beyond the last statement of the program. */
-pub static IE663: ErrDesc = ErrDesc {
-    num: 663,
+pub static IE633: ErrDesc = ErrDesc {
+    num: 633,
     msg: "PROGRAM FELL OFF THE EDGE",
     way: Some("ON THE WAY TO THE NEW WORLD"),
 };

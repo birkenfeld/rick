@@ -540,7 +540,7 @@ impl Generator {
     fn gen_loop_footer(&mut self) -> WRes {
         self.write("
             n => {
-                return err::IE663.err_with(None, n);
+                return err::IE633.err_with(None, n);
             }
         }
     }
