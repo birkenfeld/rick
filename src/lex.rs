@@ -107,14 +107,14 @@ rustlex! RawLexer {
     let WS  = [' ' '\t']+;
     let NL  = '\n';
 
-    let PLEASEDO   = "PLEASE"  [' ' '\t']* "DO";
-    let COMEFROM   = "COME"    [' ' '\t']* "FROM";
-    let READOUT    = "READ"    [' ' '\t']* "OUT";
-    let WRITEIN    = "WRITE"   [' ' '\t']* "IN";
-    let GIVEUP     = "GIVE"    [' ' '\t']* "UP";
-    let COMINGFROM = "COMING"  [' ' '\t']* "FROM";
-    let READINGOUT = "READING" [' ' '\t']* "OUT";
-    let WRITINGIN  = "WRITING" [' ' '\t']* "IN";
+    let PLEASEDO   = "PLEASE"  [' ' '\t' '\n']* "DO";
+    let COMEFROM   = "COME"    [' ' '\t' '\n']* "FROM";
+    let READOUT    = "READ"    [' ' '\t' '\n']* "OUT";
+    let WRITEIN    = "WRITE"   [' ' '\t' '\n']* "IN";
+    let GIVEUP     = "GIVE"    [' ' '\t' '\n']* "UP";
+    let COMINGFROM = "COMING"  [' ' '\t' '\n']* "FROM";
+    let READINGOUT = "READING" [' ' '\t' '\n']* "OUT";
+    let WRITINGIN  = "WRITING" [' ' '\t' '\n']* "IN";
 
     ANY            => |l: Lx<R>| l.tok(TT::UNKNOWN)
     NUM            => |l: Lx<R>| { let s = l.yystr();
@@ -126,7 +126,7 @@ rustlex! RawLexer {
     '('            => |l: Lx<R>| l.tok(TT::WAX)
     ')'            => |l: Lx<R>| l.tok(TT::WANE)
     "PLEASE"       => |l: Lx<R>| l.tok(TT::PLEASEDO)
-    PLEASEDO       => |l: Lx<R>| l.tok(TT::PLEASEDO)
+    PLEASEDO       => |l: Lx<R>| l.tok_with_nl(TT::PLEASEDO)
     "DO"           => |l: Lx<R>| l.tok(TT::DO)
     "NOT"          => |l: Lx<R>| l.tok(TT::NOT)
     "N'T"          => |l: Lx<R>| l.tok(TT::NOT)
@@ -140,10 +140,10 @@ rustlex! RawLexer {
     "RETRIEVE"     => |l: Lx<R>| l.tok(TT::RETRIEVE)
     "ABSTAIN FROM" => |l: Lx<R>| l.tok(TT::ABSTAIN)
     "REINSTATE"    => |l: Lx<R>| l.tok(TT::REINSTATE)
-    COMEFROM       => |l: Lx<R>| l.tok(TT::COMEFROM)
-    READOUT        => |l: Lx<R>| l.tok(TT::READOUT)
-    WRITEIN        => |l: Lx<R>| l.tok(TT::WRITEIN)
-    GIVEUP         => |l: Lx<R>| l.tok(TT::GIVEUP)
+    COMEFROM       => |l: Lx<R>| l.tok_with_nl(TT::COMEFROM)
+    READOUT        => |l: Lx<R>| l.tok_with_nl(TT::READOUT)
+    WRITEIN        => |l: Lx<R>| l.tok_with_nl(TT::WRITEIN)
+    GIVEUP         => |l: Lx<R>| l.tok_with_nl(TT::GIVEUP)
 
     "CALCULATING"  => |l: Lx<R>| l.tok(TT::CALCULATING)
     "NEXTING"      => |l: Lx<R>| l.tok(TT::NEXTING)
@@ -155,9 +155,9 @@ rustlex! RawLexer {
     "RETRIEVING"   => |l: Lx<R>| l.tok(TT::RETRIEVING)
     "ABSTAINING"   => |l: Lx<R>| l.tok(TT::ABSTAINING)
     "REINSTATING"  => |l: Lx<R>| l.tok(TT::REINSTATING)
-    COMINGFROM     => |l: Lx<R>| l.tok(TT::COMINGFROM)
-    READINGOUT     => |l: Lx<R>| l.tok(TT::READINGOUT)
-    WRITINGIN      => |l: Lx<R>| l.tok(TT::WRITINGIN)
+    COMINGFROM     => |l: Lx<R>| l.tok_with_nl(TT::COMINGFROM)
+    READINGOUT     => |l: Lx<R>| l.tok_with_nl(TT::READINGOUT)
+    WRITINGIN      => |l: Lx<R>| l.tok_with_nl(TT::WRITINGIN)
 
     '.'            => |l: Lx<R>| l.tok(TT::SPOT)
     ':'            => |l: Lx<R>| l.tok(TT::TWOSPOT)
@@ -191,6 +191,14 @@ impl<R: Read> RawLexer<R> {
     #[inline]
     fn tok(&self, t: TT) -> Option<Token> {
         Some(Token(t, self.line))
+    }
+
+    #[inline]
+    fn tok_with_nl(&mut self, t: TT) -> Option<Token> {
+        let ret = Token(t, self.line);
+        let newlines = self.yystr().chars().filter(|c| *c == '\n').count();
+        self.line += newlines;
+        Some(ret)
     }
 }
 
