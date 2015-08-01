@@ -421,7 +421,7 @@ impl Generator {
             Expr::RsOr(ref vx, ref wx) => try!(self.gen_binop(vx, wx, "|", astype)),
             Expr::RsXor(ref vx, ref wx) => try!(self.gen_binop(vx, wx, "^", astype)),
             Expr::RsRshift(ref vx, ref wx) => try!(self.gen_binop(vx, wx, ">>", astype)),
-            Expr::RsLshift(ref vx, ref wx) => try!(self.gen_binop(vx, wx, "<<", astype)),
+            Expr::RsLshift(ref vx, ref wx) => try!(self.gen_binop_extrapar(vx, wx, "<<", astype)),
             Expr::RsEqual(ref vx, ref wx) => try!(self.gen_binop(
                 vx, wx, "==", if astype == "" { " as u32" } else { astype })),
             Expr::RsNotEqual(ref vx, ref wx) => try!(self.gen_binop(
@@ -441,13 +441,22 @@ impl Generator {
         Ok(())
     }
 
+    fn gen_binop_extrapar(&mut self, vx: &Expr, wx: &Expr, op: &str, astype: &str) -> WRes {
+        w!(self.o; "((");
+        try!(self.gen_eval(vx, ""));
+        w!(self.o; ") {} (", op);
+        try!(self.gen_eval(wx, ""));
+        w!(self.o; ")){}", astype);
+        Ok(())
+    }
+
     fn gen_lookup(&mut self, var: &Var, astype: &str) -> WRes {
         match *var {
-            Var::I16(n) => w!(self.o; "v{}.val{}", n,
+            Var::I16(n) => w!(self.o; "(v{}.val{})", n,
                               if astype == "" { " as u32" } else { astype }),
             Var::I32(n) => w!(self.o; "w{}.val{}", n, astype),
             Var::A16(n, ref subs) => {
-                w!(self.o; "try!(a{}.", n);
+                w!(self.o; "(try!(a{}.", n);
                 if subs.len() == 1 {
                     w!(self.o; "get(");
                     try!(self.gen_eval(&subs[0], " as usize"));
@@ -461,7 +470,7 @@ impl Generator {
                     }
                     w!(self.o; "]");
                 }
-                w!(self.o; ")){}", if astype == "" { " as u32" } else { astype });
+                w!(self.o; ")){})", if astype == "" { " as u32" } else { astype });
             }
             Var::A32(n, ref subs) => {
                 w!(self.o; "try!(b{}.", n);
