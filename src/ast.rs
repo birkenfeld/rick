@@ -96,6 +96,25 @@ pub enum Expr {
     And(VType, Box<Expr>),
     Or(VType, Box<Expr>),
     Xor(VType, Box<Expr>),
+    // only used after optimizing
+    RsAnd(Box<Expr>, Box<Expr>),
+    RsOr(Box<Expr>, Box<Expr>),
+    RsXor(Box<Expr>, Box<Expr>),
+    RsNot(Box<Expr>),
+    RsRshift(Box<Expr>, Box<Expr>),
+    RsLshift(Box<Expr>, Box<Expr>),
+    // RsPlus(Box<Expr>, Box<Expr>),
+    // RsMinus(Box<Expr>, Box<Expr>),
+    // RsTimes(Box<Expr>, Box<Expr>),
+    // RsDivide(Box<Expr>, Box<Expr>),
+    // RsModulus(Box<Expr>, Box<Expr>),
+    // RsEqual(Box<Expr>, Box<Expr>),
+    // RsNotequal(Box<Expr>, Box<Expr>),
+    // RsGreater(Box<Expr>, Box<Expr>),
+    // RsLess(Box<Expr>, Box<Expr>),
+    // RsLogand(Box<Expr>, Box<Expr>),
+    // RsLogor(Box<Expr>, Box<Expr>),
+    // RsLognot(Box<Expr>),
 }
 
 /// Type of an expression.
@@ -181,6 +200,8 @@ impl Expr {
             Expr::Num(vtype, _) => vtype,
             Expr::And(vtype, _) | Expr::Or(vtype, _) | Expr::Xor(vtype, _) => vtype,
             Expr::Select(..) | Expr::Mingle(..) => VType::I32,
+            Expr::RsAnd(..) | Expr::RsOr(..) | Expr::RsXor(..) |
+            Expr::RsNot(..) | Expr::RsRshift(..) | Expr::RsLshift(..) => VType::I32,
             Expr::Var(ref v) => v.get_vtype(),
         }
     }
@@ -340,6 +361,13 @@ impl Display for Expr {
             Expr::And(_, ref x) => write!(fmt, "&({})", x),
             Expr::Or(_, ref x) => write!(fmt, "V({})", x),
             Expr::Xor(_, ref x) => write!(fmt, "?({})", x),
+            // optimized exprs
+            Expr::RsAnd(ref x, ref y) => write!(fmt, "({}).&.({})", x, y),
+            Expr::RsOr(ref x, ref y) => write!(fmt, "({}).|.({})", x, y),
+            Expr::RsXor(ref x, ref y) => write!(fmt, "({}).^.({})", x, y),
+            Expr::RsNot(ref x) => write!(fmt, "~.({})", x),
+            Expr::RsRshift(ref x, ref y) => write!(fmt, "({}).>>.({})", x, y),
+            Expr::RsLshift(ref x, ref y) => write!(fmt, "({}).<<.({})", x, y),
         }
     }
 }

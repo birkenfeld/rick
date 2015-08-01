@@ -275,11 +275,13 @@ impl Generator {
             Var::A32(n, _) => self.program.var_info.3[n].can_ignore,
         } { "" } else { "_unchecked" };
         match *var {
-            Var::I16(n) => w!(self.o; "
+            Var::I16(n) => {
+                w!(self.o; "
                     if val > (std::u16::MAX as u32) {{
                         return err::IE275.err_with(None, {});
-                    }}
-                    v{}.assign{}(val as u16);", line, n, suffix),
+                    }}", line);
+                w!(self.o, 20; "v{}.assign{}(val as u16);", n, suffix);
+            }
             Var::I32(n) => w!(self.o, 20; "w{}.assign{}(val);", n, suffix),
             Var::A16(n, ref subs) => {
                 w!(self.o; "
@@ -412,6 +414,20 @@ impl Generator {
             Expr::RsNot(ref vx) => {
                 w!(self.o; "(!");
                 try!(self.gen_eval(vx, "", line));
+                w!(self.o; "){}", astype);
+            }
+            Expr::RsRshift(ref vx, ref wx) => {
+                w!(self.o; "(");
+                try!(self.gen_eval(vx, "", line));
+                w!(self.o; " >> ");
+                try!(self.gen_eval(wx, "", line));
+                w!(self.o; "){}", astype);
+            }
+            Expr::RsLshift(ref vx, ref wx) => {
+                w!(self.o; "(");
+                try!(self.gen_eval(vx, "", line));
+                w!(self.o; " << ");
+                try!(self.gen_eval(wx, "", line));
                 w!(self.o; "){}", astype);
             }
         }

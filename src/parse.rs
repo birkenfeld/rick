@@ -496,9 +496,15 @@ impl<'p> Parser<'p> {
                 Expr::Var(ref mut v) => walk_var(v, visitor),
                 Expr::And(_, ref mut e) |
                 Expr::Or(_, ref mut e) |
-                Expr::Xor(_, ref mut e) => walk_expr(e, visitor),
+                Expr::Xor(_, ref mut e) |
+                Expr::RsNot(ref mut e) => walk_expr(e, visitor),
                 Expr::Mingle(ref mut e, ref mut e2) |
-                Expr::Select(ref mut e, ref mut e2) => {
+                Expr::Select(ref mut e, ref mut e2) |
+                Expr::RsAnd(ref mut e, ref mut e2) |
+                Expr::RsOr(ref mut e, ref mut e2) |
+                Expr::RsXor(ref mut e, ref mut e2) |
+                Expr::RsRshift(ref mut e, ref mut e2) |
+                Expr::RsLshift(ref mut e, ref mut e2) => {
                     walk_expr(e, visitor);
                     walk_expr(e2, visitor);
                 }

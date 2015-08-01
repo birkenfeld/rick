@@ -314,6 +314,35 @@ impl<'a> Eval<'a> {
                     Val::I32(v) => Ok(Val::I32(xor_32(v))),
                 }
             }
+            Expr::RsAnd(ref vx, ref wx) => {
+                let v = try!(self.eval_expr(vx));
+                let w = try!(self.eval_expr(wx));
+                Ok(Val::I32(v.as_u32() & w.as_u32()))
+            }
+            Expr::RsOr(ref vx, ref wx) => {
+                let v = try!(self.eval_expr(vx));
+                let w = try!(self.eval_expr(wx));
+                Ok(Val::I32(v.as_u32() | w.as_u32()))
+            }
+            Expr::RsXor(ref vx, ref wx) => {
+                let v = try!(self.eval_expr(vx));
+                let w = try!(self.eval_expr(wx));
+                Ok(Val::I32(v.as_u32() ^ w.as_u32()))
+            }
+            Expr::RsNot(ref vx) => {
+                let v = try!(self.eval_expr(vx));
+                Ok(Val::I32(!v.as_u32()))
+            }
+            Expr::RsRshift(ref vx, ref wx) => {
+                let v = try!(self.eval_expr(vx));
+                let w = try!(self.eval_expr(wx));
+                Ok(Val::I32(v.as_u32() >> w.as_u32()))
+            }
+            Expr::RsLshift(ref vx, ref wx) => {
+                let v = try!(self.eval_expr(vx));
+                let w = try!(self.eval_expr(wx));
+                Ok(Val::I32(v.as_u32() << w.as_u32()))
+            }
         }
     }
 
