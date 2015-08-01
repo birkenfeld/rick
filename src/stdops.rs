@@ -382,7 +382,7 @@ pub fn read_number() -> Res<u32> {
     let mut slock = stdin.lock();
     let mut buf = String::new();
     match slock.read_line(&mut buf) {
-        Ok(n) if n > 0 => from_english(&buf),
+        Ok(n) if n > 1 => from_english(&buf),
         _              => IE562.err()
     }
 }
