@@ -245,13 +245,7 @@ impl<'p> Parser<'p> {
                 let state = self.stash.len();
                 match self.parse_expr() {
                     Ok(expr) => res.push(expr),
-                    Err(DecodeError::Soft(_)) => {
-                        // now backtrack:
-                        while self.stash.len() > state {
-                            self.tokens.push(self.stash.pop().unwrap());
-                        }
-                        break
-                    }
+                    Err(DecodeError::Soft(_)) => { self.backtrack(state); break }
                     Err(harderr) => return Err(harderr),
                 }
             }
@@ -287,6 +281,44 @@ impl<'p> Parser<'p> {
             }
         }
         Ok(res)
+    }
+
+    /// Maybe parse a variable reference with maybe inline unary op [.:,;] OP N {SUB X}.
+    fn parse_var_with_unop(&mut self) -> ParseRes<Option<Expr>> {
+        fn parse_constr(self_: &mut Parser) -> Box<Fn(Var) -> Expr> {
+            if self_.take(TT::AMPERSAND) {
+                box |var| Expr::And(VType::I16, box Expr::Var(var))
+            } else if self_.take(TT::BOOK) {
+                box |var| Expr::Or(VType::I16, box Expr::Var(var))
+            } else if self_.take(TT::WHAT) {
+                box |var| Expr::Xor(VType::I16, box Expr::Var(var))
+            } else {
+                box |var| Expr::Var(var)
+            }
+        }
+        if self.take(TT::SPOT) {
+            let constr = parse_constr(self);
+            let val = try!(self.req_number(u16::MAX, &IE200));
+            return Ok(Some(constr(Var::I16(val as usize))));
+        }
+        if self.take(TT::TWOSPOT) {
+            let constr = parse_constr(self);
+            let val = try!(self.req_number(u16::MAX, &IE200));
+            return Ok(Some(constr(Var::I32(val as usize))));
+        }
+        if self.take(TT::TAIL) {
+            let constr = parse_constr(self);
+            let val = try!(self.req_number(u16::MAX, &IE200));
+            let subs = try!(self.parse_subs());
+            return Ok(Some(constr(Var::A16(val as usize, subs))));
+        }
+        if self.take(TT::HYBRID) {
+            let constr = parse_constr(self);
+            let val = try!(self.req_number(u16::MAX, &IE200));
+            let subs = try!(self.parse_subs());
+            return Ok(Some(constr(Var::A32(val as usize, subs))));
+        }
+        return Ok(None);
     }
 
     /// Parse an ABSTAIN and REINSTATE statement.
@@ -366,8 +398,8 @@ impl<'p> Parser<'p> {
             let val = try!(self.req_number(u16::MAX, &IE017));
             return Ok(Expr::Num(VType::I16, val as u32))
         }
-        if let Some(var) = try!(self.parse_var_maybe(true)) {
-            return Ok(Expr::Var(var));
+        if let Some(expr) = try!(self.parse_var_with_unop()) {
+            return Ok(expr);
         }
         if self.take(TT::RABBITEARS) {
             let expr = try!(self.parse_expr());
@@ -400,6 +432,13 @@ impl<'p> Parser<'p> {
         }
         self.stash.push(self.tokens.next().unwrap());
         true
+    }
+
+    /// Push tokens back to the source until stash is of length `state`.
+    fn backtrack(&mut self, state: usize) {
+        while self.stash.len() > state {
+            self.tokens.push(self.stash.pop().unwrap());
+        }
     }
 
     /// Require a number as next token, with bounds checking.
