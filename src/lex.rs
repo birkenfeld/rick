@@ -107,6 +107,15 @@ rustlex! RawLexer {
     let WS  = [' ' '\t']+;
     let NL  = '\n';
 
+    let PLEASEDO   = "PLEASE"  [' ' '\t']* "DO";
+    let COMEFROM   = "COME"    [' ' '\t']* "FROM";
+    let READOUT    = "READ"    [' ' '\t']* "OUT";
+    let WRITEIN    = "WRITE"   [' ' '\t']* "IN";
+    let GIVEUP     = "GIVE"    [' ' '\t']* "UP";
+    let COMINGFROM = "COMING"  [' ' '\t']* "FROM";
+    let READINGOUT = "READING" [' ' '\t']* "OUT";
+    let WRITINGIN  = "WRITING" [' ' '\t']* "IN";
+
     ANY            => |l: Lx<R>| l.tok(TT::UNKNOWN)
     NUM            => |l: Lx<R>| { let s = l.yystr();
                                    l.tok(s.parse().map(TT::NUMBER)
@@ -117,7 +126,7 @@ rustlex! RawLexer {
     '('            => |l: Lx<R>| l.tok(TT::WAX)
     ')'            => |l: Lx<R>| l.tok(TT::WANE)
     "PLEASE"       => |l: Lx<R>| l.tok(TT::PLEASEDO)
-    "PLEASE DO"    => |l: Lx<R>| l.tok(TT::PLEASEDO)
+    PLEASEDO       => |l: Lx<R>| l.tok(TT::PLEASEDO)
     "DO"           => |l: Lx<R>| l.tok(TT::DO)
     "NOT"          => |l: Lx<R>| l.tok(TT::NOT)
     "N'T"          => |l: Lx<R>| l.tok(TT::NOT)
@@ -131,10 +140,10 @@ rustlex! RawLexer {
     "RETRIEVE"     => |l: Lx<R>| l.tok(TT::RETRIEVE)
     "ABSTAIN FROM" => |l: Lx<R>| l.tok(TT::ABSTAIN)
     "REINSTATE"    => |l: Lx<R>| l.tok(TT::REINSTATE)
-    "COME FROM"    => |l: Lx<R>| l.tok(TT::COMEFROM)
-    "READ OUT"     => |l: Lx<R>| l.tok(TT::READOUT)
-    "WRITE IN"     => |l: Lx<R>| l.tok(TT::WRITEIN)
-    "GIVE UP"      => |l: Lx<R>| l.tok(TT::GIVEUP)
+    COMEFROM       => |l: Lx<R>| l.tok(TT::COMEFROM)
+    READOUT        => |l: Lx<R>| l.tok(TT::READOUT)
+    WRITEIN        => |l: Lx<R>| l.tok(TT::WRITEIN)
+    GIVEUP         => |l: Lx<R>| l.tok(TT::GIVEUP)
 
     "CALCULATING"  => |l: Lx<R>| l.tok(TT::CALCULATING)
     "NEXTING"      => |l: Lx<R>| l.tok(TT::NEXTING)
@@ -146,9 +155,9 @@ rustlex! RawLexer {
     "RETRIEVING"   => |l: Lx<R>| l.tok(TT::RETRIEVING)
     "ABSTAINING"   => |l: Lx<R>| l.tok(TT::ABSTAINING)
     "REINSTATING"  => |l: Lx<R>| l.tok(TT::REINSTATING)
-    "COMING FROM"  => |l: Lx<R>| l.tok(TT::COMINGFROM)
-    "READING OUT"  => |l: Lx<R>| l.tok(TT::READINGOUT)
-    "WRITING IN"   => |l: Lx<R>| l.tok(TT::WRITINGIN)
+    COMINGFROM     => |l: Lx<R>| l.tok(TT::COMINGFROM)
+    READINGOUT     => |l: Lx<R>| l.tok(TT::READINGOUT)
+    WRITINGIN      => |l: Lx<R>| l.tok(TT::WRITINGIN)
 
     '.'            => |l: Lx<R>| l.tok(TT::SPOT)
     ':'            => |l: Lx<R>| l.tok(TT::TWOSPOT)
