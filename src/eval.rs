@@ -171,6 +171,7 @@ impl<'a> Eval<'a> {
     /// Process a single statement.
     fn eval_stmt(&mut self, stmt: &Stmt) -> Res<StmtRes> {
         if self.debug {
+            self.dump_state();
             println!("{}", stmt);
         }
         match stmt.body {
@@ -478,5 +479,25 @@ impl<'a> Eval<'a> {
             Var::A32(n, _) => self.hybrid[n].writein(state),
             _ => unimplemented!()
         }
+    }
+
+    /// Debug helper.
+    fn dump_state(&self) {
+        for (i, v) in self.spot.iter().enumerate() {
+            print!(".{} = {}, ", i, v);
+        }
+        println!("");
+        for (i, v) in self.twospot.iter().enumerate() {
+            print!(":{} = {}, ", i, v);
+        }
+        println!("");
+        for (i, v) in self.hybrid.iter().enumerate() {
+            print!(",{} = {}, ", i, v);
+        }
+        println!("");
+        for (i, v) in self.tail.iter().enumerate() {
+            print!(";{} = {}, ", i, v);
+        }
+        println!("");
     }
 }

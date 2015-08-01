@@ -17,6 +17,7 @@
 
 #![rick_embed_module_code]
 
+use std::fmt::{ Debug, Display, Error, Formatter };
 use std::fs::File;
 use std::io::{ BufRead, Read, Write, stdin };
 use std::mem;
@@ -25,7 +26,7 @@ use std::{ u16, u32 };
 
 use err::{ Res, IE240, IE241, IE436, IE533, IE562, IE579, IE621, IE632 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Array<T> {
     pub dims: Vec<usize>,
     pub elems: Vec<T>,
@@ -43,7 +44,7 @@ impl<T: Clone + Default> Array<T> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Bind<T> {
     pub val: T,
     pub stack: Vec<T>,
@@ -194,6 +195,25 @@ impl<T: LikeU16 + Default> Bind<Array<T>> {
             }
         }
         Ok(())
+    }
+}
+
+impl<T: Debug + Display> Display for Bind<T> {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        try!(write!(fmt, "{}", self.val));
+        if !self.rw {
+            try!(write!(fmt, " RO"));
+        }
+        if self.stack.len() > 0 {
+            try!(write!(fmt, " STACK={:?}", self.stack));
+        }
+        Ok(())
+    }
+}
+
+impl<T: Debug> Display for Array<T> {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        write!(fmt, "{:?}", self.elems)
     }
 }
 
