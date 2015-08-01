@@ -110,7 +110,7 @@ fn main() {
 
     // parse source
     let t0 = time::get_time();
-    let mut program = match Parser::new(&code).get_program() {
+    let mut program = match Parser::new(&code, 1).get_program() {
         Ok(program) => {
             if debug_flag {
                 println!("Parsed program:\n{}", program);

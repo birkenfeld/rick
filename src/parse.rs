@@ -37,15 +37,19 @@ pub struct Parser<'p> {
     lines:  Vec<String>,
     tokens: Lexer<Cursor<&'p [u8]>>,
     stash:  Vec<TT>,  // used for backtracking
+    startline: usize,
 }
 
 
 impl<'p> Parser<'p> {
-    pub fn new(code: &Vec<u8>) -> Parser {
+    pub fn new(code: &Vec<u8>, startline: usize) -> Parser {
         let cursor1 = Cursor::new(&code[..]);
         let lines = BufReader::new(cursor1).lines().map(|v| v.unwrap()).collect();
         let cursor2 = Cursor::new(&code[..]);
-        Parser { lines: lines, tokens: lex(cursor2), stash: Vec::new() }
+        Parser { lines: lines,
+                 tokens: lex(cursor2, startline),
+                 stash: Vec::new(),
+                 startline: startline }
     }
 
     /// Parse the whole file as a program.
@@ -79,7 +83,7 @@ impl<'p> Parser<'p> {
             // a "soft" error: thrown at runtime as E000
             Err(DecodeError::Soft(srcline)) => {
                 let body = StmtBody::Error(
-                    IE000.new(Some(self.lines[srcline - 1].clone()), srcline));
+                    IE000.new(Some(self.lines[srcline - self.startline].clone()), srcline));
                 // jump over tokens until the next statement beginning
                 loop {
                     match self.tokens.peek() {
@@ -498,7 +502,7 @@ impl<'p> Parser<'p> {
         }
         if need_syslib {
             let code = syslib::SYSLIB_CODE.to_vec();
-            let mut p = Parser::new(&code);
+            let mut p = Parser::new(&code, self.tokens.lineno());
             let mut syslib_stmts = p.parse().unwrap();
             stmts.append(&mut syslib_stmts);
             *added = true;

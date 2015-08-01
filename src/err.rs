@@ -50,8 +50,8 @@ impl RtError {
             Some(s) => String::from(s),
             None => format!("ON THE WAY TO {}", self.lineno + 1),
         };
-        format!("ICL{:03}I {}\n\t{}\
-                 \n\tCORRECT SOURCE AND RESUBNIT\n",
+        format!("ICL{:03}I\t{}\n\t{}\
+                 \n        CORRECT SOURCE AND RESUBNIT",
                 self.error.num, msg, lineno)
     }
 

@@ -241,7 +241,8 @@ impl<R: Read> Lexer<R> {
     }
 }
 
-pub fn lex<R: Read>(reader: R) -> Lexer<R> {
-    let raw = RawLexer::new(reader);
+pub fn lex<R: Read>(reader: R, startline: usize) -> Lexer<R> {
+    let mut raw = RawLexer::new(reader);
+    raw.line = startline;
     Lexer { inner: raw, stash: vec![], line: 1 }
 }
