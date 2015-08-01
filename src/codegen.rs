@@ -366,7 +366,7 @@ impl Generator {
                 } else {
                     w!(self.o; "try!(check_ovf(");
                     try!(self.gen_eval(vx, ""));
-                    w!(self.o; ", {}))", self.line)
+                    w!(self.o; ", {}))", self.line);
                 }
                 w!(self.o; ", ");
                 if let box Expr::Num(_, n) = *wx {
@@ -377,15 +377,21 @@ impl Generator {
                 } else {
                     w!(self.o; "try!(check_ovf(");
                     try!(self.gen_eval(wx, ""));
-                    w!(self.o; ", {}))", self.line)
+                    w!(self.o; ", {}))", self.line);
                 }
                 w!(self.o; "){}", astype);
             }
-            Expr::Select(ref vx, ref wx) => {
+            Expr::Select(vtype, ref vx, ref wx) => {
                 w!(self.o; "select(");
                 try!(self.gen_eval(vx, ""));
                 w!(self.o; ", ");
-                try!(self.gen_eval(wx, ""));
+                if vtype == VType::I16 {
+                    w!(self.o; "try!(check_ovf(");
+                    try!(self.gen_eval(wx, ""));
+                    w!(self.o; ", {}))", self.line);
+                } else {
+                    try!(self.gen_eval(wx, ""));
+                }
                 w!(self.o; "){}", astype);
             }
             Expr::And(vtype, ref vx) => {

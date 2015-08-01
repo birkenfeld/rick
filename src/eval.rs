@@ -294,10 +294,14 @@ impl<'a> Eval<'a> {
                 let w = try!(check_ovf(w, 0));
                 Ok(Val::I32(mingle(v, w)))
             }
-            Expr::Select(ref vx, ref wx) => {
+            Expr::Select(vtype, ref vx, ref wx) => {
                 let v = try!(self.eval_expr(vx));
                 let w = try!(self.eval_expr(wx));
-                Ok(Val::I32(select(v.as_u32(), w.as_u32())))
+                if vtype == VType::I16 {
+                    Ok(Val::I16(select(v.as_u32(), try!(w.as_u16()) as u32) as u16))
+                } else {
+                    Ok(Val::I32(select(v.as_u32(), w.as_u32())))
+                }
             }
             Expr::And(_, ref vx) => {
                 match try!(self.eval_expr(vx)) {

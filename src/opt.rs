@@ -77,7 +77,7 @@ impl Optimizer {
                     }
                 }
             }
-            Expr::Select(ref mut vx, ref mut wx) => {
+            Expr::Select(_, ref mut vx, ref mut wx) => {
                 Optimizer::fold(vx);
                 Optimizer::fold(wx);
                 if let box Expr::Num(_, v) = *vx {
@@ -139,7 +139,7 @@ impl Optimizer {
         //println!("optimizing {}", expr);
         let mut result = None;
         match *expr {
-            Expr::Select(ref mut vx, ref mut wx) => {
+            Expr::Select(_, ref mut vx, ref mut wx) => {
                 Optimizer::opt_expr(vx);
                 Optimizer::opt_expr(wx);
                 match *wx {
@@ -186,28 +186,28 @@ impl Optimizer {
                 Optimizer::opt_expr(wx);
                 // (x ~ 0xA..A) OP (y ~ 0xA..A) $ (x ~ 0x5..5) OP (y ~ 0x5..5)
                 // -> (x OP y) in 32-bit
-                if let box Expr::RsAnd(box Expr::Select(ref ax, box Expr::Num(_, 0xAAAAAAAA)),
-                                       box Expr::Select(ref bx, box Expr::Num(_, 0xAAAAAAAA))) = *vx {
-                    if let box Expr::RsAnd(box Expr::Select(ref cx, box Expr::Num(_, 0x55555555)),
-                                           box Expr::Select(ref dx, box Expr::Num(_, 0x55555555))) = *wx {
+                if let box Expr::RsAnd(box Expr::Select(_, ref ax, box Expr::Num(_, 0xAAAAAAAA)),
+                                       box Expr::Select(_, ref bx, box Expr::Num(_, 0xAAAAAAAA))) = *vx {
+                    if let box Expr::RsAnd(box Expr::Select(_, ref cx, box Expr::Num(_, 0x55555555)),
+                                           box Expr::Select(_, ref dx, box Expr::Num(_, 0x55555555))) = *wx {
                         if *ax == *cx && *bx == *dx {
                             result = Some(Expr::RsAnd(ax.clone(), bx.clone()));
                         }
                     }
                 }
-                if let box Expr::RsOr(box Expr::Select(ref ax, box Expr::Num(_, 0xAAAAAAAA)),
-                                      box Expr::Select(ref bx, box Expr::Num(_, 0xAAAAAAAA))) = *vx {
-                    if let box Expr::RsOr(box Expr::Select(ref cx, box Expr::Num(_, 0x55555555)),
-                                          box Expr::Select(ref dx, box Expr::Num(_, 0x55555555))) = *wx {
+                if let box Expr::RsOr(box Expr::Select(_, ref ax, box Expr::Num(_, 0xAAAAAAAA)),
+                                      box Expr::Select(_, ref bx, box Expr::Num(_, 0xAAAAAAAA))) = *vx {
+                    if let box Expr::RsOr(box Expr::Select(_, ref cx, box Expr::Num(_, 0x55555555)),
+                                          box Expr::Select(_, ref dx, box Expr::Num(_, 0x55555555))) = *wx {
                         if *ax == *cx && *bx == *dx {
                             result = Some(Expr::RsOr(ax.clone(), bx.clone()));
                         }
                     }
                 }
-                if let box Expr::RsXor(box Expr::Select(ref ax, box Expr::Num(_, 0xAAAAAAAA)),
-                                       box Expr::Select(ref bx, box Expr::Num(_, 0xAAAAAAAA))) = *vx {
-                    if let box Expr::RsXor(box Expr::Select(ref cx, box Expr::Num(_, 0x55555555)),
-                                           box Expr::Select(ref dx, box Expr::Num(_, 0x55555555))) = *wx {
+                if let box Expr::RsXor(box Expr::Select(_, ref ax, box Expr::Num(_, 0xAAAAAAAA)),
+                                       box Expr::Select(_, ref bx, box Expr::Num(_, 0xAAAAAAAA))) = *vx {
+                    if let box Expr::RsXor(box Expr::Select(_, ref cx, box Expr::Num(_, 0x55555555)),
+                                           box Expr::Select(_, ref dx, box Expr::Num(_, 0x55555555))) = *wx {
                         if *ax == *cx && *bx == *dx {
                             result = Some(Expr::RsXor(ax.clone(), bx.clone()));
                         }
@@ -215,27 +215,27 @@ impl Optimizer {
                 }
                 // (x ~ 0xA..A) OP y1 $ (x ~ 0x5..5) OP y2
                 // -> (x OP (y1 << 16 | y2)) in 32-bit
-                if let box Expr::RsAnd(box Expr::Select(ref ax, box Expr::Num(_, 0xAAAAAAAA)),
+                if let box Expr::RsAnd(box Expr::Select(_, ref ax, box Expr::Num(_, 0xAAAAAAAA)),
                                        box Expr::Num(_, bn)) = *vx {
-                    if let box Expr::RsAnd(box Expr::Select(ref cx, box Expr::Num(_, 0x55555555)),
+                    if let box Expr::RsAnd(box Expr::Select(_, ref cx, box Expr::Num(_, 0x55555555)),
                                            box Expr::Num(_, dn)) = *wx {
                         if *ax == *cx {
                             result = Some(Expr::RsAnd(ax.clone(), n((bn << 16) | dn)));
                         }
                     }
                 }
-                if let box Expr::RsOr(box Expr::Select(ref ax, box Expr::Num(_, 0xAAAAAAAA)),
+                if let box Expr::RsOr(box Expr::Select(_, ref ax, box Expr::Num(_, 0xAAAAAAAA)),
                                        box Expr::Num(_, bn)) = *vx {
-                    if let box Expr::RsOr(box Expr::Select(ref cx, box Expr::Num(_, 0x55555555)),
+                    if let box Expr::RsOr(box Expr::Select(_, ref cx, box Expr::Num(_, 0x55555555)),
                                            box Expr::Num(_, dn)) = *wx {
                         if *ax == *cx {
                             result = Some(Expr::RsOr(ax.clone(), n((bn << 16) | dn)));
                         }
                     }
                 }
-                if let box Expr::RsXor(box Expr::Select(ref ax, box Expr::Num(_, 0xAAAAAAAA)),
+                if let box Expr::RsXor(box Expr::Select(_, ref ax, box Expr::Num(_, 0xAAAAAAAA)),
                                        box Expr::Num(_, bn)) = *vx {
-                    if let box Expr::RsXor(box Expr::Select(ref cx, box Expr::Num(_, 0x55555555)),
+                    if let box Expr::RsXor(box Expr::Select(_, ref cx, box Expr::Num(_, 0x55555555)),
                                            box Expr::Num(_, dn)) = *wx {
                         if *ax == *cx {
                             result = Some(Expr::RsXor(ax.clone(), n((bn << 16) | dn)));
@@ -259,7 +259,7 @@ impl Optimizer {
                 Optimizer::opt_expr(vx);
                 Optimizer::opt_expr(wx);
                 // (x ~ x) & 1  ->  x != 0
-                if let box Expr::Select(ref sx, ref tx) = *vx {
+                if let box Expr::Select(_, ref sx, ref tx) = *vx {
                     if *sx == *tx {
                         if let box Expr::Num(_, 1) = *wx {
                             result = Some(Expr::RsNotEqual(sx.clone(), n(0)));

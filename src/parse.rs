@@ -356,7 +356,7 @@ impl<'p> Parser<'p> {
         }
         if self.take(TT::SQUIGGLE) {
             let right = try!(self.parse_expr2());
-            return Ok(Expr::Select(box left, box right));
+            return Ok(Expr::Select(right.get_vtype(), box left, box right));
         }
         return Ok(left);
     }
@@ -499,7 +499,7 @@ impl<'p> Parser<'p> {
                 Expr::Xor(_, ref mut e) |
                 Expr::RsNot(ref mut e) => walk_expr(e, visitor),
                 Expr::Mingle(ref mut e, ref mut e2) |
-                Expr::Select(ref mut e, ref mut e2) |
+                Expr::Select(_, ref mut e, ref mut e2) |
                 Expr::RsAnd(ref mut e, ref mut e2) |
                 Expr::RsOr(ref mut e, ref mut e2) |
                 Expr::RsXor(ref mut e, ref mut e2) |

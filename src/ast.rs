@@ -92,7 +92,7 @@ pub enum Expr {
     Num(VType, u32),
     Var(Var),
     Mingle(Box<Expr>, Box<Expr>),
-    Select(Box<Expr>, Box<Expr>),
+    Select(VType, Box<Expr>, Box<Expr>),
     And(VType, Box<Expr>),
     Or(VType, Box<Expr>),
     Xor(VType, Box<Expr>),
@@ -194,7 +194,8 @@ impl Expr {
         match *self {
             Expr::Num(vtype, _) => vtype,
             Expr::And(vtype, _) | Expr::Or(vtype, _) | Expr::Xor(vtype, _) => vtype,
-            Expr::Select(..) | Expr::Mingle(..) => VType::I32,
+            Expr::Select(vtype, _, _) => vtype,
+            Expr::Mingle(..) => VType::I32,
             Expr::RsAnd(..) | Expr::RsOr(..) | Expr::RsXor(..) |
             Expr::RsNot(..) | Expr::RsRshift(..) | Expr::RsLshift(..) |
             Expr::RsNotEqual(..) | Expr::RsMinus(..) |
@@ -351,7 +352,7 @@ impl Display for Expr {
             Expr::Num(_, ref n) => write!(fmt, "#{:X}", n),
             Expr::Var(ref v) => v.fmt(fmt),
             Expr::Mingle(ref x, ref y) => write!(fmt, "({} $ {})", x, y),
-            Expr::Select(ref x, ref y) => write!(fmt, "({} ~ {})", x, y),
+            Expr::Select(_, ref x, ref y) => write!(fmt, "({} ~ {})", x, y),
             Expr::And(t, ref x) => write!(fmt, "&{} {}",
                                           if t == VType::I16 { "16" } else { "32" }, x),
             Expr::Or(t, ref x) => write!(fmt, "V{} {}",
