@@ -78,7 +78,7 @@ impl Generator {
         try!(self.gen_attrs());
         try!(self.gen_stdmods());
         try!(self.gen_header());
-        try!(self.gen_program_vars(&*program));
+        try!(self.gen_program_vars());
         try!(self.gen_loop_header());
         for (i, stmt) in program.stmts.iter().enumerate() {
             try!(self.gen_stmt_wrap(i, stmt));
@@ -493,7 +493,7 @@ impl Generator {
         Ok(())
     }
 
-    fn gen_program_vars(&mut self, program: &Program) -> WRes {
+    fn gen_program_vars(&mut self) -> WRes {
         let vars = &self.program.var_info;
         w!(self.o, 4; "let mut pctr: usize = 0;");
         w!(self.o, 4; "let mut stdout = std::io::stdout();");
@@ -513,7 +513,7 @@ impl Generator {
             w!(self.o, 4; "let mut b{}: Bind<Array<u32>> = Bind::new(Array::empty());", i);
         }
         w!(self.o, 4; "let mut abstain = [");
-        for stmt in &program.stmts {
+        for stmt in &self.program.stmts {
             w!(self.o, 8; "{},", if stmt.props.disabled { "true" } else { "false" });
         }
         w!(self.o, 4; "];");
