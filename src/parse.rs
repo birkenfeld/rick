@@ -505,7 +505,7 @@ impl<'p> Parser<'p> {
                 Expr::RsXor(ref mut e, ref mut e2) |
                 Expr::RsRshift(ref mut e, ref mut e2) |
                 Expr::RsLshift(ref mut e, ref mut e2) |
-                Expr::RsEqual(ref mut e, ref mut e2) |
+                // Expr::RsEqual(ref mut e, ref mut e2) |
                 Expr::RsNotEqual(ref mut e, ref mut e2) |
                 Expr::RsPlus(ref mut e, ref mut e2) |
                 Expr::RsMinus(ref mut e, ref mut e2) => {

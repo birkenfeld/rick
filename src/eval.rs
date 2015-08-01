@@ -343,11 +343,11 @@ impl<'a> Eval<'a> {
                 let w = try!(self.eval_expr(wx));
                 Ok(Val::I32(v.as_u32() << w.as_u32()))
             }
-            Expr::RsEqual(ref vx, ref wx) => {
-                let v = try!(self.eval_expr(vx));
-                let w = try!(self.eval_expr(wx));
-                Ok(Val::I32((v.as_u32() == w.as_u32()) as u32))
-            }
+            // Expr::RsEqual(ref vx, ref wx) => {
+            //     let v = try!(self.eval_expr(vx));
+            //     let w = try!(self.eval_expr(wx));
+            //     Ok(Val::I32((v.as_u32() == w.as_u32()) as u32))
+            // }
             Expr::RsNotEqual(ref vx, ref wx) => {
                 let v = try!(self.eval_expr(vx));
                 let w = try!(self.eval_expr(wx));

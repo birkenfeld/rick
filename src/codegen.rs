@@ -422,8 +422,8 @@ impl Generator {
             Expr::RsXor(ref vx, ref wx) => try!(self.gen_binop(vx, wx, "^", astype)),
             Expr::RsRshift(ref vx, ref wx) => try!(self.gen_binop(vx, wx, ">>", astype)),
             Expr::RsLshift(ref vx, ref wx) => try!(self.gen_binop_extrapar(vx, wx, "<<", astype)),
-            Expr::RsEqual(ref vx, ref wx) => try!(self.gen_binop(
-                vx, wx, "==", if astype == "" { " as u32" } else { astype })),
+            // Expr::RsEqual(ref vx, ref wx) => try!(self.gen_binop(
+            //     vx, wx, "==", if astype == "" { " as u32" } else { astype })),
             Expr::RsNotEqual(ref vx, ref wx) => try!(self.gen_binop(
                 vx, wx, "!=", if astype == "" { " as u32" } else { astype })),
             Expr::RsPlus(ref vx, ref wx) => try!(self.gen_binop(vx, wx, "+", astype)),

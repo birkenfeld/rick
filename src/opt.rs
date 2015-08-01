@@ -124,7 +124,7 @@ impl Optimizer {
     /// Optimize expressions.
     pub fn opt_expressions(mut program: Program) -> Program {
         for stmt in &mut program.stmts {
-            println!("\n\n{}", stmt.props.srcline);
+            //println!("\n\n{}", stmt.props.srcline);
             match stmt.body {
                 StmtBody::Calc(_, ref mut expr) => Optimizer::opt_expr(expr),
                 StmtBody::Resume(ref mut expr)  => Optimizer::opt_expr(expr),
@@ -136,7 +136,7 @@ impl Optimizer {
     }
 
     fn opt_expr(expr: &mut Expr) {
-        println!("{}", expr);
+        //println!("optimizing {}", expr);
         let mut result = None;
         match *expr {
             Expr::Select(ref mut vx, ref mut wx) => {
@@ -260,7 +260,6 @@ impl Optimizer {
                 Optimizer::opt_expr(wx);
                 // (x ~ x) & 1  ->  x != 0
                 if let box Expr::Select(ref sx, ref tx) = *vx {
-                    println!("{} # {} # {}", sx, tx, *sx == *tx);
                     if *sx == *tx {
                         if let box Expr::Num(_, 1) = *wx {
                             result = Some(Expr::RsNotEqual(sx.clone(), n(0)));
@@ -330,7 +329,7 @@ impl Optimizer {
             Expr::RsOr(ref mut vx, ref mut wx) |
             Expr::RsRshift(ref mut vx, ref mut wx) |
             Expr::RsLshift(ref mut vx, ref mut wx) |
-            Expr::RsEqual(ref mut vx, ref mut wx) |
+            // Expr::RsEqual(ref mut vx, ref mut wx) |
             Expr::RsNotEqual(ref mut vx, ref mut wx) |
             Expr::RsMinus(ref mut vx, ref mut wx) |
             Expr::RsPlus(ref mut vx, ref mut wx) => {

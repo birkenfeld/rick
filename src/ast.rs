@@ -103,7 +103,7 @@ pub enum Expr {
     RsXor(Box<Expr>, Box<Expr>),
     RsRshift(Box<Expr>, Box<Expr>),
     RsLshift(Box<Expr>, Box<Expr>),
-    RsEqual(Box<Expr>, Box<Expr>),
+    // RsEqual(Box<Expr>, Box<Expr>),
     RsNotEqual(Box<Expr>, Box<Expr>),
     RsPlus(Box<Expr>, Box<Expr>),
     RsMinus(Box<Expr>, Box<Expr>),
@@ -197,7 +197,7 @@ impl Expr {
             Expr::Select(..) | Expr::Mingle(..) => VType::I32,
             Expr::RsAnd(..) | Expr::RsOr(..) | Expr::RsXor(..) |
             Expr::RsNot(..) | Expr::RsRshift(..) | Expr::RsLshift(..) |
-            Expr::RsEqual(..) | Expr::RsNotEqual(..) | Expr::RsMinus(..) |
+            Expr::RsNotEqual(..) | Expr::RsMinus(..) |
             Expr::RsPlus(..) => VType::I32,
             Expr::Var(ref v) => v.get_vtype(),
         }
@@ -362,7 +362,7 @@ impl Display for Expr {
             Expr::RsXor(ref x, ref y) => write!(fmt, "({} ^ {})", x, y),
             Expr::RsRshift(ref x, ref y) => write!(fmt, "({} >> {})", x, y),
             Expr::RsLshift(ref x, ref y) => write!(fmt, "({} << {})", x, y),
-            Expr::RsEqual(ref x, ref y) => write!(fmt, "({} == {})", x, y),
+            // Expr::RsEqual(ref x, ref y) => write!(fmt, "({} == {})", x, y),
             Expr::RsNotEqual(ref x, ref y) => write!(fmt, "({} != {})", x, y),
             Expr::RsPlus(ref x, ref y) => write!(fmt, "({} + {})", x, y),
             Expr::RsMinus(ref x, ref y) => write!(fmt, "({} - {})", x, y),
