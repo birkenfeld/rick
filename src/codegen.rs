@@ -429,7 +429,7 @@ use std::u16;
 
 use stdops::*;
 
-#[allow(unused_mut)]
+#[allow(unused_mut, unused_variables)]
 fn main_inner() -> err::Res<()> {
     seed_chance();")
     }
