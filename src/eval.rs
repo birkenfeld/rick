@@ -340,11 +340,11 @@ impl<'a> Eval<'a> {
             Var::I32(n) => Ok(self.twospot[n].assign(val.as_u32())),
             Var::A16(n, ref subs) => {
                 let subs = try!(self.eval_subs(subs));
-                self.tail[n].arr_assign(subs, try!(val.as_u16()))
+                self.tail[n].set_md(subs, try!(val.as_u16()))
             }
             Var::A32(n, ref subs) => {
                 let subs = try!(self.eval_subs(subs));
-                self.hybrid[n].arr_assign(subs, val.as_u32())
+                self.hybrid[n].set_md(subs, val.as_u32())
             }
         }
     }
@@ -356,11 +356,11 @@ impl<'a> Eval<'a> {
             Var::I32(n) => Ok(Val::I32(self.twospot[n].val)),
             Var::A16(n, ref subs) => {
                 let subs = try!(self.eval_subs(subs));
-                self.tail[n].arr_lookup(subs).map(Val::I16)
+                self.tail[n].get_md(subs).map(Val::I16)
             }
             Var::A32(n, ref subs) => {
                 let subs = try!(self.eval_subs(subs));
-                self.hybrid[n].arr_lookup(subs).map(Val::I32)
+                self.hybrid[n].get_md(subs).map(Val::I32)
             }
         }
     }

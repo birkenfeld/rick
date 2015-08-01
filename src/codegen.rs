@@ -282,16 +282,28 @@ impl Generator {
                     v{}.assign{}(val as u16);", line, n, suffix),
             Var::I32(n) => w!(self.o, 20; "w{}.assign{}(val);", n, suffix),
             Var::A16(n, ref subs) => {
-                try!(self.gen_eval_subs(subs, line));
                 w!(self.o; "
                     if val > (std::u16::MAX as u32) {{
                         return err::IE275.err_with(None, {});
-                    }}
-                    try!(a{}.arr_assign{}(subs, val as u16));", line, n, suffix);
+                    }}", line);
+                if subs.len() == 1 {
+                    w!(self.o, 20; "try!(a{}.set{}(", n, suffix);
+                    try!(self.gen_eval(&subs[0], " as usize", line));
+                    w!(self.o; ", val as u16));");
+                } else {
+                    try!(self.gen_eval_subs(subs, line));
+                    w!(self.o, 20; "try!(a{}.set_md{}(subs, val as u16));", n, suffix);
+                }
             }
             Var::A32(n, ref subs) => {
-                try!(self.gen_eval_subs(subs, line));
-                w!(self.o, 20; "try!(b{}.arr_assign{}(subs, val));", n, suffix);
+                if subs.len() == 1 {
+                    w!(self.o, 20; "try!(b{}.set{}(", n, suffix);
+                    try!(self.gen_eval(&subs[0], " as usize", line));
+                    w!(self.o; ", val));");
+                } else {
+                    try!(self.gen_eval_subs(subs, line));
+                    w!(self.o, 20; "try!(b{}.set_md{}(subs, val));", n, suffix);
+                }
             }
         }
         Ok(())
@@ -313,86 +325,137 @@ impl Generator {
 
     fn gen_eval_expr(&mut self, expr: &Expr, line: SrcLine) -> WRes {
         w!(self.o, 20; "let val = ");
-        try!(self.gen_eval(expr, line));
+        try!(self.gen_eval(expr, "", line));
         w!(self.o; ";");
         Ok(())
     }
 
     fn gen_eval_subs(&mut self, exprs: &Vec<Expr>, line: SrcLine) -> WRes {
         w!(self.o, 20; "let subs = vec![");
-        for expr in exprs {
-            try!(self.gen_eval(expr, line));
-            w!(self.o; " as usize, ");
+        for (i, expr) in exprs.iter().enumerate() {
+            try!(self.gen_eval(expr, " as usize", line));
+            if i < exprs.len() - 1 {
+                w!(self.o; ", ");
+            }
         }
         w!(self.o; "]; ");
         Ok(())
     }
 
-    fn gen_eval(&mut self, expr: &Expr, line: SrcLine) -> WRes {
+    fn gen_eval(&mut self, expr: &Expr, astype: &str, line: SrcLine) -> WRes {
         match *expr {
-            Expr::Num(_, v) => w!(self.o; "{:#X}", v),
-            Expr::Var(ref var) => try!(self.gen_lookup(var, line)),
+            Expr::Num(_, v) => if v < 10 {
+                w!(self.o; "{}", v);
+            } else {
+                w!(self.o; "{:#X}", v);
+            },
+            Expr::Var(ref var) => try!(self.gen_lookup(var, astype, line)),
             Expr::Mingle(ref vx, ref wx) => {
                 w!(self.o; "mingle(try!(check_ovf(");
-                try!(self.gen_eval(vx, line));
+                try!(self.gen_eval(vx, "", line));
                 w!(self.o; ", {})), try!(check_ovf(", line);
-                try!(self.gen_eval(wx, line));
-                w!(self.o; ", {})))", line);
+                try!(self.gen_eval(wx, "", line));
+                w!(self.o; ", {}))){}", line, astype);
             }
             Expr::Select(ref vx, ref wx) => {
-                w!(self.o; "select((");
-                try!(self.gen_eval(vx, line));
-                w!(self.o; ") as u32, (");
-                try!(self.gen_eval(wx, line));
-                w!(self.o; ") as u32)");
+                w!(self.o; "select(");
+                try!(self.gen_eval(vx, "", line));
+                w!(self.o; ", ");
+                try!(self.gen_eval(wx, "", line));
+                w!(self.o; "){}", astype);
             }
             Expr::And(vtype, ref vx) => {
                 match vtype {
                     VType::I16 => w!(self.o; "and_16("),
                     VType::I32 => w!(self.o; "and_32("),
                 }
-                try!(self.gen_eval(vx, line));
-                w!(self.o; ")");
+                try!(self.gen_eval(vx, "", line));
+                w!(self.o; "){}", astype);
             }
             Expr::Or(vtype, ref vx) => {
                 match vtype {
                     VType::I16 => w!(self.o; "or_16("),
                     VType::I32 => w!(self.o; "or_32("),
                 }
-                try!(self.gen_eval(vx, line));
-                w!(self.o; ")");
+                try!(self.gen_eval(vx, "", line));
+                w!(self.o; "){}", astype);
             }
             Expr::Xor(vtype, ref vx) => {
                 match vtype {
                     VType::I16 => w!(self.o; "xor_16("),
                     VType::I32 => w!(self.o; "xor_32("),
                 }
-                try!(self.gen_eval(vx, line));
-                w!(self.o; ")");
+                try!(self.gen_eval(vx, "", line));
+                w!(self.o; "){}", astype);
+            }
+            Expr::RsAnd(ref vx, ref wx) => {
+                w!(self.o; "(");
+                try!(self.gen_eval(vx, "", line));
+                w!(self.o; " & ");
+                try!(self.gen_eval(wx, "", line));
+                w!(self.o; "){}", astype);
+            }
+            Expr::RsOr(ref vx, ref wx) => {
+                w!(self.o; "(");
+                try!(self.gen_eval(vx, "", line));
+                w!(self.o; " | ");
+                try!(self.gen_eval(wx, "", line));
+                w!(self.o; "){}", astype);
+            }
+            Expr::RsXor(ref vx, ref wx) => {
+                w!(self.o; "(");
+                try!(self.gen_eval(vx, "", line));
+                w!(self.o; " ^ ");
+                try!(self.gen_eval(wx, "", line));
+                w!(self.o; "){}", astype);
+            }
+            Expr::RsNot(ref vx) => {
+                w!(self.o; "(!");
+                try!(self.gen_eval(vx, "", line));
+                w!(self.o; "){}", astype);
             }
         }
         Ok(())
     }
 
-    fn gen_lookup(&mut self, var: &Var, line: SrcLine) -> WRes {
+    fn gen_lookup(&mut self, var: &Var, astype: &str, line: SrcLine) -> WRes {
         match *var {
-            Var::I16(n) => w!(self.o; "v{}.val as u32", n),
-            Var::I32(n) => w!(self.o; "w{}.val", n),
+            Var::I16(n) => w!(self.o; "v{}.val{}", n,
+                              if astype == "" { " as u32" } else { astype }),
+            Var::I32(n) => w!(self.o; "w{}.val{}", n, astype),
             Var::A16(n, ref subs) => {
-                w!(self.o; "try!(a{}.arr_lookup(vec![", n);
-                for expr in subs {
-                    try!(self.gen_eval(expr, line));
-                    w!(self.o; " as usize, ");
+                w!(self.o; "try!(a{}.", n);
+                if subs.len() == 1 {
+                    w!(self.o; "get(");
+                    try!(self.gen_eval(&subs[0], " as usize", line));
+                } else {
+                    w!(self.o; "get_md(vec![");
+                    for (i, expr) in subs.iter().enumerate() {
+                        try!(self.gen_eval(expr, " as usize", line));
+                        if i < subs.len() - 1 {
+                            w!(self.o; ", ");
+                        }
+                    }
+                    w!(self.o; "]");
                 }
-                w!(self.o; "])) as u32");
+                w!(self.o; ")){}", if astype == "" { " as u32" } else { astype });
             }
             Var::A32(n, ref subs) => {
-                w!(self.o; "try!(b{}.arr_lookup(vec![", n);
-                for expr in subs {
-                    try!(self.gen_eval(expr, line));
-                    w!(self.o; " as usize, ");
+                w!(self.o; "try!(b{}.", n);
+                if subs.len() == 1 {
+                    w!(self.o; "get(");
+                    try!(self.gen_eval(&subs[0], " as usize", line));
+                } else {
+                    w!(self.o; "get_md(vec![");
+                    for (i, expr) in subs.iter().enumerate() {
+                        try!(self.gen_eval(expr, " as usize", line));
+                        if i < subs.len() - 1 {
+                            w!(self.o; ", ");
+                        }
+                    }
+                    w!(self.o; "]");
                 }
-                w!(self.o; "]))");
+                w!(self.o; ")){}", astype);
             }
         }
         Ok(())
