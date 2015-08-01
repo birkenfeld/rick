@@ -177,19 +177,19 @@ impl<'p> Parser<'p> {
         } else if self.take(TT::FORGET) {
             Ok(StmtBody::Forget(try!(self.parse_expr())))
         } else if self.take(TT::IGNORE) {
-            Ok(StmtBody::Ignore(try!(self.parse_varlist())))
+            Ok(StmtBody::Ignore(try!(self.parse_varlist(false))))
         } else if self.take(TT::REMEMBER) {
-            Ok(StmtBody::Remember(try!(self.parse_varlist())))
+            Ok(StmtBody::Remember(try!(self.parse_varlist(false))))
         } else if self.take(TT::STASH) {
-            Ok(StmtBody::Stash(try!(self.parse_varlist())))
+            Ok(StmtBody::Stash(try!(self.parse_varlist(false))))
         } else if self.take(TT::RETRIEVE) {
-            Ok(StmtBody::Retrieve(try!(self.parse_varlist())))
+            Ok(StmtBody::Retrieve(try!(self.parse_varlist(false))))
         } else if self.take(TT::ABSTAIN) {
             Ok(StmtBody::Abstain(try!(self.parse_abstain())))
         } else if self.take(TT::REINSTATE) {
             Ok(StmtBody::Reinstate(try!(self.parse_abstain())))
         } else if self.take(TT::WRITEIN) {
-            Ok(StmtBody::WriteIn(try!(self.parse_var(true))))
+            Ok(StmtBody::WriteIn(try!(self.parse_varlist(true))))
         } else if self.take(TT::READOUT) {
             Ok(StmtBody::ReadOut(try!(self.parse_readlist())))
         } else if self.take(TT::GIVEUP) {
@@ -271,11 +271,11 @@ impl<'p> Parser<'p> {
     }
 
     /// Parse a list of variables separated by + (without subscripts).
-    fn parse_varlist(&mut self) -> ParseRes<Vec<Var>> {
+    fn parse_varlist(&mut self, subs_allowed: bool) -> ParseRes<Vec<Var>> {
         let mut res = Vec::new();
-        res.push(try!(self.parse_var(false)));
+        res.push(try!(self.parse_var(subs_allowed)));
         while self.take(TT::INTERSECTION) {
-            res.push(try!(self.parse_var(false)));
+            res.push(try!(self.parse_var(subs_allowed)));
         }
         Ok(res)
     }
@@ -590,13 +590,11 @@ impl<'p> Parser<'p> {
             StmtBody::Ignore(ref mut vs) |
             StmtBody::Remember(ref mut vs) |
             StmtBody::Stash(ref mut vs) |
-            StmtBody::Retrieve(ref mut vs) => {
+            StmtBody::Retrieve(ref mut vs) |
+            StmtBody::WriteIn(ref mut vs) => {
                 for v in vs {
                     walk_var(v, visitor);
                 }
-            }
-            StmtBody::WriteIn(ref mut v) => {
-                walk_var(v, visitor);
             }
             StmtBody::ReadOut(ref mut es) => {
                 for e in es {

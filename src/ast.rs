@@ -70,7 +70,7 @@ pub enum StmtBody {
     Retrieve(Vec<Var>),
     Abstain(Vec<Abstain>),
     Reinstate(Vec<Abstain>),
-    WriteIn(Var),
+    WriteIn(Vec<Var>),
     ReadOut(Vec<Expr>),
     GiveUp,
     // only used after optimizing
@@ -315,7 +315,7 @@ impl Display for StmtBody {
             StmtBody::Retrieve(ref vars) => write!(fmt, "RETRIEVE {}", self.fmt_pluslist(vars)),
             StmtBody::Abstain(ref whats) => write!(fmt, "ABSTAIN FROM {}", self.fmt_pluslist(whats)),
             StmtBody::Reinstate(ref whats) => write!(fmt, "REINSTATE {}", self.fmt_pluslist(whats)),
-            StmtBody::WriteIn(ref var) => write!(fmt, "WRITE IN {}", var),
+            StmtBody::WriteIn(ref vars) => write!(fmt, "WRITE IN {}", self.fmt_pluslist(vars)),
             StmtBody::ReadOut(ref vars) => write!(fmt, "READ OUT {}", self.fmt_pluslist(vars)),
             StmtBody::GiveUp => write!(fmt, "GIVE UP"),
             StmtBody::Print(_) => write!(fmt, "<PRINT>"),

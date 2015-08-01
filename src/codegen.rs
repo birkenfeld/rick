@@ -246,13 +246,15 @@ impl Generator {
                     };
                 }
             }
-            StmtBody::WriteIn(ref var) => {
-                if var.is_dim() {
-                    w!(self.o, 20; "try!({}.writein(&mut last_in));",
-                       Generator::get_varname(var));
-                } else {
-                    w!(self.o, 20; "let val = try!(read_number());");
-                    try!(self.gen_assign(var));
+            StmtBody::WriteIn(ref vars) => {
+                for var in vars {
+                    if var.is_dim() {
+                        w!(self.o, 20; "try!({}.writein(&mut last_in));",
+                           Generator::get_varname(var));
+                    } else {
+                        w!(self.o, 20; "let val = try!(read_number());");
+                        try!(self.gen_assign(var));
+                    }
                 }
             }
             StmtBody::Print(ref s) => {

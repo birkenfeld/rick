@@ -261,12 +261,14 @@ impl<'a> Eval<'a> {
                 }
                 Ok(StmtRes::Next)
             }
-            StmtBody::WriteIn(ref var) => {
-                if var.is_dim() {
-                    try!(self.array_writein(var));
-                } else {
-                    let n = try!(read_number());
-                    try!(self.assign(var, Val::from_u32(n)));
+            StmtBody::WriteIn(ref vars) => {
+                for var in vars {
+                    if var.is_dim() {
+                        try!(self.array_writein(var));
+                    } else {
+                        let n = try!(read_number());
+                        try!(self.assign(var, Val::from_u32(n)));
+                    }
                 }
                 Ok(StmtRes::Next)
             }
