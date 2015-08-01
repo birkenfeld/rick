@@ -158,9 +158,12 @@ impl<'a> Eval<'a> {
             // check for COME FROMs from this line
             if let Some(next) = self.program.stmts[pctr].comefrom {
                 // check for abstained COME FROM
-                if !self.abstain[next as usize] {
-                    pctr = next as usize;
-                    continue;
+                let next = next as usize;
+                if !self.abstain[next] {
+                    if check_chance(program.stmts[next].props.chance) {
+                        pctr = next;
+                        continue;
+                    }
                 }
             }
             // no COME FROM, normal execution

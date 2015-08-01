@@ -131,12 +131,17 @@ impl Generator {
         w!(self.o, 16; "}}");
         // COME FROM check
         if let Some(next) = stmt.comefrom {
-            w!(self.o; "
-                // COME FROM
-                if !abstain[{}] {{
-                    pctr = {};
-                    continue;
-                }}", next, next);
+            let chance = self.program.stmts[next as usize].props.chance;
+            w!(self.o, 16; "if !abstain[{}] {{   // COME FROM", next);
+            if chance < 100 {
+                w!(self.o, 18; "if check_chance({}) {{", chance);
+            }
+            w!(self.o, 20; "pctr = {};", next);
+            w!(self.o, 20; "continue;");
+            if chance < 100 {
+                w!(self.o, 18; "}}");
+            }
+            w!(self.o, 16; "}}");
         }
         // end of match arm
         w!(self.o, 16; "pctr += 1;");  // different from i + 1 after Resume
@@ -187,6 +192,7 @@ impl Generator {
                    try!(pop_jumps(&mut jumps, val, true)).unwrap();");
                 w!(self.o, 20; "if let Some(next) = comefrom {{
                         if !abstain[next] {{
+                            // XXX: chance check missing here
                             pctr = next;
                             continue;
                         }}
