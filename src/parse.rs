@@ -302,39 +302,44 @@ impl<'p> Parser<'p> {
     }
 
     /// Maybe parse a variable reference with maybe inline unary op [.:,;] OP N {SUB X}.
-    fn parse_var_with_unop(&mut self) -> ParseRes<Option<Expr>> {
-        fn parse_constr(self_: &mut Parser) -> Box<Fn(Var) -> Expr> {
+    fn parse_item_with_unop(&mut self) -> ParseRes<Option<Expr>> {
+        fn parse_constr(self_: &mut Parser) -> Box<Fn(Expr) -> Expr> {
             if self_.take(TT::AMPERSAND) {
-                box |var| Expr::And(VType::I16, box Expr::Var(var))
+                box |e| Expr::And(VType::I16, box e)
             } else if self_.take(TT::BOOK) {
-                box |var| Expr::Or(VType::I16, box Expr::Var(var))
+                box |e| Expr::Or(VType::I16, box e)
             } else if self_.take(TT::WHAT) {
-                box |var| Expr::Xor(VType::I16, box Expr::Var(var))
+                box |e| Expr::Xor(VType::I16, box e)
             } else {
-                box |var| Expr::Var(var)
+                box |e| e
             }
+        }
+        if self.take(TT::MESH) {
+            let constr = parse_constr(self);
+            let val = try!(self.req_number(u16::MAX, &IE017));
+            return Ok(Some(constr(Expr::Num(VType::I16, val as u32))));
         }
         if self.take(TT::SPOT) {
             let constr = parse_constr(self);
             let val = try!(self.req_number(u16::MAX, &IE200));
-            return Ok(Some(constr(Var::I16(val as usize))));
+            return Ok(Some(constr(Expr::Var(Var::I16(val as usize)))));
         }
         if self.take(TT::TWOSPOT) {
             let constr = parse_constr(self);
             let val = try!(self.req_number(u16::MAX, &IE200));
-            return Ok(Some(constr(Var::I32(val as usize))));
+            return Ok(Some(constr(Expr::Var(Var::I32(val as usize)))));
         }
         if self.take(TT::TAIL) {
             let constr = parse_constr(self);
             let val = try!(self.req_number(u16::MAX, &IE200));
             let subs = try!(self.parse_subs());
-            return Ok(Some(constr(Var::A16(val as usize, subs))));
+            return Ok(Some(constr(Expr::Var(Var::A16(val as usize, subs)))));
         }
         if self.take(TT::HYBRID) {
             let constr = parse_constr(self);
             let val = try!(self.req_number(u16::MAX, &IE200));
             let subs = try!(self.parse_subs());
-            return Ok(Some(constr(Var::A32(val as usize, subs))));
+            return Ok(Some(constr(Expr::Var(Var::A32(val as usize, subs)))));
         }
         return Ok(None);
     }
@@ -412,11 +417,7 @@ impl<'p> Parser<'p> {
     }
 
     fn parse_expr2(&mut self) -> ParseRes<Expr> {
-        if self.take(TT::MESH) {
-            let val = try!(self.req_number(u16::MAX, &IE017));
-            return Ok(Expr::Num(VType::I16, val as u32))
-        }
-        if let Some(expr) = try!(self.parse_var_with_unop()) {
+        if let Some(expr) = try!(self.parse_item_with_unop()) {
             return Ok(expr);
         }
         if self.take(TT::RABBITEARS) {
