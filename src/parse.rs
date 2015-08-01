@@ -57,6 +57,7 @@ impl<'p> Parser<'p> {
         let mut res = Vec::new();
         while let Ok(n) = reader.read_until('\n' as u8, &mut buf) {
             res.push(String::from_utf8_lossy(&buf).into_owned());
+            buf.clear();
             if n == 0 {
                 break;
             }
@@ -654,7 +655,7 @@ impl<'p> Parser<'p> {
         }
         // check politeness
         if stmts.len() > 2 {
-            if npolite == 0 || stmts.len() / npolite >= 5 {
+            if npolite == 0 || (stmts.len() - 1) / npolite >= 5 {
                 return IE079.err();
             } else if stmts.len() / npolite < 3 {
                 return IE099.err();
