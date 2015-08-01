@@ -493,6 +493,9 @@ impl<'a> Eval<'a> {
         self.dump_state_one(&self.twospot, ":");
         self.dump_state_one(&self.tail, ",");
         self.dump_state_one(&self.hybrid, ";");
+        if self.jumps.len() > 0 {
+            println!("Next stack: {:?}", self.jumps);
+        }
     }
 
     fn dump_state_one<T: Debug + Display>(&self, vec: &Vec<Bind<T>>, sigil: &str) {

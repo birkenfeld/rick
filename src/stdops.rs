@@ -249,7 +249,11 @@ pub fn check_chance(chance: u8) -> bool {
 /// Pop "n" jumps from the jump stack and return the last one.
 pub fn pop_jumps<T>(jumps: &mut Vec<T>, n: u32, strict: bool) -> Res<Option<T>> {
     if n == 0 {
-        return IE621.err();
+        if strict {
+            return IE621.err();
+        } else {
+            return Ok(None);
+        }
     }
     if jumps.len() < n as usize {
         if strict {
