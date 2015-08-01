@@ -168,7 +168,7 @@ impl Optimizer {
                         } else {
                             result = Some(Expr::RsAnd(
                                 box Expr::RsRshift(vx.clone(), n(i.trailing_zeros())),
-                                n(1 << i.count_ones() - 1)));
+                                n((1 << i.count_ones()) - 1)));
                         }
                     }
                     // Select(Mingle(x, 0), 0x2AAAAAAB)  ->  (x << 1) & 0xFFFF
