@@ -51,7 +51,7 @@ impl RtError {
             None => format!("ON THE WAY TO {}", self.lineno + 1),
         };
         format!("ICL{:03}I\t{}\n\t{}\
-                 \n        CORRECT SOURCE AND RESUBNIT",
+                 \n        CORRECT SOURCE AND RESUBNIT\n",
                 self.error.num, msg, lineno)
     }
 

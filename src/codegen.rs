@@ -562,7 +562,7 @@ fn main_inner() -> err::Res<()> {
 
 fn main() {
     if let Err(err) = main_inner() {
-        println!(\"{}\", err.to_string());
+        print!(\"{}\", err.to_string());
     }
 }\n")
     }
