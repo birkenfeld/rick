@@ -187,10 +187,10 @@ fn run_compiler(outname: &str, opt_flag: bool) -> Result<(), err::RtError> {
     let threadhandle = thread::spawn(move || {
         let mut printer = mandel::MandelPrinter::new();
         while let Err(mpsc::TryRecvError::Empty) = rchan.try_recv() {
-            printer.print_char();
+            printer.print_char(true);
             thread::sleep_ms((2 as u32).pow((rand::random::<u8>() / 40) as u32));
         }
-        println!("");
+        printer.finish_current();
     });
 
     let wait_res = child.wait_with_output();

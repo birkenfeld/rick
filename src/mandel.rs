@@ -105,7 +105,7 @@ impl MandelPrinter {
         MandelPrinter { cur_vector: vec![], location: 0, next_index: 0, max_color: 0 }
     }
 
-    pub fn print_char(&mut self) {
+    pub fn print_char(&mut self, flush: bool) {
         let idxmax = COLORS.len() as u16 - 1;
         let mut stdout = stdout();
         if self.next_index >= self.cur_vector.len() {
@@ -122,10 +122,19 @@ impl MandelPrinter {
         }
         let idx = idxmax - (color + 1) * idxmax / self.max_color;
         print!("\x1b[48;5;{}m \x1b[0m", COLORS[idx as usize]);
-        let _ = stdout.flush();
+        if flush {
+            let _ = stdout.flush();
+        }
         self.next_index += 1;
         if self.next_index % 100 == 0 {
             let _ = stdout.write(&['\n' as u8]);
         }
+    }
+
+    pub fn finish_current(&mut self) {
+        while self.next_index < self.cur_vector.len() {
+            self.print_char(false);
+        }
+        let _ = stdout().flush();
     }
 }
