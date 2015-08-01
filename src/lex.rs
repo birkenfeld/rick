@@ -176,10 +176,15 @@ rustlex! RawLexer {
     '\''           => |l: Lx<R>| l.tok(TT::SPARK)
 
     '$'            => |l: Lx<R>| l.tok(TT::MONEY)
+    '¢'            => |l: Lx<R>| l.tok(TT::MONEY)
+    '£'            => |l: Lx<R>| l.tok(TT::MONEY)
+    '¤'            => |l: Lx<R>| l.tok(TT::MONEY)
+    '€'            => |l: Lx<R>| l.tok(TT::MONEY)
     '~'            => |l: Lx<R>| l.tok(TT::SQUIGGLE)
     '&'            => |l: Lx<R>| l.tok(TT::AMPERSAND)
     'V'            => |l: Lx<R>| l.tok(TT::BOOK)
     '?'            => |l: Lx<R>| l.tok(TT::WHAT)
+    '∀'            => |l: Lx<R>| l.tok(TT::WHAT)
 }
 
 impl<R: Read> RawLexer<R> {
