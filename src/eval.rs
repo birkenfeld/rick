@@ -488,7 +488,7 @@ impl Eval {
             Ok(())
         }
         fn write(state: &mut u8, b: u16) {
-            let byte = ((*state as i32 - b as i32) % 256) as u8;
+            let byte = ((*state as i16 - b as i16) as u16 % 256) as u8;
             let mut c = byte;
             *state = byte as u8;
             c = (c & 0x0f) << 4 | (c & 0xf0) >> 4;
@@ -528,8 +528,9 @@ impl Eval {
                 *state = 0;
                 return 256;
             }
+            let c = (byte as i16 - *state as i16) as u16 % 256;
             *state = byte as u8;
-            ((byte as i32 - *state as i32) % 256) as u16
+            c
         };
         let state = &mut self.last_in;
         match *var {
