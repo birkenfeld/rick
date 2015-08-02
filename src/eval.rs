@@ -19,50 +19,53 @@ use std::collections::HashSet;
 use std::default::Default;
 use std::rc::Rc;
 
-use ast;
+use ast::{ self, Program, Stmt, StmtBody, Expr, Val, Var };
 use err;
-use util::{ write_number, read_number, check_chance,
+use util::{ write_number, write_byte, read_number, check_chance,
             mingle, select, and_16, and_32, or_16, or_32, xor_16, xor_32 };
 
 
 #[derive(Clone)]
-struct Array<T>(pub Vec<u16>, pub Vec<T>);
+struct Array<T> {
+    pub dims: Vec<u16>,
+    pub elems: Vec<T>,
+}
 
 impl<T: Clone + Default> Array<T> {
-    pub fn new(subs: Vec<u16>) -> Array<T> {
-        let total = subs.iter().product::<u16>() as usize;
+    pub fn new(dims: Vec<u16>) -> Array<T> {
+        let total = dims.iter().product::<u16>() as usize;
         let value = Default::default();
-        Array(subs, vec![value; total])
+        Array { dims: dims, elems: vec![value; total] }
     }
 
     pub fn empty() -> Array<T> {
-        Array(vec![], vec![])
+        Array { dims: vec![], elems: vec![] }
     }
 }
 
 #[derive(Clone)]
-struct Var<T> {
+struct Bind<T> {
     pub val: T,
     pub stack: Vec<T>,
 }
 
-impl<T> Var<T> {
-    pub fn new(t: T) -> Var<T> {
-        Var { val: t, stack: Vec::new() }
+impl<T> Bind<T> {
+    pub fn new(t: T) -> Bind<T> {
+        Bind { val: t, stack: Vec::new() }
     }
 }
 
 pub struct Eval {
-    program: Rc<ast::Program>,
-    spot: Vec<Var<u16>>,
-    twospot: Vec<Var<u32>>,
-    tail: Vec<Var<Array<u16>>>,
-    hybrid: Vec<Var<Array<u32>>>,
+    program: Rc<Program>,
+    spot: Vec<Bind<u16>>,
+    twospot: Vec<Bind<u32>>,
+    tail: Vec<Bind<Array<u16>>>,
+    hybrid: Vec<Bind<Array<u32>>>,
     ignored: HashSet<(u8, u16)>,
     jumps: Vec<ast::LogLine>,
     abstentions: Vec<bool>,
     _in_state: u8,
-    _out_state: u8,
+    last_out: u8,
 }
 
 type EvalRes<T> = Result<T, err::Error>;
@@ -75,7 +78,7 @@ enum StmtRes {
 }
 
 impl Eval {
-    pub fn new(program: ast::Program) -> Eval {
+    pub fn new(program: Program) -> Eval {
         let mut abs = Vec::new();
         for stmt in &program.stmts {
             abs.push(stmt.props.disabled);
@@ -83,15 +86,15 @@ impl Eval {
         let nv = program.n_vars;
         Eval {
             program: Rc::new(program),
-            spot:    vec![Var::new(0); nv.0 as usize],
-            twospot: vec![Var::new(0); nv.1 as usize],
-            tail:    vec![Var::new(Array::empty()); nv.2 as usize],
-            hybrid:  vec![Var::new(Array::empty()); nv.3 as usize],
+            spot:    vec![Bind::new(0); nv.0 as usize],
+            twospot: vec![Bind::new(0); nv.1 as usize],
+            tail:    vec![Bind::new(Array::empty()); nv.2 as usize],
+            hybrid:  vec![Bind::new(Array::empty()); nv.3 as usize],
             ignored: HashSet::new(),
             jumps:   Vec::new(),
             abstentions: abs,
             _in_state: 0,
-            _out_state: 0,
+            last_out: 0,
         }
     }
 
@@ -120,7 +123,7 @@ impl Eval {
                         StmtRes::Jump(n) => {
                             self.jumps.push(pctr as u16);  // push the line with the NEXT
                             pctr = n;
-                            continue;  // do not check for COME FROMs
+                            continue;  // do not increment or check for COME FROMs
                         },
                         StmtRes::Back(n) => {
                             pctr = n;  // will be incremented below after COME FROM check
@@ -148,22 +151,22 @@ impl Eval {
     }
 
     /// Process a single statement.
-    fn eval_stmt(&mut self, stmt: &ast::Stmt) -> EvalRes<StmtRes> {
+    fn eval_stmt(&mut self, stmt: &Stmt) -> EvalRes<StmtRes> {
         //println!("        {}", stmt);
         match &stmt.body {
-            &ast::StmtBody::GiveUp => Ok(StmtRes::End),
-            &ast::StmtBody::Error(ref e) => Err((*e).clone()),
-            &ast::StmtBody::Calc(ref var, ref expr) => {
+            &StmtBody::GiveUp => Ok(StmtRes::End),
+            &StmtBody::Error(ref e) => Err((*e).clone()),
+            &StmtBody::Calc(ref var, ref expr) => {
                 let val = try!(self.eval_expr(expr));
                 try!(self.assign(var, val));
                 Ok(StmtRes::Next)
             }
-            &ast::StmtBody::Dim(ref var, ref exprs) => {
+            &StmtBody::Dim(ref var, ref exprs) => {
                 let vals = try!(self.eval_exprlist(exprs));
                 try!(self.array_dim(var, vals));
                 Ok(StmtRes::Next)
             }
-            &ast::StmtBody::DoNext(n) => {
+            &StmtBody::DoNext(n) => {
                 match self.program.labels.get(&n) {
                     Some(i) => {
                         if self.jumps.len() >= 80 {
@@ -176,139 +179,159 @@ impl Eval {
                     }
                 }
             }
-            &ast::StmtBody::ComeFrom(_) => {
+            &StmtBody::ComeFrom(_) => {
                 // nothing to do here at runtime
                 Ok(StmtRes::Next)
             }
-            &ast::StmtBody::Resume(ref expr) => {
+            &StmtBody::Resume(ref expr) => {
                 let n = try!(self.eval_expr(expr)).as_u32();
-                let next = try!(self.pop_jumps(n));
+                let next = try!(self.pop_jumps(n, true)).unwrap();
                 Ok(StmtRes::Back(next as usize))
             }
-            &ast::StmtBody::Forget(ref expr) => {
+            &StmtBody::Forget(ref expr) => {
                 let n = try!(self.eval_expr(expr)).as_u32();
-                try!(self.pop_jumps(n));
+                try!(self.pop_jumps(n, false));
                 Ok(StmtRes::Next)
             }
-            &ast::StmtBody::Ignore(ref vars) => {
+            &StmtBody::Ignore(ref vars) => {
                 for var in vars {
                     try!(self.set_rw(var, false));
                 }
                 Ok(StmtRes::Next)
             }
-            &ast::StmtBody::Remember(ref vars) => {
+            &StmtBody::Remember(ref vars) => {
                 for var in vars {
                     try!(self.set_rw(var, true));
                 }
                 Ok(StmtRes::Next)
             }
-            &ast::StmtBody::Stash(ref vars) => {
+            &StmtBody::Stash(ref vars) => {
                 for var in vars {
                     try!(self.stash(var));
                 }
                 Ok(StmtRes::Next)
             }
-            &ast::StmtBody::Retrieve(ref vars) => {
+            &StmtBody::Retrieve(ref vars) => {
                 for var in vars {
                     try!(self.retrieve(var));
                 }
                 Ok(StmtRes::Next)
             }
-            &ast::StmtBody::Abstain(ref what) => {
+            &StmtBody::Abstain(ref what) => {
                 try!(self.abstain(what, true));
                 Ok(StmtRes::Next)
             }
-            &ast::StmtBody::Reinstate(ref what) => {
+            &StmtBody::Reinstate(ref what) => {
                 try!(self.abstain(what, false));
                 Ok(StmtRes::Next)
             }
-            &ast::StmtBody::ReadOut(ref vars) => {
+            &StmtBody::ReadOut(ref vars) => {
                 for var in vars {
-                    let val = match var {
-                        &ast::Readout::Const(n) => n as u32,
+                    match var {
+                        &ast::Readout::Var(ref v) if v.is_dim() => {
+                            try!(self.array_readout(v));
+                        },
                         &ast::Readout::Var(ref v) => {
                             let varval = try!(self.lookup(v));
-                            varval.as_u32()
-                        }
+                            write_number(varval.as_u32());
+                        },
+                        &ast::Readout::Const(n) => write_number(n as u32),
                     };
-                    write_number(val);
                 }
                 Ok(StmtRes::Next)
             }
-            &ast::StmtBody::WriteIn(ref var) => {
+            &StmtBody::WriteIn(ref var) => {
                 let n = try!(read_number());
-                try!(self.assign(var, ast::Val::from_u32(n)));
+                try!(self.assign(var, Val::from_u32(n)));
                 Ok(StmtRes::Next)
             }
         }
+    }
+
+    /// Pop "n" jumps from the jump stack and return the last one.
+    fn pop_jumps(&mut self, n: u32, strict: bool) -> EvalRes<Option<u16>> {
+        if n == 0 {
+            return Err(err::new(&err::IE621));
+        }
+        if self.jumps.len() < n as usize {
+            if strict {
+                return Err(err::new(&err::IE632));
+            } else {
+                self.jumps.clear();
+                return Ok(None);
+            }
+        }
+        let newlen = self.jumps.len() - (n as usize - 1);
+        self.jumps.truncate(newlen);
+        Ok(self.jumps.pop())
     }
 
     /// Evaluate an expression to a value.
-    fn eval_expr(&self, expr: &ast::Expr) -> EvalRes<ast::Val> {
+    fn eval_expr(&self, expr: &Expr) -> EvalRes<Val> {
         match *expr {
-            ast::Expr::Num(ref n) => Ok(n.clone()),
-            ast::Expr::Var(ref var) => self.lookup(var),
-            ast::Expr::Mingle(ref vx, ref wx) => {
+            Expr::Num(ref n) => Ok(n.clone()),
+            Expr::Var(ref var) => self.lookup(var),
+            Expr::Mingle(ref vx, ref wx) => {
                 let v = try!(self.eval_expr(vx));
                 let w = try!(self.eval_expr(wx));
-                mingle(v.as_u32(), w.as_u32()).map(ast::Val::I32)
+                mingle(v.as_u32(), w.as_u32()).map(Val::I32)
             },
-            ast::Expr::Select(ref vx, ref wx) => {
+            Expr::Select(ref vx, ref wx) => {
                 let v = try!(self.eval_expr(vx));
                 let w = try!(self.eval_expr(wx));
-                select(v.as_u32(), w.as_u32()).map(ast::Val::I32)
+                select(v.as_u32(), w.as_u32()).map(Val::I32)
             },
-            ast::Expr::And(ref vx) => {
+            Expr::And(ref vx) => {
                 let v = try!(self.eval_expr(vx));
                 match v {
-                    ast::Val::I16(v) => Ok(ast::Val::I16(and_16(v))),
-                    ast::Val::I32(v) => Ok(ast::Val::I32(and_32(v))),
+                    Val::I16(v) => Ok(Val::I16(and_16(v))),
+                    Val::I32(v) => Ok(Val::I32(and_32(v))),
                 }
             },
-            ast::Expr::Or(ref vx) => {
+            Expr::Or(ref vx) => {
                 let v = try!(self.eval_expr(vx));
                 match v {
-                    ast::Val::I16(v) => Ok(ast::Val::I16(or_16(v))),
-                    ast::Val::I32(v) => Ok(ast::Val::I32(or_32(v))),
+                    Val::I16(v) => Ok(Val::I16(or_16(v))),
+                    Val::I32(v) => Ok(Val::I32(or_32(v))),
                 }
             },
-            ast::Expr::Xor(ref vx) => {
+            Expr::Xor(ref vx) => {
                 let v = try!(self.eval_expr(vx));
                 match v {
-                    ast::Val::I16(v) => Ok(ast::Val::I16(xor_16(v))),
-                    ast::Val::I32(v) => Ok(ast::Val::I32(xor_32(v))),
+                    Val::I16(v) => Ok(Val::I16(xor_16(v))),
+                    Val::I32(v) => Ok(Val::I32(xor_32(v))),
                 }
             },
         }
     }
 
-    fn eval_exprlist(&self, exprs: &Vec<ast::Expr>) -> EvalRes<Vec<ast::Val>> {
+    fn eval_exprlist(&self, exprs: &Vec<Expr>) -> EvalRes<Vec<Val>> {
         exprs.iter().map(|v| self.eval_expr(v)).collect::<Result<Vec<_>, _>>()
     }
 
     /// Assign to a variable.
-    fn assign(&mut self, var: &ast::Var, val: ast::Val) -> EvalRes<()> {
+    fn assign(&mut self, var: &Var, val: Val) -> EvalRes<()> {
         //println!("assign: {:?} = {}", var, val.as_u32());
         if self.ignored.contains(&var.unique()) {
             return Ok(());
         }
         match *var {
-            ast::Var::I16(n) => {
+            Var::I16(n) => {
                 let vent = &mut self.spot[n as usize];
                 vent.val = try!(val.as_u16());
                 Ok(())
             },
-            ast::Var::I32(n) => {
+            Var::I32(n) => {
                 let vent = &mut self.twospot[n as usize];
                 vent.val = val.as_u32();
                 Ok(())
             },
-            ast::Var::A16(n, ref subs) => {
+            Var::A16(n, ref subs) => {
                 let subs = try!(self.eval_exprlist(subs));
                 let val = try!(val.as_u16());
                 Eval::array_assign(&mut self.tail, n, subs, val)
             },
-            ast::Var::A32(n, ref subs) => {
+            Var::A32(n, ref subs) => {
                 let subs = try!(self.eval_exprlist(subs));
                 Eval::array_assign(&mut self.hybrid, n, subs, val.as_u32())
             },
@@ -316,90 +339,78 @@ impl Eval {
     }
 
     /// Dimension an array.
-    fn array_dim(&mut self, var: &ast::Var, vals: Vec<ast::Val>) -> EvalRes<()> {
+    fn array_dim(&mut self, var: &Var, dims: Vec<Val>) -> EvalRes<()> {
         if self.ignored.contains(&var.unique()) {
             return Ok(());
         }
-        let vals = try!(vals.iter().map(|v| v.as_u16()).collect::<Result<Vec<_>, _>>());
         match *var {
-            ast::Var::A16(n, _) => {
-                Eval::array_dimension(&mut self.tail, n, vals)
+            Var::A16(n, _) => {
+                Eval::array_dimension(&mut self.tail, n, dims)
             },
-            ast::Var::A32(n, _) => {
-                Eval::array_dimension(&mut self.hybrid, n, vals)
+            Var::A32(n, _) => {
+                Eval::array_dimension(&mut self.hybrid, n, dims)
             },
             _ => unimplemented!()
         }
     }
 
-    /// Pop "n" jumps from the jump stack and return the last one.
-    fn pop_jumps(&mut self, n: u32) -> EvalRes<u16> {
-        if n == 0 {
-            return Err(err::new(&err::IE621));
-        }
-        if self.jumps.len() < n as usize {
-            return Err(err::new(&err::IE632));
-        }
-        let newlen = self.jumps.len() - (n as usize - 1);
-        self.jumps.truncate(newlen);
-        Ok(self.jumps.pop().unwrap())
-    }
-
     /// Look up the value of a variable.
-    fn lookup(&self, var: &ast::Var) -> EvalRes<ast::Val> {
+    fn lookup(&self, var: &Var) -> EvalRes<Val> {
         match *var {
-            ast::Var::I16(n) => {
-                Ok(ast::Val::I16(self.spot[n as usize].val))
+            Var::I16(n) => {
+                Ok(Val::I16(self.spot[n as usize].val))
             },
-            ast::Var::I32(n) => {
-                Ok(ast::Val::I32(self.twospot[n as usize].val))
+            Var::I32(n) => {
+                Ok(Val::I32(self.twospot[n as usize].val))
             },
-            ast::Var::A16(n, ref subs) => {
+            Var::A16(n, ref subs) => {
                 let subs = try!(self.eval_exprlist(subs));
-                Eval::array_lookup(&self.tail, n, subs).map(ast::Val::I16)
+                Eval::array_lookup(&self.tail, n, subs).map(Val::I16)
             },
-            ast::Var::A32(n, ref subs) => {
+            Var::A32(n, ref subs) => {
                 let subs = try!(self.eval_exprlist(subs));
-                Eval::array_lookup(&self.hybrid, n, subs).map(ast::Val::I32)
+                Eval::array_lookup(&self.hybrid, n, subs).map(Val::I32)
             },
         }
     }
 
     /// Process a STASH statement.
-    fn stash(&mut self, var: &ast::Var) -> EvalRes<()> {
-        match *var {
-            ast::Var::I16(n) => {
-                let vent = &mut self.spot[n as usize];
-                vent.stack.push(vent.val);
-            },
-            ast::Var::I32(n) => {
-                let vent = &mut self.twospot[n as usize];
-                vent.stack.push(vent.val);
-            },
-            ast::Var::A16(n, _) => {
-                let vent = &mut self.tail[n as usize];
-                vent.stack.push(vent.val.clone());
-            }
-            ast::Var::A32(n, _) => {
-                let vent = &mut self.hybrid[n as usize];
-                vent.stack.push(vent.val.clone());
-            }
+    fn stash(&mut self, var: &Var) -> EvalRes<()> {
+        fn generic_stash<T: Clone>(vtbl: &mut Vec<Bind<T>>, n: u16) -> EvalRes<()> {
+            let vent = &mut vtbl[n as usize];
+            vent.stack.push(vent.val.clone());
+            Ok(())
         }
-        Ok(())
+        match *var {
+            Var::I16(n) => generic_stash(&mut self.spot, n),
+            Var::I32(n) => generic_stash(&mut self.twospot, n),
+            Var::A16(n, _) => generic_stash(&mut self.tail, n),
+            Var::A32(n, _) => generic_stash(&mut self.hybrid, n),
+        }
     }
 
     /// Process a RETRIEVE statement.
-    fn retrieve(&mut self, var: &ast::Var) -> EvalRes<()> {
+    fn retrieve(&mut self, var: &Var) -> EvalRes<()> {
+        fn generic_retrieve<T>(vtbl: &mut Vec<Bind<T>>, n: u16) -> EvalRes<()> {
+            let vent = &mut vtbl[n as usize];
+            match vent.stack.pop() {
+                None => Err(err::new(&err::IE436)),
+                Some(v) => {
+                    vent.val = v;
+                    Ok(())
+                }
+            }
+        }
         match *var {
-            ast::Var::I16(n) => Eval::generic_retrieve(&mut self.spot, n),
-            ast::Var::I32(n) => Eval::generic_retrieve(&mut self.twospot, n),
-            ast::Var::A16(n, _) => Eval::generic_retrieve(&mut self.tail, n),
-            ast::Var::A32(n, _) => Eval::generic_retrieve(&mut self.hybrid, n),
+            Var::I16(n) => generic_retrieve(&mut self.spot, n),
+            Var::I32(n) => generic_retrieve(&mut self.twospot, n),
+            Var::A16(n, _) => generic_retrieve(&mut self.tail, n),
+            Var::A32(n, _) => generic_retrieve(&mut self.hybrid, n),
         }
     }
 
     /// Process an IGNORE or REMEMBER statement.
-    fn set_rw(&mut self, var: &ast::Var, rw: bool) -> EvalRes<()> {
+    fn set_rw(&mut self, var: &Var, rw: bool) -> EvalRes<()> {
         if rw {
             self.ignored.remove(&var.unique());
         } else {
@@ -427,64 +438,80 @@ impl Eval {
     }
 
     /// Generic array dimension helper.
-    fn array_dimension<T: Clone + Default>(map: &mut Vec<Var<Array<T>>>, n: u16,
-                                           subs: Vec<u16>) -> EvalRes<()> {
-        let mut vent = &mut map[n as usize];
-        vent.val = Array::new(subs);
+    fn array_dimension<T: Clone + Default>(vtbl: &mut Vec<Bind<Array<T>>>, n: u16,
+                                           dims: Vec<Val>) -> EvalRes<()> {
+        let dims = try!(dims.iter().map(|v| v.as_u16()).collect::<Result<Vec<_>, _>>());
+        let mut vent = &mut vtbl[n as usize];
+        vent.val = Array::new(dims);
         Ok(())
     }
 
-    /// Generic array assignment helper.
-    fn array_assign<T>(map: &mut Vec<Var<Array<T>>>, n: u16,
-                       subs: Vec<ast::Val>, val: T) -> EvalRes<()> {
+    /// Helper to calculate an array index.
+    fn array_get_index<T>(vent: &Bind<Array<T>>, subs: Vec<Val>) -> EvalRes<usize> {
         let subs = try!(subs.iter().map(|v| v.as_u16()).collect::<Result<Vec<_>, _>>());
-        let vent = &mut map[n as usize];
-        if subs.len() != vent.val.0.len() {
+        if subs.len() != vent.val.dims.len() {
             return Err(err::new(&err::IE241));
         }
         let mut ix = 0;
         let mut prev_dim = 1;
-        for (sub, dim) in subs.iter().zip(&vent.val.0) {
+        for (sub, dim) in subs.iter().zip(&vent.val.dims) {
             if *sub > *dim {
                 return Err(err::new(&err::IE241));
             }
             ix += (sub - 1) * prev_dim;
             prev_dim = *dim;
         }
+        Ok(ix as usize)
+    }
+
+    /// Generic array assignment helper.
+    fn array_assign<T>(vtbl: &mut Vec<Bind<Array<T>>>, n: u16,
+                       subs: Vec<Val>, val: T) -> EvalRes<()> {
+        let vent = &mut vtbl[n as usize];
+        let ix = try!(Eval::array_get_index(vent, subs));
         //println!("array assign: dim={:?} subs={:?} ix={}", vent.val.0, subs, ix);
-        vent.val.1[ix as usize] = val;
+        vent.val.elems[ix] = val;
         Ok(())
     }
 
     /// Generic array lookup helper.
-    fn array_lookup<T: Copy>(map: &Vec<Var<Array<T>>>, n: u16,
-                             subs: Vec<ast::Val>) -> EvalRes<T> {
-        let subs = try!(subs.iter().map(|v| v.as_u16()).collect::<Result<Vec<_>, _>>());
-        let vent = &map[n as usize];
-        if subs.len() != vent.val.0.len() {
-            return Err(err::new(&err::IE241));
-        }
-        let mut ix = 0;
-        let mut prev_dim = 1;
-        for (sub, dim) in subs.iter().zip(&vent.val.0) {
-            if *sub > *dim {
-                return Err(err::new(&err::IE241));
-            }
-            ix += (sub - 1) * prev_dim;
-            prev_dim = *dim;
-        }
-        Ok(vent.val.1[ix as usize])
+    fn array_lookup<T: Copy>(vtbl: &Vec<Bind<Array<T>>>, n: u16, subs: Vec<Val>) -> EvalRes<T> {
+        let vent = &vtbl[n as usize];
+        let ix = try!(Eval::array_get_index(vent, subs));
+        Ok(vent.val.elems[ix])
     }
 
-    /// Generic RETRIEVE helper.
-    fn generic_retrieve<T>(map: &mut Vec<Var<T>>, n: u16) -> EvalRes<()> {
-        let vent = &mut map[n as usize];
-        match vent.stack.pop() {
-            None => Err(err::new(&err::IE436)),
-            Some(v) => {
-                vent.val = v;
-                Ok(())
+    /// Array readout helper.
+    fn array_readout(&mut self, var: &Var) -> EvalRes<()> {
+        fn generic_readout<T: Copy, F>(vtbl: &Vec<Bind<Array<T>>>, n: u16,
+                                       mut state: u8, cb: F) -> EvalRes<u8>
+            where F: Fn(T, u8) -> u8
+        {
+            let vent = &vtbl[n as usize];
+            if vent.val.dims.len() != 1 {
+                // only dimension-1 arrays can be output
+                return Err(err::new(&err::IE241));
             }
+            for val in vent.val.elems.iter() {
+                state = cb(*val, state);
+            }
+            Ok(state)
         }
+        let write = |b: u16, state: u8| -> u8 {
+            let byte = ((state as i32 - b as i32) % 256) as u8;
+            let mut c = byte;
+            c = (c & 0x0f) << 4 | (c & 0xf0) >> 4;
+            c = (c & 0x33) << 2 | (c & 0xcc) >> 2;
+            c = (c & 0x55) << 1 | (c & 0xaa) >> 1;
+            write_byte(c);
+            byte as u8
+        };
+        self.last_out = match *var {
+            Var::A16(n, _) => try!(generic_readout(&self.tail, n, self.last_out, write)),
+            Var::A32(n, _) => try!(generic_readout(&self.hybrid, n, self.last_out,
+                                                   |v, state| write(v as u16, state))),
+            _ => unimplemented!()
+        };
+        Ok(())
     }
 }

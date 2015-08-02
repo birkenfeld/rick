@@ -131,6 +131,10 @@ pub fn write_number(val: u32) {
     print!("{}", to_roman(val));
 }
 
+pub fn write_byte(val: u8) {
+    print!("{}", val as char);
+}
+
 pub fn read_number() -> Result<u32, err::Error> {
     let stdin = stdin();
     let mut slock = stdin.lock();
