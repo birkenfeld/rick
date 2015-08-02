@@ -293,6 +293,13 @@ pub static IE993: ErrDesc = ErrDesc {
     way: None,
 };
 
+/* "Impossible" case in match, or other internal error. */
+pub static IE994: ErrDesc = ErrDesc {
+    num: 994,
+    msg: "NOCTURNAL EMISSION, PLEASE LAUNDER SHEETS IMMEDIATELY",
+    way: None,
+};
+
 /* Source file name with invalid extension (use .i). */
 pub static IE998: ErrDesc = ErrDesc {
     num: 998,

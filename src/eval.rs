@@ -19,7 +19,7 @@ use std::fmt::{ Debug, Display };
 use std::io::Write;
 use std::u16;
 
-use err::{ Res, IE123, IE129, IE252, IE275, IE555, IE633, IE774 };
+use err::{ Res, IE123, IE129, IE252, IE275, IE555, IE633, IE774, IE994 };
 use ast::{ self, Program, Stmt, StmtBody, ComeFrom, Expr, Var, VType };
 use stdops::{ Bind, Array, write_number, read_number, check_chance, check_ovf, pop_jumps,
               get_random_seed, mingle, select, and_16, and_32, or_16, or_32, xor_16, xor_32 };
@@ -336,7 +336,7 @@ impl<'a> Eval<'a> {
                         // read out constant
                         Expr::Num(_, v) => write_number(self.stdout, v),
                         // others will not be generated
-                        _ => unreachable!(),
+                        _ => return IE994.err(),
                     };
                 }
                 Ok(StmtRes::Next)

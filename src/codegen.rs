@@ -21,7 +21,7 @@ use std::rc::Rc;
 use std::u16;
 
 use ast::{ Program, Stmt, StmtBody, Expr, Var, VType, Abstain, ComeFrom };
-use err::{ Res, IE129, IE533 };
+use err::{ Res, IE129, IE533, IE994 };
 use lex::SrcLine;
 
 use err::MODULE_CODE_STR as ERR_MOD_STR;
@@ -282,7 +282,7 @@ impl Generator {
                         Expr::Num(_, v) => {
                             w!(self.o, 20; "write_number(&mut stdout, {})", v)
                         }
-                        _ => unreachable!(),
+                        _ => return IE994.err_with(None, self.line),
                     };
                 }
             }
