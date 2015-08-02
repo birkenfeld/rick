@@ -176,33 +176,30 @@ impl<'a> Eval<'a> {
             if pctr == self.program.bugline as usize {
                 return IE774.err_with(None, stmt.props.onthewayto);
             }
-            // note: in general, program.stmts[pctr] != stmt
-            let mut maybe_next = None;
+            // try to determine if we have to go to a COME FROM statement
+            // (note: in general, program.stmts[pctr] != stmt)
+            //
+            // the static COME FROM is always a possibility
+            let mut maybe_next = program.stmts[pctr].comefrom;
+            // the complicated case: evaluate all computed-come-from expressions
             let my_label = program.stmts[pctr].props.label;
             if program.uses_complex_comefrom && my_label > 0 {
-                let mut candidates = vec![];
-                if let Some(i) = program.stmts[pctr].comefrom.map(|v| v as usize) {
-                    candidates.push(i);
-                }
                 for (i, stmt) in program.stmts.iter().enumerate() {
                     if let StmtBody::ComeFrom(ComeFrom::Expr(ref e)) = stmt.body {
                         let v = try!(try!(self.eval_expr(e)).as_u16());
                         if v == my_label {
-                            candidates.push(i);
+                            // as soon as we have multiple candidates, we can bail out
+                            if maybe_next.is_some() {
+                                return IE555.err();
+                            }
+                            maybe_next = Some(i as u16);
                         }
                     }
                 }
-                if candidates.len() > 1 {
-                    return IE555.err();
-                }
-                if candidates.len() == 1 {
-                    maybe_next = Some(candidates[0]);
-                }
-            } else {
-                maybe_next = program.stmts[pctr].comefrom.map(|v| v as usize);
             }
             // check for COME FROMs from this line
             if let Some(next) = maybe_next {
+                let next = next as usize;
                 // check for abstained COME FROM
                 if self.abstain[next] == 0 {
                     let (passed, rand_st) = check_chance(program.stmts[next].props.chance,
