@@ -396,7 +396,8 @@ impl Optimizer {
             var_info: (vec![], vec![], vec![], vec![]),
             uses_complex_comefrom: false,
             added_syslib: false,
-            added_floatlib: false
+            added_floatlib: false,
+            bugline: 2
         }
     }
 

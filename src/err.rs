@@ -259,11 +259,11 @@ pub static IE666: ErrDesc = ErrDesc {
 };
 
 /* A random compiler error has occurred. */
-// pub static IE774: ErrDesc = ErrDesc {
-//     num: 774,
-//     msg: "RANDOM COMPILER BUG",
-//     way: None,
-// };
+pub static IE774: ErrDesc = ErrDesc {
+    num: 774,
+    msg: "RANDOM COMPILER BUG",
+    way: None,
+};
 
 /* No such source file. */
 pub static IE777: ErrDesc = ErrDesc {

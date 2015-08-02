@@ -49,7 +49,6 @@ use eval::Eval;
 use codegen::Generator;
 
 
-// XXX introduce E774
 fn main() {
     match main_inner() {
         Ok(code) => exit(code),
@@ -67,6 +66,7 @@ fn main_inner() -> Result<i32, err::RtError> {
     opts.optflag("i", "interpret", "interpret code instead of compiling");
     opts.optflag("c", "no-compile", "do not call rustc");
     opts.optflag("o", "opt", "optimize parsed code");
+    opts.optflag("b", "no-bug", "eliminate probability for E774");
     opts.optflag("O", "rustc-opt", "run rustc in optimized mode");
     opts.optflag("R", "no-random", "use deterministic random seed");
     opts.optflag("d", "debug", "activate printing out debug messages");
@@ -89,6 +89,7 @@ fn main_inner() -> Result<i32, err::RtError> {
     let debug_flag = matches.opt_present("d");
     let timing_flag = matches.opt_present("t");
     let opt_flag = matches.opt_present("o");
+    let bug_flag = !matches.opt_present("b");
     let rand_flag = !matches.opt_present("R");
     let rustc_flag = !matches.opt_present("c");
     let rustc_opt_flag = matches.opt_present("O");
@@ -116,7 +117,7 @@ fn main_inner() -> Result<i32, err::RtError> {
 
     // parse source
     let t0 = time::get_time();
-    let mut program = match Parser::new(&code, 1).get_program() {
+    let mut program = match Parser::new(&code, 1, bug_flag).get_program() {
         Ok(program) => {
             if debug_flag {
                 println!("Parsed program:\n{}", program);

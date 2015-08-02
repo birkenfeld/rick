@@ -35,6 +35,7 @@ pub struct Program {
     pub uses_complex_comefrom: bool,
     pub added_syslib: bool,
     pub added_floatlib: bool,
+    pub bugline: LogLine,
 }
 
 /// A single statement.

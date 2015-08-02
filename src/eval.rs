@@ -19,7 +19,7 @@ use std::fmt::{ Debug, Display };
 use std::io::Write;
 use std::u16;
 
-use err::{ Res, IE123, IE129, IE275, IE555, IE633 };
+use err::{ Res, IE123, IE129, IE275, IE555, IE633, IE774 };
 use ast::{ self, Program, Stmt, StmtBody, ComeFrom, Expr, Var, VType };
 use stdops::{ Bind, Array, write_number, read_number, check_chance, check_ovf, pop_jumps,
               get_random_seed, mingle, select, and_16, and_32, or_16, or_32, xor_16, xor_32 };
@@ -133,9 +133,9 @@ impl<'a> Eval<'a> {
                 return IE633.err();
             }
             self.stmt_ctr += 1;
+            let stmt = &program.stmts[pctr];
             // execute statement if not abstained
             if self.abstain[pctr] == 0 {
-                let stmt = &program.stmts[pctr];
                 // check execution chance
                 let (passed, rand_st) = check_chance(stmt.props.chance, self.rand_st);
                 self.rand_st = rand_st;
@@ -173,11 +173,15 @@ impl<'a> Eval<'a> {
                     }
                 }
             }
+            if pctr == self.program.bugline as usize {
+                return IE774.err_with(None, stmt.props.onthewayto);
+            }
+            // note: in general, program.stmts[pctr] != stmt
             let mut maybe_next = None;
-            let my_label = self.program.stmts[pctr].props.label;
+            let my_label = program.stmts[pctr].props.label;
             if program.uses_complex_comefrom && my_label > 0 {
                 let mut candidates = vec![];
-                if let Some(i) = self.program.stmts[pctr].comefrom.map(|v| v as usize) {
+                if let Some(i) = program.stmts[pctr].comefrom.map(|v| v as usize) {
                     candidates.push(i);
                 }
                 for (i, stmt) in program.stmts.iter().enumerate() {
@@ -195,7 +199,7 @@ impl<'a> Eval<'a> {
                     maybe_next = Some(candidates[0]);
                 }
             } else {
-                maybe_next = self.program.stmts[pctr].comefrom.map(|v| v as usize);
+                maybe_next = program.stmts[pctr].comefrom.map(|v| v as usize);
             }
             // check for COME FROMs from this line
             if let Some(next) = maybe_next {

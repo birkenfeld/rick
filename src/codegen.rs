@@ -134,6 +134,10 @@ impl Generator {
         }
         // end of abstain check
         w!(self.o, 16; "}}");
+        // insert random compiler bug
+        if i == self.program.bugline as usize {
+            w!(self.o, 16; "return err::IE774.err_with(None, {});", self.line);
+        }
         // COME FROM check
         if self.program.uses_complex_comefrom {
             let cand1 = if let Some(next) = stmt.comefrom {

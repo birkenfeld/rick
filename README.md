@@ -53,6 +53,15 @@ Run `cargo build` as usual.  Then you can run `cargo run -- --help` to see the
 available options for the compiler.  Basic usage is `cargo run -- input.i` to
 generate an executable and `cargo run -- -i input.i` to interpret.
 
+You might want to use the `-b` flag to get rid of an annoying compiler bug (that
+is mandated by the INTERCAL handbook).
+
+Optimizations are activated with `-o` (optimizes INTERCAL code, recommended) and
+`-O` (makes rustc optimize binary code, not recommended unless you bring lots of
+time or the program is very small).  There are a few interesting optimizations,
+such as folding the entire program to a "print" statement if it does not depend
+on any input.
+
 ## Testing
 
 The test suite consists of input and output files for the demo programs in

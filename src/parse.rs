@@ -19,6 +19,8 @@ use std::collections::{ BTreeMap, HashMap };
 use std::io::{ Read, BufRead, BufReader, Cursor };
 use std::u16;
 
+use rand::{ self, Rng };
+
 use ast::{ self, Program, Stmt, StmtBody, StmtProps, Expr, Abstain, ComeFrom, Var, VType, VarInfo };
 use err::{ Res, RtError, ErrDesc, IE000, IE017, IE079, IE099, IE139, IE182, IE197, IE200,
            IE444, IE555, IE993 };
@@ -38,18 +40,20 @@ pub struct Parser<'p> {
     tokens: Lexer<Cursor<&'p [u8]>>,
     stash:  Vec<TT>,  // used for backtracking
     startline: usize,
+    allow_bug: bool,
 }
 
 
 impl<'p> Parser<'p> {
-    pub fn new(code: &Vec<u8>, startline: usize) -> Parser {
+    pub fn new(code: &Vec<u8>, startline: usize, allow_bug: bool) -> Parser {
         let cursor1 = Cursor::new(&code[..]);
         let lines = Parser::get_lines(BufReader::new(cursor1));
         let cursor2 = Cursor::new(&code[..]);
         Parser { lines: lines,
                  tokens: lex(cursor2, startline),
                  stash: Vec::new(),
-                 startline: startline }
+                 startline: startline,
+                 allow_bug: allow_bug }
     }
 
     fn get_lines<T: Read>(mut reader: BufReader<T>) -> Vec<String> {
@@ -540,7 +544,7 @@ impl<'p> Parser<'p> {
         let mut last_lineno = self.tokens.lineno();
         if need_syslib == 1 {
             let code = syslib::SYSLIB_CODE.to_vec();
-            let mut p = Parser::new(&code, last_lineno);
+            let mut p = Parser::new(&code, last_lineno, false);
             let mut syslib_stmts = p.parse().unwrap();
             stmts.append(&mut syslib_stmts);
             *added_syslib = true;
@@ -548,7 +552,7 @@ impl<'p> Parser<'p> {
         }
         if need_floatlib == 1 {
             let code = syslib::FLOATLIB_CODE.to_vec();
-            let mut p = Parser::new(&code, last_lineno);
+            let mut p = Parser::new(&code, last_lineno, false);
             let mut floatlib_stmts = p.parse().unwrap();
             stmts.append(&mut floatlib_stmts);
             *added_floatlib = true;
@@ -679,6 +683,7 @@ impl<'p> Parser<'p> {
         // - add "way to" info for the next srcline
         // - create a map of all labels to logical lines
         // - count polite statements
+        // - set the correct "on the way to" line for error statements
         // - collect variables for renaming
         let mut npolite = 0;
         let mut types = Vec::new();
@@ -766,6 +771,13 @@ impl<'p> Parser<'p> {
         for (i, mut stmt) in stmts.iter_mut().enumerate() {
             stmt.comefrom = comefroms.remove(&i);
         }
+        // select a line for the compiler bug
+        let bugline = if self.allow_bug {
+            rand::thread_rng().gen_range(0, stmts.len())
+        } else {
+            stmts.len()  // can never be reached
+        } as u16;
+        // collect variable counts
         let var_info = (vec![VarInfo::new(); vars.counts[0]],
                         vec![VarInfo::new(); vars.counts[1]],
                         vec![VarInfo::new(); vars.counts[2]],
@@ -776,7 +788,8 @@ impl<'p> Parser<'p> {
                      var_info: var_info,
                      uses_complex_comefrom: uses_complex_comefrom,
                      added_syslib: added_syslib,
-                     added_floatlib: added_floatlib })
+                     added_floatlib: added_floatlib,
+                     bugline: bugline })
     }
 }
 
