@@ -17,6 +17,7 @@
 
 import os
 import sys
+import time
 import difflib
 from os import path
 from subprocess import Popen, PIPE, STDOUT
@@ -66,10 +67,9 @@ def run_test(testname, testcode, compiled):
         check(Popen([testcode[:-2]], stdin=PIPE, stdout=PIPE, stderr=STDOUT),
               False)
 
-    print ('  - passed')
-
 
 def main():
+    start = time.time()
     long_flag = '--long' in sys.argv
     short_flag = '--short' in sys.argv
     tests = [path.splitext(test.replace('/', os.sep))[0]
@@ -86,7 +86,7 @@ def main():
         for fn in sorted(files):
             if not fn.endswith('.chk'):
                 continue
-            if short_flag and fn.startswith(('fft-', 'life-', 'tpk')):
+            if short_flag and fn.startswith(('fft-', 'flonck', 'unlambda')):
                 continue
             testname = path.join(root, fn)[:-4]
             if tests and testname not in tests:
@@ -103,12 +103,16 @@ def main():
                 continue
             total += 1
             try:
+                t1 = time.time()
                 run_test(testname, testcode, long_flag)
+                t2 = time.time()
                 passed += 1
+                print('--- passed  (%5.2f sec)' % (t2 - t1))
             except RuntimeError:
                 failed.append(testname)
+    end = time.time()
     print('')
-    print('RESULT: %d/%d tests passed' % (passed, total))
+    print('RESULT: %d/%d tests passed  (%6.2f sec)' % (passed, total, end - start))
     if failed:
         print('Failed:')
         for testname in failed:
