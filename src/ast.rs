@@ -78,7 +78,7 @@ pub enum StmtBody {
 }
 
 /// A variable reference (store or load).
-#[derive(PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Var {
     I16(usize),
     I32(usize),
@@ -87,7 +87,7 @@ pub enum Var {
 }
 
 /// An expression.
-#[derive(PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Expr {
     Num(VType, u32),
     Var(Var),
