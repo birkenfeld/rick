@@ -96,6 +96,20 @@ pub static IE017: ErrDesc = ErrDesc {
     way: None,
 };
 
+/* Improper use has been made of statement identifiers. */
+pub static IE079: ErrDesc = ErrDesc {
+    num: 79,
+    msg: "PROGRAMMER IS INSUFFICIENTLY POLITE",
+    way: None,
+};
+
+/* Improper use has been made of statement identifiers. */
+pub static IE099: ErrDesc = ErrDesc {
+    num: 99,
+    msg: "PROGRAMMER IS OVERLY POLITE",
+    way: None,
+};
+
 /* Program has attempted 80 levels of NEXTing */
 pub static IE123: ErrDesc = ErrDesc {
     num: 123,

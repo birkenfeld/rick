@@ -548,9 +548,11 @@ impl<'p> Parser<'p> {
     fn post_process(&self, stmts: Vec<ast::Stmt>) -> Result<ast::Program, err::Error> {
         let mut stmts = self.add_syslib(stmts);
         // here we:
+        // - count polite statements
         // - determine the "abstain" type of each statement
         // - create a map of all labels to logical lines
         // - collect variables for renaming
+        let mut npolite = 0;
         let mut types = Vec::new();
         let mut labels = HashMap::new();
         let mut comefroms = HashMap::new();
@@ -560,7 +562,18 @@ impl<'p> Parser<'p> {
             if stmt.props.label > 0 {
                 labels.insert(stmt.props.label, i as u16);
             }
+            if stmt.props.polite {
+                npolite += 1;
+            }
             self.collect_vars(&mut vars, &mut stmt);
+        }
+        // check politeness
+        if stmts.len() > 2 {
+            if npolite == 0 || stmts.len() / npolite >= 5 {
+                return Err(err::new(&err::IE079));
+            } else if stmts.len() / npolite < 3 {
+                return Err(err::new(&err::IE099));
+            }
         }
         // here we:
         // - create a map of all come-froms to logical lines
