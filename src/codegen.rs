@@ -140,9 +140,9 @@ impl Generator {
                     if jumps.len() >= 80 {{
                         return err::IE123.err_with(None, {});
                     }}
-                    jumps.push(pctr);
+                    jumps.push((pctr, {:?}));
                     pctr = {};
-                    continue;", line, next);
+                    continue;", line, stmt.comefrom, next);
             }
             StmtBody::GiveUp => {
                 w!(self.o, 20; "break;");
@@ -167,7 +167,16 @@ impl Generator {
             }
             StmtBody::Resume(ref expr) => {
                 try!(self.gen_eval_expr(expr, line));
-                w!(self.o, 20; "pctr = try!(pop_jumps(&mut jumps, val, true)).unwrap();");
+                w!(self.o, 20; "let (old_pctr, comefrom) = \
+                   try!(pop_jumps(&mut jumps, val, true)).unwrap();");
+                w!(self.o, 20; "if let Some(next) = comefrom {{
+                        if !abstain[next] {{
+                            pctr = next;
+                            continue;
+                        }}
+                    }}
+                    pctr = old_pctr + 1;
+                    continue;");
             }
             StmtBody::Forget(ref expr) => {
                 try!(self.gen_eval_expr(expr, line));
@@ -367,7 +376,7 @@ impl Generator {
     fn gen_program_vars(&mut self, program: &Program) -> WRes {
         let vars = &self.program.n_vars;
         w!(self.o, 4; "let mut pctr: usize = 0;");
-        w!(self.o, 4; "let mut jumps: Vec<usize> = Vec::with_capacity(80);");
+        w!(self.o, 4; "let mut jumps: Vec<(usize, Option<usize>)> = Vec::with_capacity(80);");
         w!(self.o, 4; "let mut last_in: u8 = 0;");
         w!(self.o, 4; "let mut last_out: u8 = 0;");
         for i in 0..vars.0 {
@@ -398,7 +407,7 @@ impl Generator {
 
     fn gen_loop_footer(&mut self) -> WRes {
         self.write("
-            n @ _ => {
+            n => {
                 return err::IE663.err_with(None, n);
             }
         }
