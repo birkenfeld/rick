@@ -15,6 +15,24 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
+/// Translates AST to Rust.
+///
+/// There is quite a bit of ugly code generation here.  A library for quasi-quoting
+/// and pretty-printing Rust code would help a lot here.  I tried, at least, to make
+/// the actual generated code as nice as possible, so that it is not too hard to
+/// see what is going on at runtime.
+///
+/// All of the INTERCAL statements are generated into one monstrous function with a
+/// big switch over the current logical line (pctr is the "program counter").  This
+/// function is called from main(), which does not much else.
+///
+/// The code for the modules err.rs and stdops.rs are included in the generated code
+/// courtesy of the syntax extension, and provide runtime support (that is hopefully
+/// inlined in all the right places by the Rust/LLVM optimizer).
+///
+/// A lot of the generated code is similar to what eval.rs does at runtime, but most
+/// of the common code lives in stdops.rs.
+
 use std::fs::File;
 use std::io::{ BufWriter, Write };
 use std::rc::Rc;
@@ -38,6 +56,7 @@ pub struct Generator {
     line: SrcLine,
 }
 
+/// An ad-hoc way to generate a newline followed by a certain amount of indentation.
 fn indentation<'a>(n: usize) -> &'a str {
     &"
                                                                   "[..n+1]
@@ -70,11 +89,7 @@ impl Generator {
         }
     }
 
-    fn write(&mut self, s: &str) -> WRes {
-        try!(self.o.write(s.as_bytes()));
-        Ok(())
-    }
-
+    /// The main (and only) public method of the generator.
     pub fn generate(&mut self) -> WRes {
         let program = self.program.clone();
         try!(self.gen_attrs());
@@ -88,6 +103,11 @@ impl Generator {
         try!(self.gen_loop_footer());
         try!(self.gen_footer());
         try!(self.o.flush());
+        Ok(())
+    }
+
+    fn write(&mut self, s: &str) -> WRes {
+        try!(self.o.write(s.as_bytes()));
         Ok(())
     }
 
@@ -176,6 +196,10 @@ impl Generator {
                     Some(i) => i,
                     None    => return IE129.err()
                 };
+                // Jumps are a bit problematic: when we resume, we'd need full
+                // information about the current statement which is not available
+                // at runtime.  Therefore we have to put the comefrom and the
+                // label of the statement on the next stack as well.
                 w!(self.o; "
                     if jumps.len() >= 80 {{
                         return err::IE123.err_with(None, {});
@@ -311,6 +335,7 @@ impl Generator {
         Ok(())
     }
 
+    /// Check for COME FROMs if the program uses computed COME FROM.
     fn gen_comefrom_check(&mut self, cand1: &str, label: &str) -> WRes {
         w!(self.o, 20; "let mut candidates = vec![];
                     if let Some(c) = {} {{ candidates.push(c); }}", cand1);
@@ -332,6 +357,7 @@ impl Generator {
         Ok(())
     }
 
+    /// Get the Rust name of the given variable reference.
     fn get_varname(var: &Var) -> String {
         match *var {
             Var::I16(n) => format!("v{}", n),
@@ -341,7 +367,9 @@ impl Generator {
         }
     }
 
+    /// Generate an assignment of "val" to the given variable/array element.
     fn gen_assign(&mut self, var: &Var) -> WRes {
+        // if the variable can't be IGNOREd, we can skip the check for it
         let suffix = if match *var {
             Var::I16(n) => self.program.var_info.0[n].can_ignore,
             Var::I32(n) => self.program.var_info.1[n].can_ignore,
@@ -350,6 +378,9 @@ impl Generator {
         } { "" } else { "_unchecked" };
         match *var {
             Var::I16(n) => {
+                // yes, we have to check this at this point - INTERCAL has no
+                // real types, so the magnitude of the value is the only
+                // reliable indicator whether we can put it into the variable
                 w!(self.o; "
                     if val > (std::u16::MAX as u32) {{
                         return err::IE275.err_with(None, {});
@@ -387,6 +418,7 @@ impl Generator {
         Ok(())
     }
 
+    /// Helper for ABSTAIN.
     fn gen_abstain(&mut self, what: &Abstain, gen: &Fn(String) -> String) -> WRes {
         if let &Abstain::Label(lbl) = what {
             let idx = self.program.labels[&lbl];
@@ -401,6 +433,7 @@ impl Generator {
         Ok(())
     }
 
+    /// Evaluate an expression and assign it to "val".
     fn gen_eval_expr(&mut self, expr: &Expr) -> WRes {
         w!(self.o, 20; "let val = ");
         try!(self.gen_eval(expr, ""));
@@ -408,6 +441,7 @@ impl Generator {
         Ok(())
     }
 
+    /// Evaluate a list of expressions and assign it to "subs".  Used for array subscriptions.
     fn gen_eval_subs(&mut self, exprs: &Vec<Expr>) -> WRes {
         w!(self.o, 20; "let subs = vec![");
         for (i, expr) in exprs.iter().enumerate() {
@@ -420,6 +454,7 @@ impl Generator {
         Ok(())
     }
 
+    /// Evaluate an expression (inline).
     fn gen_eval(&mut self, expr: &Expr, astype: &str) -> WRes {
         match *expr {
             Expr::Num(_, v) => if v < 10 {
@@ -528,6 +563,7 @@ impl Generator {
         Ok(())
     }
 
+    /// Generate variable lookup inside an expression.
     fn gen_lookup(&mut self, var: &Var, astype: &str) -> WRes {
         match *var {
             Var::I16(n) => w!(self.o; "(v{}.val{})", n,
@@ -571,14 +607,21 @@ impl Generator {
         Ok(())
     }
 
+    /// Generates local let-bindings for all the stuff we need to keep track of.
     fn gen_program_vars(&mut self) -> WRes {
         let vars = &self.program.var_info;
+        // program counter
         w!(self.o, 4; "let mut pctr: usize = 0;");
+        // output stream
         w!(self.o, 4; "let mut stdout = std::io::stdout();");
+        // NEXT stack (80 entries only)
         w!(self.o, 4; "let mut jumps: Vec<(usize, Option<usize>, u16)> = Vec::with_capacity(80);");
+        // current input and output state
         w!(self.o, 4; "let mut last_in: u8 = 0;");
         w!(self.o, 4; "let mut last_out: u8 = 0;");
+        // random number generator state
         w!(self.o, 4; "let mut rand_st: u32;");
+        // one binding for each variable used by the program
         for i in 0..vars.0.len() {
             w!(self.o, 4; "let mut v{}: Bind<u16> = Bind::new(0);", i);
         }
@@ -591,6 +634,7 @@ impl Generator {
         for i in 0..vars.3.len() {
             w!(self.o, 4; "let mut b{}: Bind<Array<u32>> = Bind::new(Array::empty());", i);
         }
+        // list of abstention state for each statement, can initially be 0 or 1
         w!(self.o, 4; "let mut abstain = [");
         for (i, stmt) in self.program.stmts.iter().enumerate() {
             if i % 24 == 0 {

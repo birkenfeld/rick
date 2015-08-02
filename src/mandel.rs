@@ -15,6 +15,16 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
+/// Mandelbrot fractal generator.
+///
+/// Used to display a nice "progress bar" like image on the console while you wait
+/// for rustc to compile 50000 lines of generated Rust code.  It could take a while...
+///
+/// This uses the 256-color ANSI codes, which might not be supported by all terminals.
+/// If you see strange characters or just dots, get yourself an xterm.
+///
+/// Credits: most of this code is translated from PyPy's rpython/tool/ansi_mandelbrot.
+
 use std::io::{ Write, stdout };
 use std::cmp::min;
 use std::ops::{ Add, Mul };
@@ -121,7 +131,8 @@ impl MandelPrinter {
             println!("{} {}", color, self.max_color);
         }
         let idx = idxmax - (color + 1) * idxmax / self.max_color;
-        print!("\x1b[48;5;{}m \x1b[0m", COLORS[idx as usize]);
+        print!("\x1b[48;5;{}m\x1b[38;5;{}m.\x1b[0m",
+               COLORS[idx as usize], COLORS[idx as usize]);
         if flush {
             let _ = stdout.flush();
         }

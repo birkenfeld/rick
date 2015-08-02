@@ -15,6 +15,15 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
+/// Parses INTERCAL (yes, it's possible!) and generates an Abstract Sadism Tree.
+///
+/// Hand-written, since I didn't find any parser generators that looked nice enough.
+/// The INTERCAL syntax is actually not that complicated (except where it is), but
+/// the various extensions make it a bit iffy.
+///
+/// There are quite a few steps to do after parsing, which are done in the method
+/// called `post_process`.  It makes a list of statements into a "real" program.
+
 use std::collections::{ BTreeMap, HashMap };
 use std::io::{ Read, BufRead, BufReader, Cursor };
 use std::u16;
@@ -47,6 +56,8 @@ pub struct Parser<'p> {
 impl<'p> Parser<'p> {
     pub fn new(code: &Vec<u8>, startline: usize, allow_bug: bool) -> Parser {
         let cursor1 = Cursor::new(&code[..]);
+        // we have to keep a list of all physical source lines to generate
+        // E000 error messages, so duplicate the input stream
         let lines = Parser::get_lines(BufReader::new(cursor1));
         let cursor2 = Cursor::new(&code[..]);
         Parser { lines: lines,
@@ -672,6 +683,7 @@ impl<'p> Parser<'p> {
         });
     }
 
+    /// Do whatever needs to be done after parsing is complete.
     fn post_process(&self, stmts: Vec<Stmt>) -> Res<Program> {
         let mut added_syslib = false;
         let mut added_floatlib = false;

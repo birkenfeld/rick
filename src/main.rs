@@ -19,6 +19,10 @@
 #![plugin(rustlex)]
 #![plugin(rick_syntex)]
 
+/// Main program for Rick.
+///
+/// Parses arguments, calls parser, optimizer, interpreter or code generator.
+
 #[allow(plugin_as_library)]
 extern crate rustlex;
 extern crate getopts;

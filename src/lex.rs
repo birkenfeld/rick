@@ -15,6 +15,11 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
+/// A lexer for INTERCAL generated with RustLex.
+///
+/// The raw RustLex lexer is wrapped by a buffer iterator that adds a few
+/// special methods, such as the pretty standard "peek" and "push back" features.
+
 use std::io::Read;
 use std::u32;
 

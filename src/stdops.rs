@@ -17,6 +17,22 @@
 
 #![rick_embed_module_code]
 
+/// Runtime support for INTERCAL compiler and interpreter.
+///
+/// This file provides code that is useful in the interpreter and in the compiled
+/// program.  The syntax extension called above embeds the module source into the
+/// module for use by the code generator.
+///
+/// The basic things implemented here are:
+///
+/// * Bind, the struct holding INTERCAL variables and their STASHes
+/// * Array, the struct holding INTERCAL arrays
+/// * RNG for execution chances
+/// * jump handling for RESUME and FORGET
+/// * Roman numeral and English spelled-out number conversion
+/// * Basic read/write of numbers and bytes
+/// * all the INTERCAL operators (mingle, select, unary and, unary or, unary xor)
+
 use std::fmt::{ Debug, Display, Error, Formatter };
 use std::fs::File;
 use std::io::{ BufRead, Read, Write, stdin };
@@ -236,6 +252,8 @@ pub fn check_chance(chance: u8, state: u32) -> (bool, u32) {
     if chance == 100 {
         (true, state)
     } else {
+        // this is the generator suggested as the default rand() by POSIX,
+        // I'm sure it is exceedingly random
         let new_state = state.wrapping_mul(1103515245).wrapping_add(12345);
         let random = (new_state / 65536) % 100;
         (random < (chance as u32), new_state)

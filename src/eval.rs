@@ -15,6 +15,11 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
+/// Interprets INTERCAL source.
+///
+/// The evaluator is used when rick is called with `-i`, or when the compiler generates
+/// the output while compiling (in the constant-output case).
+
 use std::fmt::{ Debug, Display };
 use std::io::Write;
 use std::u16;

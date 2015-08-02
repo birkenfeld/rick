@@ -15,6 +15,12 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
+/// Provides the syslib and floatlib as embedded code.
+///
+/// The syslib is appended to INTERCAL programs when they jump to a label
+/// in the range 1000 to 1999 (but don't define any such label).
+/// The same goes for floatlib with the range 5000 to 5999.
+
 // This is the syslib.i from C-INTERCAL 0.30.
 
 pub const SYSLIB_CODE: &'static [u8; 7156] = br##"

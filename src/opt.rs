@@ -15,6 +15,28 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
+/// Optimizes INTERCAL code to look a little less like what your dog left on the carpet.
+///
+/// The optimizer gets the whole program and does several passes.
+///
+/// * constant folding: just reduces (sub)expressions involving no variables
+/// * expressions: looks for common patterns of INTERCAL operator expressions
+///   and replaces them by equivalent expressions involving native Rust operators
+/// * constant output (can be disabled): if the program neither uses random numbers
+///   nor takes any input, its output must be constant - the optimizer generates
+///   this output using the Eval interpreter and replaces the program by a single
+///   Print instruction (if your program does not terminate, you'd better disable
+///   this pass with the -F option)
+/// * abstain check: marks all statements that cannot be ABSTAINed from, so that
+///   the code generator can skip emitting guards for them
+/// * var check: marks all variables that cannot be IGNOREd, so that the code
+///   generator can use unchecked assignments
+///
+/// The patterns recognized by the expression optimizer are pretty random.  They
+/// were selected to optimize performance of the `tpk.i` example program, and
+/// could be expanded a lot.  But at that point it's probably better to take the
+/// route of C-INTERCAL and use a DSL for generic pattern matching.
+
 use std::collections::BTreeMap;
 use std::io::Cursor;
 use std::u16;
