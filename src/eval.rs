@@ -313,22 +313,25 @@ impl<'a> Eval<'a> {
                     Ok(Val::I32(select(v.as_u32(), w.as_u32())))
                 }
             }
-            Expr::And(_, ref vx) => {
-                match try!(self.eval_expr(vx)) {
-                    Val::I16(v) => Ok(Val::I16(and_16(v as u32) as u16)),
-                    Val::I32(v) => Ok(Val::I32(and_32(v))),
+            Expr::And(vtype, ref vx) => {
+                let v = try!(self.eval_expr(vx));
+                match vtype {
+                    VType::I16 => Ok(Val::I16(and_16(try!(v.as_u16()) as u32) as u16)),
+                    VType::I32 => Ok(Val::I32(and_32(v.as_u32()))),
                 }
             }
-            Expr::Or(_, ref vx) => {
-                match try!(self.eval_expr(vx)) {
-                    Val::I16(v) => Ok(Val::I16(or_16(v as u32) as u16)),
-                    Val::I32(v) => Ok(Val::I32(or_32(v))),
+            Expr::Or(vtype, ref vx) => {
+                let v = try!(self.eval_expr(vx));
+                match vtype {
+                    VType::I16 => Ok(Val::I16(or_16(try!(v.as_u16()) as u32) as u16)),
+                    VType::I32 => Ok(Val::I32(or_32(v.as_u32()))),
                 }
             }
-            Expr::Xor(_, ref vx) => {
-                match try!(self.eval_expr(vx)) {
-                    Val::I16(v) => Ok(Val::I16(xor_16(v as u32) as u16)),
-                    Val::I32(v) => Ok(Val::I32(xor_32(v))),
+            Expr::Xor(vtype, ref vx) => {
+                let v = try!(self.eval_expr(vx));
+                match vtype {
+                    VType::I16 => Ok(Val::I16(xor_16(try!(v.as_u16()) as u32) as u16)),
+                    VType::I32 => Ok(Val::I32(xor_32(v.as_u32()))),
                 }
             }
             Expr::RsNot(ref vx) => {
