@@ -560,6 +560,9 @@ impl<'p> Parser<'p> {
         for (i, mut stmt) in stmts.iter_mut().enumerate() {
             types.push(stmt.stype());
             if stmt.props.label > 0 {
+                if labels.contains_key(&stmt.props.label) {
+                    return Err(err::with_line(&err::IE182, stmt.props.srcline));
+                }
                 labels.insert(stmt.props.label, i as u16);
             }
             if stmt.props.polite {

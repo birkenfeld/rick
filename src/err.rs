@@ -131,6 +131,13 @@ pub static IE139: ErrDesc = ErrDesc {
     way: None,
 };
 
+/* A line label has been multiply defined. */
+pub static IE182: ErrDesc = ErrDesc {
+    num: 182,
+    msg: "YOU MUST LIKE THIS LABEL A LOT!",
+    way: None,
+};
+
 /* An invalid line label has been encountered. */
 pub static IE197: ErrDesc = ErrDesc {
     num: 197,
