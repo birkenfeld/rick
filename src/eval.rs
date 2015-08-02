@@ -20,7 +20,7 @@ use std::rc::Rc;
 
 use ast::{ self, Program, Stmt, StmtBody, Expr, Val, Var };
 use err;
-use util::{ write_number, write_byte, read_number, check_chance,
+use util::{ write_number, write_byte, read_number, read_byte, check_chance,
             mingle, select, and_16, and_32, or_16, or_32, xor_16, xor_32 };
 
 
@@ -63,7 +63,7 @@ pub struct Eval {
     hybrid: Vec<Bind<Array<u32>>>,
     jumps: Vec<ast::LogLine>,
     abstentions: Vec<bool>,
-    _in_state: u8,
+    last_in: u8,
     last_out: u8,
 }
 
@@ -91,7 +91,7 @@ impl Eval {
             hybrid:  vec![Bind::new(Array::empty()); nv.3],
             jumps:   Vec::new(),
             abstentions: abs,
-            _in_state: 0,
+            last_in: 0,
             last_out: 0,
         }
     }
@@ -239,8 +239,12 @@ impl Eval {
                 Ok(StmtRes::Next)
             }
             &StmtBody::WriteIn(ref var) => {
-                let n = try!(read_number());
-                try!(self.assign(var, Val::from_u32(n)));
+                if var.is_dim() {
+                    try!(self.array_writein(var));
+                } else {
+                    let n = try!(read_number());
+                    try!(self.assign(var, Val::from_u32(n)));
+                }
                 Ok(StmtRes::Next)
             }
         }
@@ -505,6 +509,43 @@ impl Eval {
                                                    |v| write(state, v))),
             Var::A32(n, _) => try!(generic_readout(&self.hybrid[n as usize],
                                                    |v| write(state, v as u16))),
+            _ => unimplemented!()
+        }
+        Ok(())
+    }
+
+    /// Array writein helper.
+    fn array_writein(&mut self, var: &Var) -> EvalRes<()> {
+        fn generic_writein<T: Copy, F>(bind: &mut Bind<Array<T>>, mut cb: F) -> EvalRes<()>
+            where F: FnMut() -> T
+        {
+            if bind.val.dims.len() != 1 {
+                // only dimension-1 arrays can be input
+                return Err(err::new(&err::IE241));
+            }
+            for place in bind.val.elems.iter_mut() {
+                let b = cb();
+                if bind.rw {
+                    *place = b;
+                }
+            }
+            Ok(())
+        }
+        fn read(state: &mut u8) -> u16 {
+            let byte = read_byte();
+            if byte == 256 {
+                *state = 0;
+                return 256;
+            }
+            *state = byte as u8;
+            ((byte as i32 - *state as i32) % 256) as u16
+        };
+        let state = &mut self.last_in;
+        match *var {
+            Var::A16(n, _) => try!(generic_writein(&mut self.tail[n as usize],
+                                                   || read(state))),
+            Var::A32(n, _) => try!(generic_writein(&mut self.hybrid[n as usize],
+                                                   || read(state) as u32)),
             _ => unimplemented!()
         }
         Ok(())

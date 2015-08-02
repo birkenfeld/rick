@@ -15,7 +15,7 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
-use std::io::{ BufRead, stdin };
+use std::io::{ BufRead, Read, stdin };
 use std::u16;
 use std::u32;
 use rand::{ random, Closed01 };
@@ -142,6 +142,15 @@ pub fn read_number() -> Result<u32, err::Error> {
     }
 }
 
+pub fn read_byte() -> u16 {
+    let stdin = stdin();
+    let mut slock = stdin.lock();
+    let mut buf = [0u8; 1];
+    match slock.read(&mut buf) {
+        Ok(1) => buf[0] as u16,
+        _     => 256      // EOF is defined to be 256
+    }
+}
 
 pub fn mingle(mut v: u32, mut w: u32) -> Result<u32, err::Error> {
     if v > (u16::MAX as u32) || w > (u16::MAX as u32) {
