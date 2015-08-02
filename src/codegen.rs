@@ -211,7 +211,7 @@ impl Generator {
             StmtBody::Resume(ref expr) => {
                 try!(self.gen_eval_expr(expr));
                 w!(self.o, 20; "let (old_pctr, comefrom, label) = \
-                   try!(pop_jumps(&mut jumps, val, true, {})).unwrap();", self.line);
+                   try!(pop_jumps(&mut jumps, val, true, {})).expect(\"uh oh\");", self.line);
                 if self.program.uses_complex_comefrom {
                     try!(self.gen_comefrom_check("comefrom", "label"));
                 } else {

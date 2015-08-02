@@ -109,7 +109,7 @@ impl<'p> Parser<'p> {
                         Some(&TT::DO) |
                         Some(&TT::PLEASEDO) => break,
                         Some(&TT::WAX) => {
-                            let wax = self.tokens.next().unwrap();
+                            let wax = self.tokens.next().expect("THERE WAX A TOKEN I SWEAR");
                             if let Some(&TT::NUMBER(_)) = self.tokens.peek() {
                                 self.tokens.push(wax);
                                 break;
@@ -467,14 +467,14 @@ impl<'p> Parser<'p> {
             Some(ref v) if **v == t => { }
             _ => return false,
         }
-        self.stash.push(self.tokens.next().unwrap());
+        self.stash.push(self.tokens.next().expect("there just was a token?!"));
         true
     }
 
     /// Push tokens back to the source until stash is of length `state`.
     fn backtrack(&mut self, state: usize) {
         while self.stash.len() > state {
-            self.tokens.push(self.stash.pop().unwrap());
+            self.tokens.push(self.stash.pop().expect("Schroedinger stack?"));
         }
     }
 
@@ -545,7 +545,7 @@ impl<'p> Parser<'p> {
         if need_syslib == 1 {
             let code = syslib::SYSLIB_CODE.to_vec();
             let mut p = Parser::new(&code, last_lineno, false);
-            let mut syslib_stmts = p.parse().unwrap();
+            let mut syslib_stmts = p.parse().expect("E-42 SYSLIB BROKEN");
             stmts.append(&mut syslib_stmts);
             *added_syslib = true;
             last_lineno = p.tokens.lineno();
@@ -553,7 +553,7 @@ impl<'p> Parser<'p> {
         if need_floatlib == 1 {
             let code = syslib::FLOATLIB_CODE.to_vec();
             let mut p = Parser::new(&code, last_lineno, false);
-            let mut floatlib_stmts = p.parse().unwrap();
+            let mut floatlib_stmts = p.parse().expect("E2.0000000001 FLOATLIB BROKEN");
             stmts.append(&mut floatlib_stmts);
             *added_floatlib = true;
         }

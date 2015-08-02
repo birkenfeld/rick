@@ -269,9 +269,10 @@ impl<'a> Eval<'a> {
             }
             StmtBody::Resume(ref expr) => {
                 let n = try!(self.eval_expr(expr)).as_u32();
-                // this unwrap() is safe: if the third arg is true, there will
+                // this expect() is safe: if the third arg is true, there will
                 // be no Ok(None) returns
-                let next = try!(pop_jumps(&mut self.jumps, n, true, 0)).unwrap();
+                let next = try!(pop_jumps(&mut self.jumps, n, true, 0))
+                    .expect("https://xkcd.com/378/ ?!");
                 Ok(StmtRes::Back(next as usize))
             }
             StmtBody::Forget(ref expr) => {

@@ -224,7 +224,7 @@ pub fn get_random_seed() -> u32 {
     let seed: u32;
     if let Ok(mut fp) = File::open("/dev/urandom") {
         let mut buf = [0; 4];
-        fp.read(&mut buf).unwrap();
+        let _ = fp.read(&mut buf);  // if no data, seed is just a little less random.
         seed = (buf[0] as u32) << 24 | (buf[1] as u32) << 16 | (buf[2] as u32) << 8 | (buf[3] as u32);
     } else {
         seed = 4;  // chosen by fair dice roll. guaranteed to be random.

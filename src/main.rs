@@ -15,7 +15,7 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
-#![feature(plugin, box_syntax, box_patterns, append)]
+#![feature(plugin, box_syntax, box_patterns, append, result_expect)]
 #![plugin(rustlex)]
 #![plugin(rick_syntex)]
 
