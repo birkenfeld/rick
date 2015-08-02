@@ -60,7 +60,7 @@ def run_test(testname, testcode, compiled):
     if compiled:
         print('  > Step 3: compiled + optimized')
         if testcode not in already_compiled:
-            if os.system('cargo run -- -Rbo %s > /dev/null' % testcode) != 0:
+            if os.system('cargo run -- -RFbo %s > /dev/null' % testcode) != 0:
                 print('*** ERROR: compilation failed')
                 raise RuntimeError
             already_compiled.add(testcode)

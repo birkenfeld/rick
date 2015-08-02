@@ -69,6 +69,7 @@ fn main_inner() -> Result<i32, err::RtError> {
     opts.optflag("b", "no-bug", "eliminate probability for E774");
     opts.optflag("O", "rustc-opt", "run rustc in optimized mode");
     opts.optflag("R", "no-random", "use deterministic random seed");
+    opts.optflag("F", "no-constout", "do not optimize away const-output programs");
     opts.optflag("d", "debug", "activate printing out debug messages");
     opts.optflag("t", "timing", "print out timing messages");
     opts.optflag("h", "help", "print help message");
@@ -93,6 +94,7 @@ fn main_inner() -> Result<i32, err::RtError> {
     let rand_flag = !matches.opt_present("R");
     let rustc_flag = !matches.opt_present("c");
     let rustc_opt_flag = matches.opt_present("O");
+    let const_out_flag = !matches.opt_present("F");
 
     // no input file? -> do nothing
     if matches.free.is_empty() {
@@ -130,7 +132,7 @@ fn main_inner() -> Result<i32, err::RtError> {
     // optimize if wanted
     let t1 = time::get_time();
     if opt_flag {
-        program = Optimizer::new(program).optimize();
+        program = Optimizer::new(program, const_out_flag).optimize();
         if debug_flag {
             println!("Optimized program:\n{}", program);
         }

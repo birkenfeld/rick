@@ -26,6 +26,7 @@ use stdops::{ mingle, select, and_16, and_32, or_16, or_32, xor_16, xor_32 };
 
 pub struct Optimizer {
     program: Program,
+    allow_const_out: bool,
 }
 
 fn n(i: u32) -> Box<Expr> {
@@ -33,17 +34,20 @@ fn n(i: u32) -> Box<Expr> {
 }
 
 impl Optimizer {
-    pub fn new(program: Program) -> Optimizer {
-        Optimizer { program: program }
+    pub fn new(program: Program, allow_const_out: bool) -> Optimizer {
+        Optimizer { program: program,
+                    allow_const_out: allow_const_out }
     }
 
     pub fn optimize(self) -> Program {
-        let program = self.program;
-        let program = Optimizer::opt_constant_fold(program);
-        let program = Optimizer::opt_expressions(program);
-        let program = Optimizer::opt_const_output(program);
-        let program = Optimizer::opt_abstain_check(program);
-        let program = Optimizer::opt_var_check(program);
+        let mut program = self.program;
+        program = Optimizer::opt_constant_fold(program);
+        program = Optimizer::opt_expressions(program);
+        if self.allow_const_out {
+            program = Optimizer::opt_const_output(program);
+        }
+        program = Optimizer::opt_abstain_check(program);
+        program = Optimizer::opt_var_check(program);
         program
     }
 
