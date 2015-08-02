@@ -15,7 +15,7 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
-#![feature(plugin, iter_arith, box_syntax, box_patterns)]
+#![feature(plugin, iter_arith, box_syntax, box_patterns, append)]
 #![plugin(rustlex)]
 
 #[allow(plugin_as_library)]

@@ -17,7 +17,7 @@
 
 // This is the syslib.i from C-INTERCAL 0.30.
 
-pub const SYSLIB_CODE: &'static str = r##"
+pub const SYSLIB_CODE: &'static [u8; 7156] = br##"
 		PLEASE KNOCK BEFORE ENTERING
 
 	(1000)	PLEASE IGNORE .4

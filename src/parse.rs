@@ -21,6 +21,7 @@ use std::u16;
 
 use ast;
 use err;
+use syslib;
 use lex::{ lex, LexerIter, TT };
 
 
@@ -340,7 +341,33 @@ impl<'p> Parser<'p> {
         Error::Soft(self.tokens.lineno())
     }
 
+    fn add_syslib(&self, mut stmts: Vec<ast::Stmt>) -> Vec<ast::Stmt> {
+        // add the syslib if necessary
+        let mut need_syslib = false;
+        for stmt in &stmts {
+            if stmt.props.label >= 1000 && stmt.props.label < 1999 {
+                // we are the syslib or override it
+                need_syslib = false;
+                break;
+            }
+            if let ast::StmtBody::DoNext(n) = stmt.body {
+                // jumping to a syslib label? we might need it then
+                if n >= 1000 && n < 1999 {
+                    need_syslib = true;
+                }
+            }
+        }
+        if need_syslib {
+            let code = syslib::SYSLIB_CODE.to_vec();
+            let mut p = Parser::new(&code);
+            let mut syslib_stmts = p.parse().unwrap().stmts;
+            stmts.append(&mut syslib_stmts);
+        }
+        stmts
+    }
+
     fn post_process(&self, stmts: Vec<ast::Stmt>) -> Result<ast::Program, err::Error> {
+        let stmts = self.add_syslib(stmts);
         // here we collect:
         // - the "abstain" type of each statement
         // - a map of all labels to logical lines
