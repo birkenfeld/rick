@@ -27,6 +27,8 @@ code/sort
 code/tpk
 code/unlambda
 code/yapp
+
+code/tests/*.rs
 code/tests/ais1
 code/tests/ais2
 code/tests/arrtest
