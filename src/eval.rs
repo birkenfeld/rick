@@ -86,10 +86,11 @@ pub struct Eval<'a> {
 }
 
 enum StmtRes {
-    Next,
-    Jump(usize),
-    Back(usize),
-    End,
+    Next,         // normal execution, next statement
+    Jump(usize),  // DO ... NEXT
+    Back(usize),  // RESUME
+    FromTop,      // TRY AGAIN
+    End,          // GIVE UP
 }
 
 impl<'a> Eval<'a> {
@@ -123,6 +124,10 @@ impl<'a> Eval<'a> {
         loop {
             // check for falling off the end
             if pctr >= nstmts {
+                // if the last statement was a TRY AGAIN, falling off the end is fine
+                if let StmtBody::TryAgain = program.stmts[program.stmts.len() - 1].body {
+                    break;
+                }
                 return IE633.err();
             }
             self.stmt_ctr += 1;
@@ -155,6 +160,10 @@ impl<'a> Eval<'a> {
                         }
                         StmtRes::Back(n) => {
                             pctr = n;  // will be incremented below after COME FROM check
+                        }
+                        StmtRes::FromTop => {
+                            pctr = 0;  // start from the beginning, do not push any stack
+                            continue;
                         }
                         StmtRes::End     => break,
                     }
@@ -290,6 +299,7 @@ impl<'a> Eval<'a> {
                 write!(self.stdout, "{}", s).unwrap();
                 Ok(StmtRes::Next)
             }
+            StmtBody::TryAgain => Ok(StmtRes::FromTop),
             StmtBody::GiveUp => Ok(StmtRes::End),
             StmtBody::Error(ref e) => Err((*e).clone()),
         }

@@ -74,6 +74,7 @@ pub enum StmtBody {
     Reinstate(Vec<Abstain>),
     WriteIn(Vec<Var>),
     ReadOut(Vec<Expr>),
+    TryAgain,
     GiveUp,
     // only used after optimizing
     Print(String),
@@ -138,6 +139,7 @@ pub enum Abstain {
     ComeFrom,
     ReadOut,
     WriteIn,
+    TryAgain,
 }
 
 /// Information about a variable.
@@ -168,6 +170,7 @@ impl Stmt {
             StmtBody::Reinstate(_) => Abstain::Reinstate,
             StmtBody::WriteIn(_) => Abstain::WriteIn,
             StmtBody::ReadOut(_) => Abstain::ReadOut,
+            StmtBody::TryAgain => Abstain::TryAgain,
             StmtBody::GiveUp => Abstain::Label(0),
             StmtBody::Print(_) => Abstain::Label(0),
         }
@@ -323,6 +326,7 @@ impl Display for StmtBody {
             StmtBody::Reinstate(ref whats) => write!(fmt, "REINSTATE {}", self.fmt_pluslist(whats)),
             StmtBody::WriteIn(ref vars) => write!(fmt, "WRITE IN {}", self.fmt_pluslist(vars)),
             StmtBody::ReadOut(ref vars) => write!(fmt, "READ OUT {}", self.fmt_pluslist(vars)),
+            StmtBody::TryAgain => write!(fmt, "TRY AGAIN"),
             StmtBody::GiveUp => write!(fmt, "GIVE UP"),
             StmtBody::Print(_) => write!(fmt, "<PRINT>"),
         }
@@ -397,6 +401,7 @@ impl Display for Abstain {
             Abstain::ComeFrom => write!(fmt, "COMING FROM"),
             Abstain::ReadOut => write!(fmt, "READING OUT"),
             Abstain::WriteIn => write!(fmt, "WRITING IN"),
+            Abstain::TryAgain => write!(fmt, "TRYING AGAIN"),
         }
     }
 }

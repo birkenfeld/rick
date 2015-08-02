@@ -271,6 +271,10 @@ impl Generator {
                     }
                 }
             }
+            StmtBody::TryAgain => {
+                w!(self.o, 20; "pctr = 0;");
+                w!(self.o, 20; "continue;");
+            }
             StmtBody::Print(ref s) => {
                 w!(self.o, 20; "print!(\"{{}}\", {:?});", s);
             }
@@ -552,9 +556,13 @@ impl Generator {
     }
 
     fn gen_loop_footer(&mut self) -> WRes {
+        w!(self.o, 12; "_ => {{");
+        if let StmtBody::TryAgain = self.program.stmts[self.program.stmts.len() - 1].body {
+            w!(self.o, 16; "break;");
+        } else {
+            w!(self.o, 16; "return err::IE633.err();");
+        }
         self.write("
-            n => {
-                return err::IE633.err();
             }
         }
     }

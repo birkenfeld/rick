@@ -21,7 +21,7 @@ use std::u16;
 
 use ast::{ self, Program, Stmt, StmtBody, StmtProps, Expr, Abstain, Var, VType, VarInfo };
 use err::{ Res, RtError, ErrDesc, IE000, IE017, IE079, IE099, IE139, IE182, IE197, IE200,
-           IE444, IE555 };
+           IE444, IE555, IE993 };
 use lex::{ lex, Lexer, SrcLine, TT };
 use syslib;
 
@@ -193,6 +193,8 @@ impl<'p> Parser<'p> {
             Ok(StmtBody::WriteIn(try!(self.parse_varlist(true))))
         } else if self.take(TT::READOUT) {
             Ok(StmtBody::ReadOut(try!(self.parse_readlist())))
+        } else if self.take(TT::TRYAGAIN) {
+            return Ok(StmtBody::TryAgain)
         } else if self.take(TT::GIVEUP) {
             return Ok(StmtBody::GiveUp)
         } else {
@@ -397,6 +399,8 @@ impl<'p> Parser<'p> {
             Ok(Abstain::ReadOut)
         } else if self.take(TT::WRITINGIN) {
             Ok(Abstain::WriteIn)
+        } else if self.take(TT::TRYINGAGAIN) {
+            Ok(Abstain::TryAgain)
         } else {
             Err(self.invalid())
         }
@@ -719,6 +723,12 @@ impl<'p> Parser<'p> {
                     if !labels.contains_key(&n) {
                         return Err(IE139.new(None, stmt.props.onthewayto));
                     }
+                }
+            }
+            if let StmtBody::TryAgain = stmt.body {
+                // TRY AGAIN must be the last statement in the file
+                if i != nstmts - 1 {
+                    return Err(IE993.new(None, stmt.props.onthewayto));
                 }
             }
         }

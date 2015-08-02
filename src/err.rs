@@ -279,6 +279,13 @@ pub static IE888: ErrDesc = ErrDesc {
     way: None,
 };
 
+/* Command found after TRY AGAIN. */
+pub static IE993: ErrDesc = ErrDesc {
+    num: 993,
+    msg: "I GAVE UP LONG AGO",
+    way: None,
+};
+
 /* Source file name with invalid extension (use .i). */
 pub static IE998: ErrDesc = ErrDesc {
     num: 998,

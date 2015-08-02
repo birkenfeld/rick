@@ -79,6 +79,7 @@ pub enum TT {
     COMEFROM,
     READOUT,
     WRITEIN,
+    TRYAGAIN,
     GIVEUP,
 
     // gerunds for abstain/reinstate
@@ -95,6 +96,7 @@ pub enum TT {
     COMINGFROM,
     READINGOUT,
     WRITINGIN,
+    TRYINGAGAIN,
 }
 
 
@@ -108,14 +110,16 @@ rustlex! RawLexer {
     let WS  = [' ' '\t']+;
     let NL  = '\n';
 
-    let PLEASEDO   = "PLEASE"  [' ' '\t' '\n']* "DO";
-    let COMEFROM   = "COME"    [' ' '\t' '\n']* "FROM";
-    let READOUT    = "READ"    [' ' '\t' '\n']* "OUT";
-    let WRITEIN    = "WRITE"   [' ' '\t' '\n']* "IN";
-    let GIVEUP     = "GIVE"    [' ' '\t' '\n']* "UP";
-    let COMINGFROM = "COMING"  [' ' '\t' '\n']* "FROM";
-    let READINGOUT = "READING" [' ' '\t' '\n']* "OUT";
-    let WRITINGIN  = "WRITING" [' ' '\t' '\n']* "IN";
+    let PLEASEDO    = "PLEASE"  [' ' '\t' '\n']* "DO";
+    let COMEFROM    = "COME"    [' ' '\t' '\n']* "FROM";
+    let READOUT     = "READ"    [' ' '\t' '\n']* "OUT";
+    let WRITEIN     = "WRITE"   [' ' '\t' '\n']* "IN";
+    let TRYAGAIN    = "TRY"     [' ' '\t' '\n']* "AGAIN";
+    let GIVEUP      = "GIVE"    [' ' '\t' '\n']* "UP";
+    let COMINGFROM  = "COMING"  [' ' '\t' '\n']* "FROM";
+    let READINGOUT  = "READING" [' ' '\t' '\n']* "OUT";
+    let WRITINGIN   = "WRITING" [' ' '\t' '\n']* "IN";
+    let TRYINGAGAIN = "TRYING"  [' ' '\t' '\n']* "AGAIN";
 
     ANY            => |l: Lx<R>| l.tok(TT::UNKNOWN)
     NUM            => |l: Lx<R>| { let s = l.yystr();
@@ -145,6 +149,7 @@ rustlex! RawLexer {
     COMEFROM       => |l: Lx<R>| l.tok_with_nl(TT::COMEFROM)
     READOUT        => |l: Lx<R>| l.tok_with_nl(TT::READOUT)
     WRITEIN        => |l: Lx<R>| l.tok_with_nl(TT::WRITEIN)
+    TRYAGAIN       => |l: Lx<R>| l.tok_with_nl(TT::TRYAGAIN)
     GIVEUP         => |l: Lx<R>| l.tok_with_nl(TT::GIVEUP)
 
     "CALCULATING"  => |l: Lx<R>| l.tok(TT::CALCULATING)
@@ -160,6 +165,7 @@ rustlex! RawLexer {
     COMINGFROM     => |l: Lx<R>| l.tok_with_nl(TT::COMINGFROM)
     READINGOUT     => |l: Lx<R>| l.tok_with_nl(TT::READINGOUT)
     WRITINGIN      => |l: Lx<R>| l.tok_with_nl(TT::WRITINGIN)
+    TRYINGAGAIN    => |l: Lx<R>| l.tok_with_nl(TT::TRYINGAGAIN)
 
     '.'            => |l: Lx<R>| l.tok(TT::SPOT)
     ':'            => |l: Lx<R>| l.tok(TT::TWOSPOT)
