@@ -79,7 +79,7 @@ pub enum StmtBody {
     TryAgain,
     GiveUp,
     // only used after optimizing
-    Print(String),
+    Print(Vec<u8>),
 }
 
 /// A variable reference (store or load).

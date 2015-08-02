@@ -387,9 +387,8 @@ impl Optimizer {
             // if eval fails, don't pretend to do anything.
             return program;
         }
-        let s = String::from_utf8(cursor.into_inner()).unwrap();
         Program {
-            stmts: vec![Stmt::new_with(StmtBody::Print(s)),
+            stmts: vec![Stmt::new_with(StmtBody::Print(cursor.into_inner())),
                         Stmt::new_with(StmtBody::GiveUp)],
             labels: BTreeMap::new(),
             stmt_types: vec![Abstain::Label(0)],

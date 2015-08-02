@@ -92,7 +92,7 @@ impl Generator {
     }
 
     fn gen_attrs(&mut self) -> WRes {
-        // no attributes needed at the moment
+        w!(self.o; "#![allow(unused_imports)]");
         Ok(())
     }
 
@@ -303,7 +303,9 @@ impl Generator {
                 w!(self.o, 20; "continue;");
             }
             StmtBody::Print(ref s) => {
-                w!(self.o, 20; "print!(\"{{}}\", {:?});", s);
+                w!(self.o, 20; "if let Err(_) = stdout.write(&{:?}) {{", s);
+                w!(self.o, 24; "return err::IE252.err_with(None, {})", self.line);
+                w!(self.o, 20; "}}");
             }
         }
         Ok(())
@@ -627,9 +629,10 @@ impl Generator {
 
     fn gen_header(&mut self) -> WRes {
         self.write("
+use std::io::Write;
 use stdops::*;
 
-#[allow(unused_mut, unused_parens, unused_variables, unreachable_code)]
+#[allow(unused_mut, unused_parens, unused_variables, unused_assignments, unreachable_code)]
 fn main_inner() -> err::Res<()> {")
     }
 

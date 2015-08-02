@@ -180,6 +180,13 @@ pub static IE241: ErrDesc = ErrDesc {
     way: None,
 };
 
+/* Could not write to the output stream. */
+pub static IE252: ErrDesc = ErrDesc {
+    num: 252,
+    msg: "I'VE FORGOTTEN WHAT I WAS ABOUT TO SAY",
+    way: None,
+};
+
 /* A 32-bit value has been assigned to a 16-bit variable. */
 pub static IE275: ErrDesc = ErrDesc {
     num: 275,
