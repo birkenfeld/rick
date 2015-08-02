@@ -123,8 +123,7 @@ impl<'a> Eval<'a> {
         loop {
             // check for falling off the end
             if pctr >= nstmts {
-                let last_stmt = &program.stmts[program.stmts.len() - 1];
-                return IE633.err_with(None, last_stmt.props.srcline);
+                return IE633.err();
             }
             self.stmt_ctr += 1;
             // execute statement if not abstained
@@ -136,7 +135,13 @@ impl<'a> Eval<'a> {
                     let res = match self.eval_stmt(stmt) {
                         // on error, set the correct line number and bubble up
                         Err(mut err) => {
-                            err.set_line(stmt.props.srcline);
+                            err.set_line(stmt.props.onthewayto);
+                            // special treatment for Next
+                            if let StmtBody::DoNext(n) = stmt.body {
+                                if let Some(i) = program.labels.get(&n) {
+                                    err.set_line(program.stmts[*i as usize].props.srcline);
+                                }
+                            }
                             return Err(err);
                         }
                         Ok(res)  => res
@@ -269,7 +274,7 @@ impl<'a> Eval<'a> {
                     if var.is_dim() {
                         try!(self.array_writein(var));
                     } else {
-                        let n = try!(read_number());
+                        let n = try!(read_number(0));
                         try!(self.assign(var, Val::from_u32(n)));
                     }
                 }

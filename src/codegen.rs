@@ -101,7 +101,7 @@ impl Generator {
     }
 
     fn gen_stmt_wrap(&mut self, i: usize, stmt: &Stmt) -> WRes {
-        self.line = stmt.props.srcline;
+        self.line = stmt.props.onthewayto;
         // create a match arm
         w!(self.o, 12; "/* {} */", stmt);
         w!(self.o, 12; "{} => {{", i);
@@ -150,7 +150,6 @@ impl Generator {
     }
 
     fn gen_stmt(&mut self, stmt: &Stmt) -> WRes {
-        let line = stmt.props.srcline;
         match stmt.body {
             StmtBody::DoNext(n) => {
                 let next = match self.program.labels.get(&n) {
@@ -163,7 +162,8 @@ impl Generator {
                     }}
                     jumps.push((pctr, {:?}));
                     pctr = {};
-                    continue;", line, stmt.comefrom, next);
+                    continue;", self.program.stmts[*next as usize].props.srcline,
+                   stmt.comefrom, next);
             }
             StmtBody::GiveUp => {
                 w!(self.o, 20; "break;");
@@ -258,7 +258,8 @@ impl Generator {
                         w!(self.o, 20; "try!({}.writein(&mut last_in));",
                            Generator::get_varname(var));
                     } else {
-                        w!(self.o, 20; "let val = try!(read_number());");
+                        w!(self.o, 20; "let val = try!(read_number({}));",
+                           self.line);
                         try!(self.gen_assign(var));
                     }
                 }
@@ -546,7 +547,7 @@ impl Generator {
     fn gen_loop_footer(&mut self) -> WRes {
         self.write("
             n => {
-                return err::IE633.err_with(None, n);
+                return err::IE633.err();
             }
         }
     }

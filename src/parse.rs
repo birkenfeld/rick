@@ -630,10 +630,13 @@ impl<'p> Parser<'p> {
     fn post_process(&self, stmts: Vec<Stmt>) -> Res<Program> {
         let mut added_syslib = false;
         let mut stmts = self.add_syslib(stmts, &mut added_syslib);
+        let nstmts = stmts.len();
+        let srclines = stmts.iter().map(|s| s.props.srcline).collect::<Vec<_>>();
         // here we:
-        // - count polite statements
         // - determine the "abstain" type of each statement
+        // - add "way to" info for the next srcline
         // - create a map of all labels to logical lines
+        // - count polite statements
         // - collect variables for renaming
         let mut npolite = 0;
         let mut types = Vec::new();
@@ -642,9 +645,11 @@ impl<'p> Parser<'p> {
         let mut vars = Vars { counts: vec![0, 0, 0, 0], map: HashMap::new() };
         for (i, mut stmt) in stmts.iter_mut().enumerate() {
             types.push(stmt.stype());
+            stmt.props.onthewayto =
+                if i < nstmts - 1 { srclines[i + 1] } else { srclines[i] };
             if stmt.props.label > 0 {
                 if labels.contains_key(&stmt.props.label) {
-                    return Err(IE182.new(None, stmt.props.srcline));
+                    return Err(IE182.new(None, stmt.props.onthewayto));
                 }
                 labels.insert(stmt.props.label, i as u16);
             }
@@ -668,10 +673,10 @@ impl<'p> Parser<'p> {
         for (i, mut stmt) in stmts.iter_mut().enumerate() {
             if let StmtBody::ComeFrom(n) = stmt.body {
                 if !labels.contains_key(&n) {
-                    return Err(IE444.new(None, stmt.props.srcline));
+                    return Err(IE444.new(None, stmt.props.onthewayto));
                 }
                 if comefroms.contains_key(&n) {
-                    return Err(IE555.new(None, stmt.props.srcline));
+                    return Err(IE555.new(None, stmt.props.onthewayto));
                 }
                 comefroms.insert(n, i as u16);
             }
@@ -679,7 +684,7 @@ impl<'p> Parser<'p> {
             if let StmtBody::Abstain(ref v) = stmt.body {
                 if let Abstain::Label(n) = v[0] {
                     if !labels.contains_key(&n) {
-                        return Err(IE139.new(None, stmt.props.srcline));
+                        return Err(IE139.new(None, stmt.props.onthewayto));
                     }
                 }
             }

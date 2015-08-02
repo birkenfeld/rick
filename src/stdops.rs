@@ -342,7 +342,7 @@ const ENGLISH_DIGITS: [(&'static str, u8); 12] = [
     ("NINER", 9)];
 
 /// Convert a number represented as digits spelled out in English.
-pub fn from_english(v: &str) -> Res<u32> {
+pub fn from_english(v: &str, line: usize) -> Res<u32> {
     let mut digits = Vec::new();
     for word in v.split_whitespace() {
         let mut found = false;
@@ -354,7 +354,7 @@ pub fn from_english(v: &str) -> Res<u32> {
             }
         }
         if !found {
-            return IE579.err_with(Some(word), 0);
+            return IE579.err_with(Some(word), line);
         }
     }
     let mut res = 0;
@@ -379,13 +379,13 @@ pub fn write_bytes(w: &mut Write, val: Vec<u8>) {
 }
 
 /// Read a number in spelled out English format.
-pub fn read_number() -> Res<u32> {
+pub fn read_number(line: usize) -> Res<u32> {
     let stdin = stdin();
     let mut slock = stdin.lock();
     let mut buf = String::new();
     match slock.read_line(&mut buf) {
-        Ok(n) if n > 1 => from_english(&buf),
-        _              => IE562.err()
+        Ok(n) if n > 1 => from_english(&buf, line),
+        _              => IE562.err_with(None, line)
     }
 }
 

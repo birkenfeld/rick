@@ -46,13 +46,13 @@ impl RtError {
         if let Some(ref s) = self.addstr {
             msg = msg.replace("{}", &s);
         }
-        let lineno = match self.error.way {
+        let lineinfo = match self.error.way {
             Some(s) => String::from(s),
-            None => format!("ON THE WAY TO {}", self.lineno + 1),
+            None => format!("ON THE WAY TO {}", self.lineno),
         };
         format!("ICL{:03}I\t{}\n\t{}\
                  \n        CORRECT SOURCE AND RESUBNIT\n",
-                self.error.num, msg, lineno)
+                self.error.num, msg, lineinfo)
     }
 
     pub fn short_string(&self) -> &str {

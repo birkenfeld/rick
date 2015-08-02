@@ -49,6 +49,7 @@ pub struct Stmt {
 pub struct StmtProps {
     pub label: Label,
     pub srcline: SrcLine,
+    pub onthewayto: SrcLine,
     pub chance: u8,
     pub polite: bool,
     pub disabled: bool,
@@ -257,6 +258,7 @@ impl Default for StmtProps {
     fn default() -> StmtProps {
         StmtProps { label: 0,
                     srcline: 0,
+                    onthewayto: 0,
                     chance: 100,
                     polite: false,
                     disabled: false, }
