@@ -32,7 +32,6 @@ pub fn check_chance(chance: u8) -> bool {
     val <= (chance as f32) / 100.
 }
 
-
 /// Which roman digits from the digit_tbl to put together for each
 /// decimal digit.
 /// These are reversed because the whole digit string is reversed
@@ -64,7 +63,6 @@ const ROMAN_DIGIT_TBL: [[(char, char); 4]; 10] = [
     [(' ', 'c'), (' ', 'c'), (' ', 'd'), (' ', 'm')],
     [(' ', 'm'), ('_', 'i'), ('_', 'v'), ('_', 'x')]];
 
-
 pub fn to_roman(mut val: u32) -> String {
     let mut l1 = Vec::new();
     let mut l2 = Vec::new();
@@ -85,7 +83,6 @@ pub fn to_roman(mut val: u32) -> String {
             l1.into_iter().collect::<String>(),
             l2.into_iter().collect::<String>())
 }
-
 
 const ENGLISH_DIGITS: [(&'static str, u8); 12] = [
     ("ZERO",  0),
@@ -161,7 +158,6 @@ pub fn mingle(mut v: u32, mut w: u32) -> Result<u32, err::Error> {
     Ok((v << 1) | w)
 }
 
-
 pub fn select(mut v: u32, mut w: u32) -> Result<u32, err::Error> {
     let mut i = 1;
     let mut t = 0;
@@ -178,7 +174,6 @@ pub fn select(mut v: u32, mut w: u32) -> Result<u32, err::Error> {
     Ok(t)
 }
 
-
 pub fn and_16(v: u16) -> u16 {
     let mut w = v >> 1;
     if v & 1 > 0 {
@@ -186,7 +181,6 @@ pub fn and_16(v: u16) -> u16 {
     }
     w & v
 }
-
 
 pub fn and_32(v: u32) -> u32 {
     let mut w = v >> 1;
@@ -196,7 +190,6 @@ pub fn and_32(v: u32) -> u32 {
     w & v
 }
 
-
 pub fn or_16(v: u16) -> u16 {
     let mut w = v >> 1;
     if v & 1 > 0 {
@@ -204,7 +197,6 @@ pub fn or_16(v: u16) -> u16 {
     }
     w | v
 }
-
 
 pub fn or_32(v: u32) -> u32 {
     let mut w = v >> 1;
@@ -214,7 +206,6 @@ pub fn or_32(v: u32) -> u32 {
     w | v
 }
 
-
 pub fn xor_16(v: u16) -> u16 {
     let mut w = v >> 1;
     if v & 1 > 0 {
@@ -222,7 +213,6 @@ pub fn xor_16(v: u16) -> u16 {
     }
     w ^ v
 }
-
 
 pub fn xor_32(v: u32) -> u32 {
     let mut w = v >> 1;
