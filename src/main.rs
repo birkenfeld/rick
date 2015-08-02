@@ -50,10 +50,8 @@ use codegen::Generator;
 
 
 // XXX introduce E774
-// XXX test suite
 // XXX syntax extensions:
 // - computed come from
-// - computed abstain (line number, #abstentions)
 // - ONCE, AGAIN
 fn main() {
     match main_inner() {

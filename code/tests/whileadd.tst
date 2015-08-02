@@ -1,2 +1,0 @@
-THREE SIX
-TWO TWO
