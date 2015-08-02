@@ -441,6 +441,9 @@ impl Eval {
     fn array_dimension<T: Clone + Default>(vtbl: &mut Vec<Bind<Array<T>>>, n: u16,
                                            dims: Vec<Val>) -> EvalRes<()> {
         let dims = try!(dims.iter().map(|v| v.as_u16()).collect::<Result<Vec<_>, _>>());
+        if dims.iter().product::<u16>() == 0 {
+            return Err(err::new(&err::IE240));
+        }
         let mut vent = &mut vtbl[n as usize];
         vent.val = Array::new(dims);
         Ok(())

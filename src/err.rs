@@ -152,6 +152,13 @@ pub static IE200: ErrDesc = ErrDesc {
     way: None,
 };
 
+/* An attempt has been made to give an array a dimension of zero. */
+pub static IE240: ErrDesc = ErrDesc {
+    num: 240,
+    msg: "ERROR HANDLER PRINTED SNIDE REMARK",
+    way: None,
+};
+
 /* Invalid dimensioning information was supplied
  * in defining or using an array. */
 pub static IE241: ErrDesc = ErrDesc {
