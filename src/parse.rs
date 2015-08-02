@@ -134,7 +134,7 @@ impl<'p> Parser<'p> {
         }
         if let Some(&Token(TT::LABEL(val), _)) = self.tokens.peek() {
             let tok = self.tokens.next().unwrap();
-            if val > 65535 {
+            if val > (u16::MAX as u32) {
                 return self.parser_err(&err::IE197, "", tok);
             }
             try!(self.req(TT::NEXT));
@@ -143,7 +143,7 @@ impl<'p> Parser<'p> {
         if let Some(_) = self.take(TT::COMEFROM) {
             if let Some(&Token(TT::LABEL(val), _)) = self.tokens.peek() {
                 let tok = self.tokens.next().unwrap();
-                if val > 65535 {
+                if val > (u16::MAX as u32) {
                     return self.parser_err(&err::IE197, "", tok);
                 }
                 return Ok(ast::StmtType::ComeFrom(val as u16));
@@ -194,21 +194,21 @@ impl<'p> Parser<'p> {
     fn parse_var(&mut self, subs_allowed: bool) -> Res<Option<ast::Var>> {
         if let Some(&Token(TT::SPOT(val), _)) = self.tokens.peek() {
             let tok = self.tokens.next().unwrap();
-            if val > 65535 {
+            if val > (u16::MAX as u32) {
                 return self.parser_err(&err::IE200, "", tok);
             }
             return Ok(Some(ast::Var::I16(val as u16)));
         }
         if let Some(&Token(TT::TWOSPOT(val), _)) = self.tokens.peek() {
             let tok = self.tokens.next().unwrap();
-            if val > 65535 {
+            if val > (u16::MAX as u32) {
                 return self.parser_err(&err::IE200, "", tok);
             }
             return Ok(Some(ast::Var::I32(val as u16)));
         }
         if let Some(&Token(TT::TAIL(val), _)) = self.tokens.peek() {
             let tok = self.tokens.next().unwrap();
-            if val > 65535 {
+            if val > (u16::MAX as u32) {
                 return self.parser_err(&err::IE200, "", tok);
             }
             let subs = if subs_allowed {
@@ -220,7 +220,7 @@ impl<'p> Parser<'p> {
         }
         if let Some(&Token(TT::HYBRID(val), _)) = self.tokens.peek() {
             let tok = self.tokens.next().unwrap();
-            if val > 65535 {
+            if val > (u16::MAX as u32) {
                 return self.parser_err(&err::IE200, "", tok);
             }
             let subs = if subs_allowed {
@@ -235,8 +235,10 @@ impl<'p> Parser<'p> {
 
     fn parse_subs(&mut self) -> Res<Vec<ast::Expr>> {
         let mut res = Vec::new();
-        while let Some(_) = self.take(TT::SUB) {
-            res.push(try!(self.parse_expr()));
+        if let Some(_) = self.take(TT::SUB) {
+            while let Ok(expr) = self.parse_expr() {
+                res.push(expr);
+            }
         }
         Ok(res)
     }
@@ -259,7 +261,7 @@ impl<'p> Parser<'p> {
     fn parse_abstain(&mut self) -> Res<ast::Abstain> {
         if let Some(&Token(TT::LABEL(val), _)) = self.tokens.peek() {
             let tok = self.tokens.next().unwrap();
-            if val > 65535 {
+            if val > (u16::MAX as u32) {
                 return self.parser_err(&err::IE197, "", tok);
             }
             return Ok(ast::Abstain::Line(val as u16));
@@ -310,11 +312,11 @@ impl<'p> Parser<'p> {
         let at = try!(self.parse_expr2());
         if let Some(_) = self.take(TT::MONEY) {
             let at2 = try!(self.parse_expr2());
-            return Ok(ast::Expr::Mingle(Box::new(at), Box::new(at2)));
+            return Ok(ast::Expr::Mingle(box at, box at2));
         }
         if let Some(_) = self.take(TT::SQUIGGLE) {
             let at2 = try!(self.parse_expr2());
-            return Ok(ast::Expr::Select(Box::new(at), Box::new(at2)));
+            return Ok(ast::Expr::Select(box at, box at2));
         }
         return Ok(at);
     }
@@ -322,10 +324,10 @@ impl<'p> Parser<'p> {
     fn parse_expr2(&mut self) -> Res<ast::Expr> {
         if let Some(&Token(TT::MESH(val), _)) = self.tokens.peek() {
             let tok = self.tokens.next().unwrap();
-            if val > 65535 {
+            if val > (u16::MAX as u32) {
                 return self.parser_err(&err::IE017, "", tok);
             }
-            return Ok(ast::Expr::Num(val as u16))
+            return Ok(ast::Expr::Num(ast::Val::I16(val as u16)))
         }
         if let Some(var) = try!(self.parse_var(true)) {
             return Ok(ast::Expr::Var(var));
@@ -342,15 +344,15 @@ impl<'p> Parser<'p> {
         }
         if let Some(_) = self.take(TT::AMPERSAND) {
             let expr = try!(self.parse_expr());
-            return Ok(ast::Expr::And(Box::new(expr)));
+            return Ok(ast::Expr::And(box expr));
         }
         if let Some(_) = self.take(TT::BOOK) {
             let expr = try!(self.parse_expr());
-            return Ok(ast::Expr::Or(Box::new(expr)));
+            return Ok(ast::Expr::Or(box expr));
         }
         if let Some(_) = self.take(TT::WHAT) {
             let expr = try!(self.parse_expr());
-            return Ok(ast::Expr::Xor(Box::new(expr)));
+            return Ok(ast::Expr::Xor(box expr));
         }
         self.decode_err()
     }

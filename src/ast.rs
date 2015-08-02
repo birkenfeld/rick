@@ -18,6 +18,7 @@
 use std::collections::HashMap;
 use std::default::Default;
 use std::fmt::{ Display, Error, Formatter };
+use std::u16;
 
 use err;
 
@@ -77,7 +78,7 @@ pub enum Var {
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum Expr {
-    Num(u16),
+    Num(Val),
     Var(Var),
     Mingle(Box<Expr>, Box<Expr>),
     Select(Box<Expr>, Box<Expr>),
@@ -86,7 +87,7 @@ pub enum Expr {
     Xor(Box<Expr>),
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Val {
     I16(u16),
     I32(u32),
@@ -139,7 +140,30 @@ impl StmtType {
     }
 }
 
+impl Var {
+    pub fn ignore_key(&self) -> (u8, u16) {
+        match *self {
+            Var::I16(n)    => (1, n),
+            Var::I32(n)    => (2, n),
+            Var::A16(n, _) => (3, n),
+            Var::A32(n, _) => (4, n),
+        }
+    }
+}
+
 impl Val {
+    pub fn as_u16(&self) -> Result<u16, err::Error> {
+        match *self {
+            Val::I16(v) => Ok(v),
+            Val::I32(v) => {
+                if v > (u16::MAX as u32) {
+                    return Err(err::new(&err::IE275));
+                }
+                Ok(v as u16)
+            }
+        }
+    }
+
     pub fn as_u32(&self) -> u32 {
         match *self {
             Val::I16(v) => v as u32,
@@ -250,13 +274,22 @@ impl Display for Var {
 impl Display for Expr {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         match *self {
-            Expr::Num(n) => write!(fmt, "#{}", n),
+            Expr::Num(ref n) => write!(fmt, "{}", n),
             Expr::Var(ref v) => v.fmt(fmt),
             Expr::Mingle(ref x, ref y) => write!(fmt, "({})$({})", x, y),
             Expr::Select(ref x, ref y) => write!(fmt, "({})~({})", x, y),
             Expr::And(ref x) => write!(fmt, "&({})", x),
             Expr::Or(ref x) => write!(fmt, "V({})", x),
             Expr::Xor(ref x) => write!(fmt, "?({})", x),
+        }
+    }
+}
+
+impl Display for Val {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        match *self {
+            Val::I16(n) => write!(fmt, "#{}", n),
+            Val::I32(n) => write!(fmt, "##{}", n),
         }
     }
 }

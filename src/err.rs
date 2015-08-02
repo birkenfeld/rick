@@ -131,6 +131,14 @@ pub static IE200: ErrDesc = ErrDesc {
     way: None,
 };
 
+/* Invalid dimensioning information was supplied
+ * in defining or using an array. */
+pub static IE241: ErrDesc = ErrDesc {
+    num: 241,
+    msg: "VARIABLES MAY NOT BE STORED IN WEST HYPERSPACE",
+    way: None,
+};
+
 /* A 32-bit value has been assigned to a 16-bit variable. */
 pub static IE275: ErrDesc = ErrDesc {
     num: 275,
@@ -202,9 +210,9 @@ pub static IE663: ErrDesc = ErrDesc {
     way: Some("THE NEW WORLD"),
 };
 
-/* Execution has passed beyond the last statement of the program. */
-pub static IE995: ErrDesc = ErrDesc {
-    num: 995,
-    msg: "DO YOU REALLY EXPECT ME TO HAVE IMPLEMENTED THAT?",
-    way: None,
-};
+/* Unimplemented feature used. This should never come up, hopefully. */
+// pub static IE995: ErrDesc = ErrDesc {
+//     num: 995,
+//     msg: "DO YOU REALLY EXPECT ME TO HAVE IMPLEMENTED THAT?",
+//     way: None,
+// };
