@@ -18,9 +18,10 @@
 use std::fs::File;
 use std::io::{ BufWriter, Write };
 use std::rc::Rc;
+use std::u16;
 
 use ast::{ Program, Stmt, StmtBody, Expr, Var, VType, Abstain };
-use err::{ Res, IE129 };
+use err::{ Res, IE129, IE533 };
 use lex::SrcLine;
 
 use err::MODULE_CODE_STR as ERR_MOD_STR;
@@ -356,11 +357,29 @@ impl Generator {
             },
             Expr::Var(ref var) => try!(self.gen_lookup(var, astype)),
             Expr::Mingle(ref vx, ref wx) => {
-                w!(self.o; "mingle(try!(check_ovf(");
-                try!(self.gen_eval(vx, ""));
-                w!(self.o; ", {})), try!(check_ovf(", self.line);
-                try!(self.gen_eval(wx, ""));
-                w!(self.o; ", {}))){}", self.line, astype);
+                w!(self.o; "mingle(");
+                if let box Expr::Num(_, n) = *vx {
+                    if n > (u16::MAX as u32) {
+                        return IE533.err_with(None, self.line);
+                    }
+                    try!(self.gen_eval(vx, ""));
+                } else {
+                    w!(self.o; "try!(check_ovf(");
+                    try!(self.gen_eval(vx, ""));
+                    w!(self.o; ", {}))", self.line)
+                }
+                w!(self.o; ", ");
+                if let box Expr::Num(_, n) = *wx {
+                    if n > (u16::MAX as u32) {
+                        return IE533.err_with(None, self.line);
+                    }
+                    try!(self.gen_eval(wx, ""));
+                } else {
+                    w!(self.o; "try!(check_ovf(");
+                    try!(self.gen_eval(wx, ""));
+                    w!(self.o; ", {}))", self.line)
+                }
+                w!(self.o; "){}", astype);
             }
             Expr::Select(ref vx, ref wx) => {
                 w!(self.o; "select(");
