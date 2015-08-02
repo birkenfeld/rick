@@ -413,7 +413,8 @@ use std::u16;
 use stdops::*;
 
 #[allow(unused_mut)]
-fn main_inner() -> err::Res<()> {")
+fn main_inner() -> err::Res<()> {
+    seed_chance();")
     }
 
     fn gen_footer(&mut self) -> WRes {

@@ -21,7 +21,6 @@
 
 #[allow(plugin_as_library)]
 extern crate rustlex;
-extern crate rand;
 extern crate time;
 
 mod err;
@@ -78,6 +77,8 @@ fn main() {
         f.read_to_end(&mut v).unwrap();
     }
     let flag_compile = true;
+
+    stdops::seed_chance();
 
     let t0 = time::get_time();
     let program = match Parser::new(&v).get_program() {

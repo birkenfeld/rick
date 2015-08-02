@@ -17,9 +17,11 @@
 
 #![rick_embed_module_code]
 
+use std::fs::File;
 use std::io::{ BufRead, Read, stdin };
+use std::mem;
+use std::os::raw::{ c_int, c_uint };
 use std::{ u16, u32 };
-//use rand::{ random, Closed01 };
 
 use err::{ Res, IE240, IE241, IE436, IE533, IE562, IE579, IE621, IE632 };
 
@@ -157,12 +159,32 @@ impl<T: LikeU16 + Default> Bind<Array<T>> {
 }
 
 /// Check statement execution chance (false -> skip).
+
+#[link(name = "c")]
+extern {
+    pub fn rand() -> c_int;
+    pub fn srand(seed: c_uint);
+}
+
+pub fn seed_chance() {
+    let seed: u32;
+    if let Ok(mut fp) = File::open("/dev/urandom") {
+        let mut buf = [0; 4];
+        fp.read(&mut buf).unwrap();
+        seed = unsafe { mem::transmute(buf) };
+    } else {
+        seed = 4;  // chosen by fair dice roll. guaranteed to be random.
+    }
+    unsafe { srand(seed); }
+}
+
 pub fn check_chance(chance: u8) -> bool {
+
     if chance == 100 {
         return true;
     }
-    //let Closed01(val) = random::<Closed01<f32>>();
-    50. <= (chance as f32) / 100.
+    let random = unsafe { rand() } % 100;
+    random < (chance as i32)
 }
 
 /// Pop "n" jumps from the jump stack and return the last one.
