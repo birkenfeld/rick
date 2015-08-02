@@ -185,8 +185,10 @@ impl Generator {
             StmtBody::Dim(ref var, ref exprs) => {
                 try!(self.gen_eval_subs(exprs));
                 match *var {
-                    Var::A16(n, _) => w!(self.o, 20; "try!(a{}.dimension(subs));", n),
-                    Var::A32(n, _) => w!(self.o, 20; "try!(b{}.dimension(subs));", n),
+                    Var::A16(n, _) => w!(self.o, 20; "try!(a{}.dimension(subs, {}));",
+                                         n, self.line),
+                    Var::A32(n, _) => w!(self.o, 20; "try!(b{}.dimension(subs, {}));",
+                                         n, self.line),
                     _ => unimplemented!()
                 }
             }
@@ -197,7 +199,7 @@ impl Generator {
             StmtBody::Resume(ref expr) => {
                 try!(self.gen_eval_expr(expr));
                 w!(self.o, 20; "let (old_pctr, comefrom, label) = \
-                   try!(pop_jumps(&mut jumps, val, true)).unwrap();");
+                   try!(pop_jumps(&mut jumps, val, true, {})).unwrap();", self.line);
                 if self.program.uses_complex_comefrom {
                     try!(self.gen_comefrom_check("comefrom", "label"));
                 } else {
@@ -214,7 +216,7 @@ impl Generator {
             }
             StmtBody::Forget(ref expr) => {
                 try!(self.gen_eval_expr(expr));
-                w!(self.o, 20; "try!(pop_jumps(&mut jumps, val, false));");
+                w!(self.o, 20; "try!(pop_jumps(&mut jumps, val, false, {}));", self.line);
             }
             StmtBody::Ignore(ref vars) => {
                 for var in vars {
@@ -233,7 +235,8 @@ impl Generator {
             }
             StmtBody::Retrieve(ref vars) => {
                 for var in vars {
-                    w!(self.o, 20; "try!({}.retrieve());", Generator::get_varname(var));
+                    w!(self.o, 20; "try!({}.retrieve({}));",
+                       Generator::get_varname(var), self.line);
                 }
             }
             StmtBody::Abstain(ref expr, ref whats) => {
@@ -257,8 +260,8 @@ impl Generator {
                 for expr in exprs {
                     match *expr {
                         Expr::Var(ref var) if var.is_dim() => {
-                            w!(self.o, 20; "try!({}.readout(&mut stdout, &mut last_out));",
-                               Generator::get_varname(var));
+                            w!(self.o, 20; "try!({}.readout(&mut stdout, &mut last_out, {}));",
+                               Generator::get_varname(var), self.line);
                         }
                         Expr::Var(_) => {
                             try!(self.gen_eval_expr(expr));
@@ -274,8 +277,8 @@ impl Generator {
             StmtBody::WriteIn(ref vars) => {
                 for var in vars {
                     if var.is_dim() {
-                        w!(self.o, 20; "try!({}.writein(&mut last_in));",
-                           Generator::get_varname(var));
+                        w!(self.o, 20; "try!({}.writein(&mut last_in, {}));",
+                           Generator::get_varname(var), self.line);
                     } else {
                         w!(self.o, 20; "let val = try!(read_number({}));",
                            self.line);
@@ -348,20 +351,22 @@ impl Generator {
                 if subs.len() == 1 {
                     w!(self.o, 20; "try!(a{}.set{}(", n, suffix);
                     try!(self.gen_eval(&subs[0], " as usize"));
-                    w!(self.o; ", val as u16));");
+                    w!(self.o; ", val as u16, {}));", self.line);
                 } else {
                     try!(self.gen_eval_subs(subs));
-                    w!(self.o, 20; "try!(a{}.set_md{}(subs, val as u16));", n, suffix);
+                    w!(self.o, 20; "try!(a{}.set_md{}(subs, val as u16, {}));",
+                       n, suffix, self.line);
                 }
             }
             Var::A32(n, ref subs) => {
                 if subs.len() == 1 {
                     w!(self.o, 20; "try!(b{}.set{}(", n, suffix);
                     try!(self.gen_eval(&subs[0], " as usize"));
-                    w!(self.o; ", val));");
+                    w!(self.o; ", val, {}));", self.line);
                 } else {
                     try!(self.gen_eval_subs(subs));
-                    w!(self.o, 20; "try!(b{}.set_md{}(subs, val));", n, suffix);
+                    w!(self.o, 20; "try!(b{}.set_md{}(subs, val, {}));",
+                       n, suffix, self.line);
                 }
             }
         }
@@ -529,7 +534,7 @@ impl Generator {
                     }
                     w!(self.o; "]");
                 }
-                w!(self.o; ")){})", if astype == "" { " as u32" } else { astype });
+                w!(self.o; ", {})){})", self.line, if astype == "" { " as u32" } else { astype });
             }
             Var::A32(n, ref subs) => {
                 w!(self.o; "try!(b{}.", n);
@@ -546,7 +551,7 @@ impl Generator {
                     }
                     w!(self.o; "]");
                 }
-                w!(self.o; ")){}", astype);
+                w!(self.o; ", {})){}", self.line, astype);
             }
         }
         Ok(())

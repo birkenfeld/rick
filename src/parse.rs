@@ -97,7 +97,7 @@ impl<'p> Parser<'p> {
             // a "soft" error: thrown at runtime as E000
             Err(DecodeError::Soft(srcline)) => {
                 let body = StmtBody::Error(
-                    IE000.new(Some(self.lines[srcline - self.startline].clone()), srcline));
+                    IE000.new(Some(self.lines[srcline - self.startline].clone()), 0));
                 // jump over tokens until the next statement beginning
                 loop {
                     match self.tokens.peek() {
@@ -697,6 +697,9 @@ impl<'p> Parser<'p> {
             }
             if stmt.props.polite {
                 npolite += 1;
+            }
+            if let StmtBody::Error(ref mut e) = stmt.body {
+                e.set_line(stmt.props.onthewayto);
             }
             self.collect_vars(&mut vars, &mut stmt);
         }

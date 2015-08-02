@@ -241,12 +241,12 @@ impl<'a> Eval<'a> {
             }
             StmtBody::Resume(ref expr) => {
                 let n = try!(self.eval_expr(expr)).as_u32();
-                let next = try!(pop_jumps(&mut self.jumps, n, true)).unwrap();
+                let next = try!(pop_jumps(&mut self.jumps, n, true, 0)).unwrap();
                 Ok(StmtRes::Back(next as usize))
             }
             StmtBody::Forget(ref expr) => {
                 let n = try!(self.eval_expr(expr)).as_u32();
-                try!(pop_jumps(&mut self.jumps, n, false));
+                try!(pop_jumps(&mut self.jumps, n, false, 0));
                 Ok(StmtRes::Next)
             }
             StmtBody::Ignore(ref vars) => {
@@ -434,8 +434,8 @@ impl<'a> Eval<'a> {
     fn array_dim(&mut self, var: &Var, dims: &Vec<Expr>) -> Res<()> {
         let dims = try!(self.eval_subs(dims));
         match *var {
-            Var::A16(n, _) => self.tail[n].dimension(dims),
-            Var::A32(n, _) => self.hybrid[n].dimension(dims),
+            Var::A16(n, _) => self.tail[n].dimension(dims, 0),
+            Var::A32(n, _) => self.hybrid[n].dimension(dims, 0),
             _ => unimplemented!()
         }
     }
@@ -448,11 +448,11 @@ impl<'a> Eval<'a> {
             Var::I32(n) => Ok(self.twospot[n].assign(val.as_u32())),
             Var::A16(n, ref subs) => {
                 let subs = try!(self.eval_subs(subs));
-                self.tail[n].set_md(subs, try!(val.as_u16()))
+                self.tail[n].set_md(subs, try!(val.as_u16()), 0)
             }
             Var::A32(n, ref subs) => {
                 let subs = try!(self.eval_subs(subs));
-                self.hybrid[n].set_md(subs, val.as_u32())
+                self.hybrid[n].set_md(subs, val.as_u32(), 0)
             }
         }
     }
@@ -464,11 +464,11 @@ impl<'a> Eval<'a> {
             Var::I32(n) => Ok(Val::I32(self.twospot[n].val)),
             Var::A16(n, ref subs) => {
                 let subs = try!(self.eval_subs(subs));
-                self.tail[n].get_md(subs).map(Val::I16)
+                self.tail[n].get_md(subs, 0).map(Val::I16)
             }
             Var::A32(n, ref subs) => {
                 let subs = try!(self.eval_subs(subs));
-                self.hybrid[n].get_md(subs).map(Val::I32)
+                self.hybrid[n].get_md(subs, 0).map(Val::I32)
             }
         }
     }
@@ -486,10 +486,10 @@ impl<'a> Eval<'a> {
     /// Process a RETRIEVE statement.
     fn retrieve(&mut self, var: &Var) -> Res<()> {
         match *var {
-            Var::I16(n) => self.spot[n].retrieve(),
-            Var::I32(n) => self.twospot[n].retrieve(),
-            Var::A16(n, _) => self.tail[n].retrieve(),
-            Var::A32(n, _) => self.hybrid[n].retrieve(),
+            Var::I16(n) => self.spot[n].retrieve(0),
+            Var::I32(n) => self.twospot[n].retrieve(0),
+            Var::A16(n, _) => self.tail[n].retrieve(0),
+            Var::A32(n, _) => self.hybrid[n].retrieve(0),
         }
     }
 
@@ -523,8 +523,8 @@ impl<'a> Eval<'a> {
     fn array_readout(&mut self, var: &Var) -> Res<()> {
         let state = &mut self.last_out;
         match *var {
-            Var::A16(n, _) => self.tail[n].readout(self.stdout, state),
-            Var::A32(n, _) => self.hybrid[n].readout(self.stdout, state),
+            Var::A16(n, _) => self.tail[n].readout(self.stdout, state, 0),
+            Var::A32(n, _) => self.hybrid[n].readout(self.stdout, state, 0),
             _ => unimplemented!()
         }
     }
@@ -533,8 +533,8 @@ impl<'a> Eval<'a> {
     fn array_writein(&mut self, var: &Var) -> Res<()> {
         let state = &mut self.last_in;
         match *var {
-            Var::A16(n, _) => self.tail[n].writein(state),
-            Var::A32(n, _) => self.hybrid[n].writein(state),
+            Var::A16(n, _) => self.tail[n].writein(state, 0),
+            Var::A32(n, _) => self.hybrid[n].writein(state, 0),
             _ => unimplemented!()
         }
     }

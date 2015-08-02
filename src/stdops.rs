@@ -71,9 +71,9 @@ impl<T: Clone> Bind<T> {
         self.stack.push(self.val.clone());
     }
 
-    pub fn retrieve(&mut self) -> Res<()> {
+    pub fn retrieve(&mut self, line: usize) -> Res<()> {
         match self.stack.pop() {
-            None => IE436.err(),
+            None => IE436.err_with(None, line),
             Some(v) => {
                 if self.rw {
                     self.val = v;
@@ -85,8 +85,8 @@ impl<T: Clone> Bind<T> {
 }
 
 impl<T: LikeU16 + Default> Bind<Array<T>> {
-    pub fn set_md(&mut self, subs: Vec<usize>, val: T) -> Res<()> {
-        let ix = try!(self.get_index(subs));
+    pub fn set_md(&mut self, subs: Vec<usize>, val: T, line: usize) -> Res<()> {
+        let ix = try!(self.get_index(subs, line));
         if self.rw {
             self.val.elems[ix] = val;
         }
@@ -94,9 +94,9 @@ impl<T: LikeU16 + Default> Bind<Array<T>> {
     }
 
     #[allow(dead_code)]  // only used in compiled code
-    pub fn set(&mut self, sub: usize, val: T) -> Res<()> {
+    pub fn set(&mut self, sub: usize, val: T, line: usize) -> Res<()> {
         if self.val.dims.len() != 1 || sub > self.val.dims[0] {
-            return IE241.err();
+            return IE241.err_with(None, line);
         }
         if self.rw {
             self.val.elems[sub - 1] = val;
@@ -105,44 +105,44 @@ impl<T: LikeU16 + Default> Bind<Array<T>> {
     }
 
     #[allow(dead_code)]  // only used in compiled code
-    pub fn set_md_unchecked(&mut self, subs: Vec<usize>, val: T) -> Res<()> {
-        let ix = try!(self.get_index(subs));
+    pub fn set_md_unchecked(&mut self, subs: Vec<usize>, val: T, line: usize) -> Res<()> {
+        let ix = try!(self.get_index(subs, line));
         self.val.elems[ix] = val;
         Ok(())
     }
 
     #[allow(dead_code)]  // only used in compiled code
-    pub fn set_unchecked(&mut self, sub: usize, val: T) -> Res<()> {
+    pub fn set_unchecked(&mut self, sub: usize, val: T, line: usize) -> Res<()> {
         if self.val.dims.len() != 1 || sub > self.val.dims[0] {
-            return IE241.err();
+            return IE241.err_with(None, line);
         }
         self.val.elems[sub - 1] = val;
         Ok(())
     }
 
-    pub fn get_md(&self, subs: Vec<usize>) -> Res<T> {
-        let ix = try!(self.get_index(subs));
+    pub fn get_md(&self, subs: Vec<usize>, line: usize) -> Res<T> {
+        let ix = try!(self.get_index(subs, line));
         Ok(self.val.elems[ix])
     }
 
     #[allow(dead_code)]  // only used in compiled code
-    pub fn get(&self, sub: usize) -> Res<T>  {
+    pub fn get(&self, sub: usize, line: usize) -> Res<T>  {
         if self.val.dims.len() != 1 || sub > self.val.dims[0] {
-            return IE241.err();
+            return IE241.err_with(None, line);
         }
         Ok(self.val.elems[sub - 1])
     }
 
     /// Helper to calculate an array index.
-    fn get_index(&self, subs: Vec<usize>) -> Res<usize> {
+    fn get_index(&self, subs: Vec<usize>, line: usize) -> Res<usize> {
         if subs.len() != self.val.dims.len() {
-            return IE241.err();
+            return IE241.err_with(None, line);
         }
         let mut ix = 0;
         let mut prev_dim = 1;
         for (sub, dim) in subs.iter().zip(&self.val.dims) {
             if *sub > *dim {
-                return IE241.err();
+                return IE241.err_with(None, line);
             }
             ix += (sub - 1) * prev_dim;
             prev_dim *= *dim;
@@ -150,9 +150,9 @@ impl<T: LikeU16 + Default> Bind<Array<T>> {
         Ok(ix as usize)
     }
 
-    pub fn dimension(&mut self, dims: Vec<usize>) -> Res<()> {
+    pub fn dimension(&mut self, dims: Vec<usize>, line: usize) -> Res<()> {
         if dims.iter().fold(1, |p, e| p * e) == 0 {
-            return IE240.err();
+            return IE240.err_with(None, line);
         }
         if self.rw {
             self.val = Array::new(dims);
@@ -160,10 +160,10 @@ impl<T: LikeU16 + Default> Bind<Array<T>> {
         Ok(())
     }
 
-    pub fn readout(&self, w: &mut Write, state: &mut u8) -> Res<()> {
+    pub fn readout(&self, w: &mut Write, state: &mut u8, line: usize) -> Res<()> {
         if self.val.dims.len() != 1 {
             // only dimension-1 arrays can be output
-            return IE241.err();
+            return IE241.err_with(None, line);
         }
         let mut res = Vec::with_capacity(self.val.elems.len());
         for val in self.val.elems.iter() {
@@ -179,10 +179,10 @@ impl<T: LikeU16 + Default> Bind<Array<T>> {
         Ok(())
     }
 
-    pub fn writein(&mut self, state: &mut u8) -> Res<()> {
+    pub fn writein(&mut self, state: &mut u8, line: usize) -> Res<()> {
         if self.val.dims.len() != 1 {
             // only dimension-1 arrays can be input
-            return IE241.err();
+            return IE241.err_with(None, line);
         }
         for place in self.val.elems.iter_mut() {
             let byte = read_byte();
@@ -251,17 +251,17 @@ pub fn check_chance(chance: u8) -> bool {
 }
 
 /// Pop "n" jumps from the jump stack and return the last one.
-pub fn pop_jumps<T>(jumps: &mut Vec<T>, n: u32, strict: bool) -> Res<Option<T>> {
+pub fn pop_jumps<T>(jumps: &mut Vec<T>, n: u32, strict: bool, line: usize) -> Res<Option<T>> {
     if n == 0 {
         if strict {
-            return IE621.err();
+            return IE621.err_with(None, line);
         } else {
             return Ok(None);
         }
     }
     if jumps.len() < n as usize {
         if strict {
-            return IE632.err();
+            return IE632.err_with(None, line);
         } else {
             jumps.clear();
             return Ok(None);
@@ -362,7 +362,7 @@ pub fn from_english(v: &str, line: usize) -> Res<u32> {
         res += (*digit as u64) * (10 as u64).pow(digits.len() as u32 - 1 - i as u32);
     }
     if res > (u32::MAX as u64) {
-        IE533.err()
+        IE533.err_with(None, line)
     } else {
         Ok(res as u32)
     }
