@@ -277,10 +277,10 @@ impl Generator {
                         }
                         Expr::Var(_) => {
                             try!(self.gen_eval_expr(expr));
-                            w!(self.o, 20; "write_number(&mut stdout, val);");
+                            w!(self.o, 20; "try!(write_number(&mut stdout, val, {}));", self.line);
                         }
                         Expr::Num(_, v) => {
-                            w!(self.o, 20; "write_number(&mut stdout, {})", v)
+                            w!(self.o, 20; "try!(write_number(&mut stdout, {}, {}));", v, self.line);
                         }
                         _ => return IE994.err_with(None, self.line),
                     };

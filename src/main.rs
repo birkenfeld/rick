@@ -82,7 +82,7 @@ fn main_inner() -> Result<i32, err::RtError> {
     // handle help option
     if matches.opt_present("h") {
         println!("{}", opts.usage("rick [options] input.i"));
-        return Ok(2);
+        return Ok(0);
     }
 
     let compile_flag = !matches.opt_present("i");

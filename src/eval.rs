@@ -332,10 +332,10 @@ impl<'a> Eval<'a> {
                         // read out single var or array element
                         Expr::Var(ref var) => {
                             let varval = try!(self.lookup(var));
-                            write_number(self.stdout, varval.as_u32());
+                            try!(write_number(self.stdout, varval.as_u32(), 0));
                         }
                         // read out constant
-                        Expr::Num(_, v) => write_number(self.stdout, v),
+                        Expr::Num(_, v) => try!(write_number(self.stdout, v, 0)),
                         // others will not be generated
                         _ => return IE994.err(),
                     };

@@ -22,7 +22,7 @@ use std::fs::File;
 use std::io::{ BufRead, Read, Write, stdin };
 use std::{ u16, u32 };
 
-use err::{ Res, IE240, IE241, IE436, IE533, IE562, IE579, IE621, IE632 };
+use err::{ Res, IE240, IE241, IE252, IE436, IE533, IE562, IE579, IE621, IE632 };
 
 #[derive(Clone, Debug)]
 pub struct Array<T> {
@@ -173,8 +173,7 @@ impl<T: LikeU16 + Default> Bind<Array<T>> {
             c = (c & 0x55) << 1 | (c & 0xaa) >> 1;
             res.push(c);
         }
-        write_bytes(w, res);
-        Ok(())
+        write_bytes(w, res, line)
     }
 
     pub fn writein(&mut self, state: &mut u8, line: usize) -> Res<()> {
@@ -362,13 +361,19 @@ pub fn from_english(v: &str, line: usize) -> Res<u32> {
 }
 
 /// Output a number in Roman format.
-pub fn write_number(w: &mut Write, val: u32) {
-    write!(w, "{}", to_roman(val)).unwrap();
+pub fn write_number(w: &mut Write, val: u32, line: usize) -> Res<()> {
+    if let Err(_) = write!(w, "{}", to_roman(val)) {
+        return IE252.err_with(None, line);
+    }
+    Ok(())
 }
 
 /// Output a byte.
-pub fn write_bytes(w: &mut Write, val: Vec<u8>) {
-    w.write(&val).unwrap();
+pub fn write_bytes(w: &mut Write, val: Vec<u8>, line: usize) -> Res<()> {
+    if let Err(_) = w.write(&val) {
+        return IE252.err_with(None, line);
+    }
+    Ok(())
 }
 
 /// Read a number in spelled out English format.
