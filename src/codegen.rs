@@ -201,7 +201,7 @@ impl Generator {
                                          n, self.line),
                     Var::A32(n, _) => w!(self.o, 20; "try!(b{}.dimension(subs, {}));",
                                          n, self.line),
-                    _ => unimplemented!()
+                    _ => return IE994.err_with(None, self.line),
                 }
             }
             StmtBody::Calc(ref var, ref expr) => {

@@ -476,7 +476,7 @@ impl<'a> Eval<'a> {
         match *var {
             Var::A16(n, _) => self.tail[n].dimension(dims, 0),
             Var::A32(n, _) => self.hybrid[n].dimension(dims, 0),
-            _ => unimplemented!()
+            _ => return IE994.err(),
         }
     }
 
@@ -564,7 +564,7 @@ impl<'a> Eval<'a> {
         match *var {
             Var::A16(n, _) => self.tail[n].readout(self.stdout, state, 0),
             Var::A32(n, _) => self.hybrid[n].readout(self.stdout, state, 0),
-            _ => unimplemented!()
+            _ => return IE994.err(),
         }
     }
 
@@ -574,7 +574,7 @@ impl<'a> Eval<'a> {
         match *var {
             Var::A16(n, _) => self.tail[n].writein(state, 0),
             Var::A32(n, _) => self.hybrid[n].writein(state, 0),
-            _ => unimplemented!()
+            _ => return IE994.err(),
         }
     }
 
