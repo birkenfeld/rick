@@ -36,7 +36,7 @@ mod syslib;
 
 use std::env::args;
 use std::io::Read;
-use std::fs::File;
+use std::fs::{ File, remove_file };
 use std::process::{ Command, Stdio };
 
 use parse::Parser;
@@ -127,15 +127,18 @@ fn main() {
         // PLEASE NOTE the selection of errors generated on different conditions
         // is a bit random
         let outname = String::from(&infile[..infile.len()-2]) + ".rs";
+        // open output file
         let output = match File::create(&outname) {
             Err(_) => { print!("{}", err::IE888.new(None, 0).to_string()); return },
             Ok(f)  => f,
         };
+        // generate Rust code
         match Generator::new(program, output, debug_flag).generate() {
             Err(err) => { print!("{}", err.to_string()); return },
             Ok(_)    => { }
         }
         let t3 = time::get_time();
+        // if wanted, compile to binary
         if rustc_flag {
             let mut cmd = Command::new("rustc");
             if rustc_opt_flag {
@@ -145,7 +148,10 @@ fn main() {
             cmd.arg(&outname);
             cmd.stdout(Stdio::inherit()).stderr(Stdio::inherit());
             match cmd.output() {
-                Ok(ref s) if s.status.success() => { },
+                // remove intermediate .rs file on success
+                Ok(ref s) if s.status.success() => {
+                    let _ = remove_file(outname);
+                },
                 _ => {
                     print!("{}", err::IE666.new(None, 0).to_string());
                     return;
