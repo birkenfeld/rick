@@ -59,10 +59,11 @@ fn main() {
     let args: Vec<String> = args().collect();
     let mut opts = getopts::Options::new();
     opts.optflag("i", "interpret", "interpret code instead of compiling");
-    opts.optflag("d", "debug", "activate printing out debug messages");
     opts.optflag("c", "no-compile", "do not call rustc");
     opts.optflag("o", "opt", "optimize parsed code");
     opts.optflag("O", "rustc-opt", "run rustc in optimized mode");
+    opts.optflag("d", "debug", "activate printing out debug messages");
+    opts.optflag("t", "timing", "print out timing messages");
     opts.optflag("h", "help", "print help message");
 
     // parse args
@@ -79,6 +80,7 @@ fn main() {
 
     let compile_flag = !matches.opt_present("i");
     let debug_flag = matches.opt_present("d");
+    let timing_flag = matches.opt_present("t");
     let opt_flag = matches.opt_present("o");
     let rustc_flag = !matches.opt_present("c");
     let rustc_opt_flag = matches.opt_present("O");
@@ -122,6 +124,9 @@ fn main() {
     let t1 = time::get_time();
     if opt_flag {
         program = Optimizer::new(program).optimize();
+        if debug_flag {
+            println!("Optimized program:\n{}", program);
+        }
     }
 
     // compile or run
@@ -149,7 +154,7 @@ fn main() {
             }
         }
         let t4 = time::get_time();
-        if debug_flag {
+        if timing_flag {
             println!("parsing:    {}", (t1 - t0));
             println!("optimizing: {}", (t2 - t1));
             println!("code gen:   {}", (t3 - t2));
@@ -157,12 +162,15 @@ fn main() {
         }
     } else {
         let mut stdout = stdout();
+        if debug_flag {
+            println!("Running:");
+        }
         let num = match Eval::new(&program, &mut stdout, debug_flag).eval() {
             Err(err) => { print!("{}", err.to_string()); return },
             Ok(num)  => num,
         };
         let t3 = time::get_time();
-        if debug_flag {
+        if timing_flag {
             println!("#stmts:     {}", num);
             println!("parsing:    {}", (t1 - t0));
             println!("optimizing: {}", (t2 - t1));
