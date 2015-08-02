@@ -257,24 +257,30 @@ impl Generator {
     }
 
     fn gen_assign(&mut self, var: &Var, line: SrcLine) -> WRes {
+        let suffix = if match *var {
+            Var::I16(n) => self.program.var_info.0[n].can_ignore,
+            Var::I32(n) => self.program.var_info.1[n].can_ignore,
+            Var::A16(n, _) => self.program.var_info.2[n].can_ignore,
+            Var::A32(n, _) => self.program.var_info.3[n].can_ignore,
+        } { "" } else { "_unchecked" };
         match *var {
             Var::I16(n) => w!(self.o; "
                     if val > (u16::MAX as u32) {{
                         return err::IE275.err_with(None, {});
                     }}
-                    v{}.assign(val as u16);", line, n),
-            Var::I32(n) => w!(self.o, 20; "w{}.assign(val);", n),
+                    v{}.assign{}(val as u16);", line, n, suffix),
+            Var::I32(n) => w!(self.o, 20; "w{}.assign{}(val);", n, suffix),
             Var::A16(n, ref subs) => {
                 try!(self.gen_eval_subs(subs, line));
                 w!(self.o; "
                     if val > (u16::MAX as u32) {{
                         return err::IE275.err_with(None, {});
                     }}
-                    try!(a{}.arr_assign(subs, val as u16));", line, n);
+                    try!(a{}.arr_assign{}(subs, val as u16));", line, n, suffix);
             }
             Var::A32(n, ref subs) => {
                 try!(self.gen_eval_subs(subs, line));
-                w!(self.o, 20; "try!(b{}.arr_assign(subs, val));", n);
+                w!(self.o, 20; "try!(b{}.arr_assign{}(subs, val));", n, suffix);
             }
         }
         Ok(())
@@ -382,21 +388,21 @@ impl Generator {
     }
 
     fn gen_program_vars(&mut self, program: &Program) -> WRes {
-        let vars = &self.program.n_vars;
+        let vars = &self.program.var_info;
         w!(self.o, 4; "let mut pctr: usize = 0;");
         w!(self.o, 4; "let mut jumps: Vec<(usize, Option<usize>)> = Vec::with_capacity(80);");
         w!(self.o, 4; "let mut last_in: u8 = 0;");
         w!(self.o, 4; "let mut last_out: u8 = 0;");
-        for i in 0..vars.0 {
+        for i in 0..vars.0.len() {
             w!(self.o, 4; "let mut v{}: Bind<u16> = Bind::new(0);", i);
         }
-        for i in 0..vars.1 {
+        for i in 0..vars.1.len() {
             w!(self.o, 4; "let mut w{}: Bind<u32> = Bind::new(0);", i);
         }
-        for i in 0..vars.2 {
+        for i in 0..vars.2.len() {
             w!(self.o, 4; "let mut a{}: Bind<Array<u16>> = Bind::new(Array::empty());", i);
         }
-        for i in 0..vars.3 {
+        for i in 0..vars.3.len() {
             w!(self.o, 4; "let mut b{}: Bind<Array<u32>> = Bind::new(Array::empty());", i);
         }
         w!(self.o, 4; "let mut abstain = [");

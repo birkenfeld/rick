@@ -93,7 +93,10 @@ enum StmtRes {
 impl Eval {
     pub fn new(program: Program, debug: bool) -> Eval {
         let abs = program.stmts.iter().map(|stmt| stmt.props.disabled).collect();
-        let nvars = program.n_vars;
+        let nvars = (program.var_info.0.len(),
+                     program.var_info.1.len(),
+                     program.var_info.2.len(),
+                     program.var_info.3.len());
         Eval {
             program:  Rc::new(program),
             debug:    debug,

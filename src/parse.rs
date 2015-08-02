@@ -19,7 +19,7 @@ use std::collections::{ BTreeMap, HashMap };
 use std::io::{ Read, BufRead, BufReader, Cursor };
 use std::u16;
 
-use ast::{ self, Program, Stmt, StmtBody, StmtProps, Expr, Abstain, Var, VType };
+use ast::{ self, Program, Stmt, StmtBody, StmtProps, Expr, Abstain, Var, VType, VarInfo };
 use err::{ Res, RtError, ErrDesc, IE000, IE017, IE079, IE099, IE139, IE182, IE197, IE200,
            IE444, IE555 };
 use lex::{ lex, Lexer, SrcLine, TT };
@@ -621,11 +621,14 @@ impl<'p> Parser<'p> {
                 }
             }
         }
-        let n_vars = (vars.counts[0], vars.counts[1], vars.counts[2], vars.counts[3]);
+        let var_info = (vec![VarInfo::new(); vars.counts[0]],
+                        vec![VarInfo::new(); vars.counts[1]],
+                        vec![VarInfo::new(); vars.counts[2]],
+                        vec![VarInfo::new(); vars.counts[3]]);
         Ok(Program { stmts: stmts,
                      labels: labels,
                      stmt_types: types,
-                     n_vars: n_vars })
+                     var_info: var_info })
     }
 }
 

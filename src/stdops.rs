@@ -61,6 +61,11 @@ impl<T: Clone> Bind<T> {
         }
     }
 
+    #[allow(dead_code)]  // only used in compiled code
+    pub fn assign_unchecked(&mut self, v: T) {
+        self.val = v;
+    }
+
     pub fn stash(&mut self) {
         self.stack.push(self.val.clone());
     }
@@ -82,6 +87,13 @@ impl<T: LikeU16 + Default> Bind<Array<T>> {
         if self.rw {
             self.val.elems[ix] = val;
         }
+        Ok(())
+    }
+
+    #[allow(dead_code)]  // only used in compiled code
+    pub fn arr_assign_unchecked(&mut self, subs: Vec<usize>, val: T) -> Res<()> {
+        let ix = try!(self.get_index(subs));
+        self.val.elems[ix] = val;
         Ok(())
     }
 

@@ -31,7 +31,7 @@ pub struct Program {
     pub stmts: Vec<Stmt>,
     pub labels: BTreeMap<Label, LogLine>,
     pub stmt_types: Vec<Abstain>,
-    pub n_vars: (usize, usize, usize, usize),
+    pub var_info: (Vec<VarInfo>, Vec<VarInfo>, Vec<VarInfo>, Vec<VarInfo>),
 }
 
 /// A single statement.
@@ -118,6 +118,13 @@ pub enum Abstain {
     ComeFrom,
     ReadOut,
     WriteIn,
+}
+
+/// Information about a variable.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct VarInfo {
+    pub can_ignore: bool,
+    pub can_stash: bool,
 }
 
 
@@ -207,6 +214,13 @@ impl Var {
         }
     }
 }
+
+impl VarInfo {
+    pub fn new() -> VarInfo {
+        VarInfo { can_ignore: true, can_stash: true }
+    }
+}
+
 
 impl Default for StmtProps {
     fn default() -> StmtProps {

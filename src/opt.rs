@@ -33,6 +33,7 @@ impl Optimizer {
     pub fn optimize(self) -> ast::Program {
         let program = self.program;
         let program = Optimizer::opt_constant_fold(program);
+        let program = Optimizer::opt_var_check(program);
         program
     }
 
@@ -108,5 +109,47 @@ impl Optimizer {
         if let Some(result) = result {
             *expr = result;
         }
+    }
+
+    /// Determine "can_ignore" and "can_stash" for variables.
+    pub fn opt_var_check(mut program: ast::Program) -> ast::Program {
+        fn reset(vis: &mut Vec<ast::VarInfo>) {
+            for vi in vis {
+                vi.can_stash = false;
+                vi.can_ignore = false;
+            }
+        }
+        reset(&mut program.var_info.0);
+        reset(&mut program.var_info.1);
+        reset(&mut program.var_info.2);
+        reset(&mut program.var_info.3);
+        for stmt in &program.stmts {
+            match stmt.body {
+                ast::StmtBody::Stash(ref vars) |
+                ast::StmtBody::Retrieve(ref vars) => {
+                    for var in vars {
+                        match *var {
+                            ast::Var::I16(n) => program.var_info.0[n].can_stash = true,
+                            ast::Var::I32(n) => program.var_info.1[n].can_stash = true,
+                            ast::Var::A16(n, _) => program.var_info.2[n].can_stash = true,
+                            ast::Var::A32(n, _) => program.var_info.3[n].can_stash = true,
+                        }
+                    }
+                }
+                ast::StmtBody::Ignore(ref vars) |
+                ast::StmtBody::Remember(ref vars) => {
+                    for var in vars {
+                        match *var {
+                            ast::Var::I16(n) => program.var_info.0[n].can_ignore = true,
+                            ast::Var::I32(n) => program.var_info.1[n].can_ignore = true,
+                            ast::Var::A16(n, _) => program.var_info.2[n].can_ignore = true,
+                            ast::Var::A32(n, _) => program.var_info.3[n].can_ignore = true,
+                        }
+                    }
+                }
+                _ => { }
+            }
+        }
+        program
     }
 }
