@@ -37,9 +37,9 @@ mod syslib;
 mod mandel;
 
 use std::env::args;
-use std::io::{ Read, stdout };
+use std::io::{ Read, Write, stdout, stderr };
 use std::fs::{ File, remove_file };
-use std::process::{ Command, Stdio };
+use std::process::{ Command, Stdio, exit };
 use std::sync::mpsc;
 use std::thread;
 
@@ -56,6 +56,17 @@ use codegen::Generator;
 // - computed abstain (line number, #abstentions)
 // - ONCE, AGAIN
 fn main() {
+    match main_inner() {
+        Ok(code) => exit(code),
+        Err(err) => {
+            let mut stderr = stderr();
+            write!(stderr, "{}", err.to_string()).unwrap();
+            exit(1);
+        }
+    }
+}
+
+fn main_inner() -> Result<i32, err::RtError> {
     let args: Vec<String> = args().collect();
     let mut opts = getopts::Options::new();
     opts.optflag("i", "interpret", "interpret code instead of compiling");
@@ -75,7 +86,7 @@ fn main() {
     // handle help option
     if matches.opt_present("h") {
         println!("{}", opts.usage("rick [options] input.i"));
-        return;
+        return Ok(2);
     }
 
     let compile_flag = !matches.opt_present("i");
@@ -87,25 +98,23 @@ fn main() {
 
     // no input file? -> do nothing
     if matches.free.is_empty() {
-        return;
+        return Ok(0);
     }
 
     // verify and open input file
     let infile = &matches.free[0];
     if !infile.ends_with(".i") {
-        print!("{}", err::IE998.new(None, 0).to_string());
-        return;
+        return err::IE998.err();
     }
     let mut f = match File::open(&infile) {
-        Err(_) => { print!("{}", err::IE777.new(None, 0).to_string()); return },
+        Err(_) => return err::IE777.err(),
         Ok(f)  => f,
     };
 
     // read code from input file
     let mut code = Vec::new();
     if let Err(_) = f.read_to_end(&mut code) {
-        print!("{}", err::IE777.new(None, 0).to_string());
-        return;
+        return err::IE777.err();
     }
 
     // parse source
@@ -117,7 +126,7 @@ fn main() {
             }
             program
         }
-        Err(err)    => { print!("{}", err.to_string()); return }
+        Err(err)    => return Err(err),
     };
 
     // optimize if wanted
@@ -137,21 +146,15 @@ fn main() {
         let outname = String::from(&infile[..infile.len()-2]) + ".rs";
         // open output file
         let output = match File::create(&outname) {
-            Err(_) => { print!("{}", err::IE888.new(None, 0).to_string()); return },
+            Err(_) => return err::IE888.err(),
             Ok(f)  => f,
         };
         // generate Rust code
-        match Generator::new(program, output, debug_flag).generate() {
-            Err(err) => { print!("{}", err.to_string()); return },
-            Ok(_)    => { }
-        }
+        try!(Generator::new(program, output, debug_flag).generate());
         let t3 = time::get_time();
         // if wanted, compile to binary
         if rustc_flag {
-            if let Err(err) = run_compiler(&outname, rustc_opt_flag) {
-                print!("{}", err.to_string());
-                return;
-            }
+            try!(run_compiler(&outname, rustc_opt_flag));
         }
         let t4 = time::get_time();
         if timing_flag {
@@ -165,10 +168,7 @@ fn main() {
         if debug_flag {
             println!("Running:");
         }
-        let num = match Eval::new(&program, &mut stdout, debug_flag).eval() {
-            Err(err) => { print!("{}", err.to_string()); return },
-            Ok(num)  => num,
-        };
+        let num = try!(Eval::new(&program, &mut stdout, debug_flag).eval());
         let t3 = time::get_time();
         if timing_flag {
             println!("#stmts:     {}", num);
@@ -177,6 +177,7 @@ fn main() {
             println!("execute:    {}", (t3 - t2));
         }
     }
+    Ok(0)
 }
 
 fn run_compiler(outname: &str, opt_flag: bool) -> Result<(), err::RtError> {

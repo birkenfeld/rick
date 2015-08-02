@@ -19,7 +19,7 @@ import os
 import sys
 import difflib
 from os import path
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, STDOUT
 
 
 def run_test(testname, testcode, compiled):
@@ -30,14 +30,14 @@ def run_test(testname, testcode, compiled):
     with open(testname + '.chk', 'rb') as stdoutfile:
         stdout = stdoutfile.read()
 
-    def check(proc, remove_firstline):
+    def check(proc, remove_cargo):
         real_stdout, _ = proc.communicate(stdin)
-        if proc.returncode != 0:
-            print('*** ERROR: process returned status %d' % proc.returncode)
-            raise RuntimeError
         # remove cargo's "Running" line
-        if remove_firstline:
+        if remove_cargo:
             real_stdout = real_stdout[real_stdout.index('\n') + 1:]
+            errindex = real_stdout.find('An unknown error occurred')
+            if errindex > -1:
+                real_stdout = real_stdout[:errindex]
         if real_stdout != stdout:
             print('*** ERROR: standard output does not match check file')
             print(''.join(difflib.unified_diff(stdout.splitlines(True),
@@ -48,18 +48,19 @@ def run_test(testname, testcode, compiled):
     print('>>> Test: ' + testname)
     print('  > Step 1: interpreted')
     check(Popen(['cargo', 'run', '--', '-i', testcode],
-                stdin=PIPE, stdout=PIPE), True)
+                stdin=PIPE, stdout=PIPE, stderr=STDOUT), True)
 
     print('  > Step 2: interpreted + optimized')
     check(Popen(['cargo', 'run', '--', '-io', testcode],
-                stdin=PIPE, stdout=PIPE), True)
+                stdin=PIPE, stdout=PIPE, stderr=STDOUT), True)
 
     if compiled:
         print('  > Step 3: compiled + optimized')
         if os.system('cargo run -- -o %s > /dev/null' % testcode) != 0:
             print('*** ERROR: compilation failed')
             raise RuntimeError
-        check(Popen([testcode[:-2]], stdin=PIPE, stdout=PIPE), False)
+        check(Popen([testcode[:-2]], stdin=PIPE, stdout=PIPE, stderr=STDOUT),
+              False)
 
     print ('  - passed')
 
@@ -74,6 +75,7 @@ def main():
     print('Running tests, please wait...')
     passed = 0
     total = 0
+    failed = []
     for root, dirs, files in os.walk('code'):
         dirs.sort()
         for fn in sorted(files):
@@ -95,9 +97,13 @@ def main():
                 run_test(testname, testcode, long_flag)
                 passed += 1
             except RuntimeError:
-                pass
+                failed.append(testname)
     print('')
     print('RESULT: %d/%d tests passed' % (passed, total))
+    if failed:
+        print('Failed:')
+        for testname in failed:
+            print('    ' + testname)
     return 0 if passed == total else 1
 
 
