@@ -31,6 +31,10 @@ pub struct Error {
 }
 
 impl Error {
+    pub fn set_line(&mut self, lineno: usize) {
+        self.lineno = lineno;
+    }
+
     pub fn to_string(&self) -> String {
         let mut msg = String::from(self.error.msg);
         if let Some(ref s) = self.addstr {
@@ -92,11 +96,25 @@ pub static IE017: ErrDesc = ErrDesc {
     way: None,
 };
 
+/* Program has attempted 80 levels of NEXTing */
+pub static IE123: ErrDesc = ErrDesc {
+    num: 123,
+    msg: "PROGRAM HAS DISAPPEARED INTO THE BLACK LAGOON",
+    way: Some("WHO KNOWS WHERE"),
+};
+
 /* Program has attempted to transfer to a non-existent line label */
 pub static IE129: ErrDesc = ErrDesc {
     num: 129,
     msg: "PROGRAM HAS GOTTEN LOST",
     way: Some("WHO KNOWS WHERE"),
+};
+
+/* An ABSTAIN or REINSTATE statement references a non-existent line label */
+pub static IE139: ErrDesc = ErrDesc {
+    num: 139,
+    msg: "I WASN'T PLANNING TO GO THERE ANYWAY",
+    way: None,
 };
 
 /* An invalid line label has been encountered. */
@@ -120,6 +138,35 @@ pub static IE275: ErrDesc = ErrDesc {
     way: None,
 };
 
+/* A retrieval has been attempted for an unSTASHed value. */
+pub static IE436: ErrDesc = ErrDesc {
+    num: 436,
+    msg: "THROW STICK BEFORE RETRIEVING!",
+    way: None,
+};
+
+/* A COME FROM statement references a non-existent line label. */
+pub static IE444: ErrDesc = ErrDesc {
+    num: 444,
+    msg: "IT CAME FROM BEYOND SPACE",
+    way: None,
+};
+
+/* A WRITE IN statement or interleave ($) operation
+ * has produced value requiring over 32 bits to represent. */
+pub static IE533: ErrDesc = ErrDesc {
+    num: 533,
+    msg: "YOU WANT MAYBE WE SHOULD IMPLEMENT 64-BIT VARIABLES?",
+    way: None,
+};
+
+/* More than one COME FROM references the same label. */
+pub static IE555: ErrDesc = ErrDesc {
+    num: 555,
+    msg: "FLOW DIAGRAM IS EXCESSIVELY CONNECTED",
+    way: None,
+};
+
 /* Insufficient data. (raised by reading past EOF) */
 pub static IE562: ErrDesc = ErrDesc {
     num: 562,
@@ -131,6 +178,20 @@ pub static IE562: ErrDesc = ErrDesc {
 pub static IE579: ErrDesc = ErrDesc {
     num: 579,
     msg: "WHAT BASE AND/OR LANGUAGE INCLUDES {}?",
+    way: None,
+};
+
+/* The expression of a RESUME statement evaluated to #0. */
+pub static IE621: ErrDesc = ErrDesc {
+    num: 621,
+    msg: "ERROR TYPE 621 ENCOUNTERED",
+    way: None,
+};
+
+/* Input data is invalid. */
+pub static IE632: ErrDesc = ErrDesc {
+    num: 632,
+    msg: "THE NEXT STACK RUPTURES.  ALL DIE.  OH, THE EMBARRASSMENT!",
     way: None,
 };
 

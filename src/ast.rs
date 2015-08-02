@@ -15,21 +15,33 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
+use std::collections::HashMap;
 use std::default::Default;
 use std::fmt::{ Display, Error, Formatter };
 
 use err;
 
 
-#[derive(PartialEq, Eq, Debug)]
-pub struct Program(pub Vec<Stmt>);
+pub type Label = u16;
+pub type LogLine = u16;
 
 #[derive(PartialEq, Eq, Debug)]
-pub struct Stmt(pub StmtType, pub StmtProps);
+pub struct Program {
+    pub stmts: Vec<Stmt>,
+    pub labels: HashMap<Label, LogLine>,
+    pub comefroms: HashMap<Label, LogLine>,
+    pub stmt_types: Vec<Abstain>,
+}
+
+#[derive(PartialEq, Eq, Debug)]
+pub struct Stmt {
+    pub st: StmtType,
+    pub props: StmtProps,
+}
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct StmtProps {
-    pub logline: u16,
+    pub label: Label,
     pub srcline: usize,
     pub chance: u8,
     pub polite: bool,
@@ -40,16 +52,18 @@ pub struct StmtProps {
 pub enum StmtType {
     Error(err::Error),
     Calc(Var, Expr),
-    DoNext(u16),
-    ComeFrom(u16),
+    DoNext(Label),
+    ComeFrom(Label),
     Resume(Expr),
     Forget(Expr),
+    Ignore(Vec<Var>),
+    Remember(Vec<Var>),
     Stash(Vec<Var>),
     Retrieve(Vec<Var>),
     Abstain(Abstain),
     Reinstate(Abstain),
     WriteIn(Var),
-    ReadOut(Var),
+    ReadOut(Expr),
     GiveUp,
 }
 
@@ -73,12 +87,19 @@ pub enum Expr {
 }
 
 #[derive(PartialEq, Eq, Debug)]
+pub enum Val {
+    I16(u16),
+    I32(u32),
+}
+
+#[derive(PartialEq, Eq, Debug)]
 pub enum Abstain {
-    Line(u16),
+    Line(Label),
     Calc,
     Next,
     Resume,
     Forget,
+    Ignore,
     Remember,
     Stash,
     Retrieve,
@@ -92,13 +113,15 @@ pub enum Abstain {
 
 impl Stmt {
     pub fn stype(&self) -> Abstain {
-        match self.0 {
+        match self.st {
             StmtType::Error(_) => Abstain::Line(0),
             StmtType::Calc(..) => Abstain::Calc,
             StmtType::DoNext(_) => Abstain::Next,
             StmtType::ComeFrom(_) => Abstain::ComeFrom,
             StmtType::Resume(_) => Abstain::Resume,
             StmtType::Forget(_) => Abstain::Forget,
+            StmtType::Ignore(_) => Abstain::Ignore,
+            StmtType::Remember(_) => Abstain::Remember,
             StmtType::Stash(_) => Abstain::Stash,
             StmtType::Retrieve(_) => Abstain::Retrieve,
             StmtType::Abstain(_) => Abstain::Abstain,
@@ -110,10 +133,33 @@ impl Stmt {
     }
 }
 
+impl StmtType {
+    fn fmt_varlist(&self, vars: &Vec<Var>) -> String {
+        vars.iter().map(|v| format!("{}", v)).collect::<Vec<_>>().connect("+")
+    }
+}
+
+impl Val {
+    pub fn as_u32(&self) -> u32 {
+        match *self {
+            Val::I16(v) => v as u32,
+            Val::I32(v) => v
+        }
+    }
+
+    pub fn from_u32(v: u32) -> Val {
+        if v & 0xFFFF == v {
+            Val::I16(v as u16)
+        } else {
+            Val::I32(v)
+        }
+    }
+}
+
 
 impl Default for StmtProps {
     fn default() -> StmtProps {
-        StmtProps { logline: 0,
+        StmtProps { label: 0,
                     srcline: 0,
                     chance: 100,
                     polite: false,
@@ -124,7 +170,7 @@ impl Default for StmtProps {
 
 impl Display for Program {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        for stmt in &self.0 {
+        for stmt in &self.stmts {
             try!(write!(fmt, "{}\n", stmt));
         }
         Ok(())
@@ -133,25 +179,26 @@ impl Display for Program {
 
 impl Display for Stmt {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        if self.1.logline > 0 {
-            try!(write!(fmt, "({:5}) ", self.1.logline));
+        try!(write!(fmt, "#{:03}  ", self.props.srcline));
+        if self.props.label > 0 {
+            try!(write!(fmt, "({:5}) ", self.props.label));
         } else {
             try!(write!(fmt, "        "));
         }
-        if self.1.polite {
+        if self.props.polite {
             try!(write!(fmt, "PLEASE "));
         } else {
             try!(write!(fmt, "DO     "));
         }
-        if self.1.disabled {
+        if self.props.disabled {
             try!(write!(fmt, "NOT "));
         } else {
             try!(write!(fmt, "    "));
         }
-        if self.1.chance < 100 {
-            try!(write!(fmt, "%{} ", self.1.chance));
+        if self.props.chance < 100 {
+            try!(write!(fmt, "%{} ", self.props.chance));
         }
-        write!(fmt, "{}", self.0)
+        write!(fmt, "{}", self.st)
     }
 }
 
@@ -164,16 +211,14 @@ impl Display for StmtType {
             StmtType::ComeFrom(ref line) => write!(fmt, "COME FROM ({})", line),
             StmtType::Resume(ref expr) => write!(fmt, "RESUME {}", expr),
             StmtType::Forget(ref expr) => write!(fmt, "FORGET {}", expr),
-            StmtType::Stash(ref vars) => write!(
-                fmt, "STASH {}",
-                vars.iter().map(|v| format!("{}", v)).collect::<Vec<_>>().connect("+")),
-            StmtType::Retrieve(ref vars) => write!(
-                fmt, "RETRIEVE {}",
-                vars.iter().map(|v| format!("{}", v)).collect::<Vec<_>>().connect("+")),
+            StmtType::Ignore(ref vars) => write!(fmt, "IGNORE {}", self.fmt_varlist(vars)),
+            StmtType::Remember(ref vars) => write!(fmt, "REMEMBER {}", self.fmt_varlist(vars)),
+            StmtType::Stash(ref vars) => write!(fmt, "STASH {}", self.fmt_varlist(vars)),
+            StmtType::Retrieve(ref vars) => write!(fmt, "RETRIEVE {}", self.fmt_varlist(vars)),
             StmtType::Abstain(ref what) => write!(fmt, "ABSTAIN FROM {}", what),
             StmtType::Reinstate(ref what) => write!(fmt, "REINSTATE {}", what),
             StmtType::WriteIn(ref var) => write!(fmt, "WRITE IN {}", var),
-            StmtType::ReadOut(ref var) => write!(fmt, "READ OUT {}", var),
+            StmtType::ReadOut(ref expr) => write!(fmt, "READ OUT {}", expr),
             StmtType::GiveUp => write!(fmt, "GIVE UP"),
         }
     }
@@ -224,6 +269,7 @@ impl Display for Abstain {
             Abstain::Next => write!(fmt, "NEXTING"),
             Abstain::Resume => write!(fmt, "RESUMING"),
             Abstain::Forget => write!(fmt, "FORGETTING"),
+            Abstain::Ignore => write!(fmt, "IGNORING"),
             Abstain::Remember => write!(fmt, "REMEMBERING"),
             Abstain::Stash => write!(fmt, "STASHING"),
             Abstain::Retrieve => write!(fmt, "RETRIEVING"),

@@ -15,7 +15,22 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
+use std::io::{ BufRead, stdin };
+use std::u16;
+use std::u32;
+use rand::{ random, Closed01 };
+
 use err;
+
+
+/// Check statement execution chance (false -> skip).
+pub fn check_chance(chance: u8) -> bool {
+    if chance == 100 {
+        return true;
+    }
+    let Closed01(val) = random::<Closed01<f32>>();
+    val <= (chance as f32) / 100.
+}
 
 
 /// Which roman digits from the digit_tbl to put together for each
@@ -103,10 +118,112 @@ pub fn from_english(v: &str) -> Result<u32, err::Error> {
     }
     let mut res = 0;
     for (i, digit) in digits.iter().enumerate() {
-        res += (*digit as u32) * (10 as u32).pow(digits.len() as u32 - 1 - i as u32);
+        res += (*digit as u64) * (10 as u64).pow(digits.len() as u32 - 1 - i as u32);
     }
-    Ok(res)
+    if res > (u32::MAX as u64) {
+        Err(err::new(&err::IE533))
+    } else {
+        Ok(res as u32)
+    }
+}
+
+pub fn write_number(val: u32) {
+    println!("{}", to_roman(val));
+}
+
+pub fn read_number() -> Result<u32, err::Error> {
+    let stdin = stdin();
+    let mut slock = stdin.lock();
+    let mut buf = String::new();
+    match slock.read_line(&mut buf) {
+        Ok(n) if n > 0 => from_english(&buf),
+        _              => Err(err::new(&err::IE562))
+    }
 }
 
 
-//pub fn mingle()
+pub fn mingle(mut v: u32, mut w: u32) -> Result<u32, err::Error> {
+    if v > (u16::MAX as u32) || w > (u16::MAX as u32) {
+        return Err(err::new(&err::IE533));
+    }
+    v = ((v & 0x0000ff00) << 8) | (v & 0x000000ff);
+    v = ((v & 0x00f000f0) << 4) | (v & 0x000f000f);
+    v = ((v & 0x0c0c0c0c) << 2) | (v & 0x03030303);
+    v = ((v & 0x22222222) << 1) | (v & 0x11111111);
+    w = ((w & 0x0000ff00) << 8) | (w & 0x000000ff);
+    w = ((w & 0x00f000f0) << 4) | (w & 0x000f000f);
+    w = ((w & 0x0c0c0c0c) << 2) | (w & 0x03030303);
+    w = ((w & 0x22222222) << 1) | (w & 0x11111111);
+    Ok((v << 1) | w)
+}
+
+
+pub fn select(mut v: u32, mut w: u32) -> Result<u32, err::Error> {
+    let mut i = 1;
+    let mut t = 0;
+    while w > 0 {
+        if w & i > 0 {
+            t |= v & i;
+            w ^= i;
+            i <<= 1;
+        } else {
+            w >>= 1;
+            v >>= 1;
+        }
+    }
+    Ok(t)
+}
+
+
+pub fn and_16(v: u16) -> u16 {
+    let mut w = v >> 1;
+    if v & 1 > 0 {
+        w |= 0x8000;
+    }
+    w & v
+}
+
+
+pub fn and_32(v: u32) -> u32 {
+    let mut w = v >> 1;
+    if v & 1 > 0 {
+        w |= 0x80000000;
+    }
+    w & v
+}
+
+
+pub fn or_16(v: u16) -> u16 {
+    let mut w = v >> 1;
+    if v & 1 > 0 {
+        w |= 0x8000;
+    }
+    w | v
+}
+
+
+pub fn or_32(v: u32) -> u32 {
+    let mut w = v >> 1;
+    if v & 1 > 0 {
+        w |= 0x80000000;
+    }
+    w | v
+}
+
+
+pub fn xor_16(v: u16) -> u16 {
+    let mut w = v >> 1;
+    if v & 1 > 0 {
+        w |= 0x8000;
+    }
+    w ^ v
+}
+
+
+pub fn xor_32(v: u32) -> u32 {
+    let mut w = v >> 1;
+    if v & 1 > 0 {
+        w |= 0x80000000;
+    }
+    w ^ v
+}

@@ -20,6 +20,7 @@
 
 #[allow(plugin_as_library)]
 extern crate rustlex;
+extern crate rand;
 
 mod ast;
 mod err;
@@ -36,36 +37,24 @@ fn main() {
     use parse::Parser;
     use eval::Eval;
 
-//     let demo_prog = "
-//         PLEASE DO ,1 <- #1
-//         DO .4 <- #0
-//         DO .5 <- #0
-//         DO COME FROM (30)
-//         DO WRITE IN ,1
-//         DO .1 <- ,1SUB#1
-//         DO (10) NEXT
-//         PLEASE GIVE UP
-//         PLEASE NOTE this is a comment
-// (20)    PLEASE RESUME '?.1$#256'~'#256$#256'
-// (10)    DO (20) NEXT
-//         DO FORGET #1
-//         PLEASE DO .2 <- .4
-//         DO (1000) NEXT
-//         DO .4 <- .3~#255
-//         PLEASE DO .3 <- !3~#15'$!3~#240'
-//         DO .3 <- !3~#15'$!3~#240'
-//         DO .2 <- !3~#15'$!3~#240'
-//         PLEASE DO .1 <- .5
-//         DO (1010) NEXT
-//         DO .5 <- .2
-//         DO ,1SUB#1 <- .3
-// (30)    PLEASE READ OUT ,1
-// ";
     let demo_prog = "
-PLEASE DO .1 <- #19999
-PLEASE DO .2 <- .1
-DO READ OUT .2
-DO GIVE UP
+(1900)  DO STASH .2 + .3
+        DO .3 <- #65535
+        DO (1903) NEXT
+(1903)  PLEASE FORGET #1
+        DO .2 <- #0
+        PLEASE %50 IGNORE .2
+        DO .2 <- #1
+        PLEASE REMEMBER .2
+        DO .1 <- !1$.2'~\"#65535$#1\"
+        DO .3 <- .3~#65534
+        DO (1902) NEXT
+        DO (1903) NEXT
+(1902)  DO (1904) NEXT
+        DO RETRIEVE .2 + .3
+        DO FORGET #1
+        PLEASE RESUME #1
+(1904)  PLEASE RESUME '?\"!3~.3'~#1\"$#1'~#3
 ";
 
     let mut v;

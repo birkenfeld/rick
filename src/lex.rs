@@ -42,6 +42,7 @@ pub enum TT {
     NEXT,
     RESUME,
     FORGET,
+    IGNORE,
     REMEMBER,
     STASH,
     RETRIEVE,
@@ -56,6 +57,7 @@ pub enum TT {
     CALCULATING,
     NEXTING,
     RESUMING,
+    IGNORING,
     FORGETTING,
     REMEMBERING,
     STASHING,
@@ -118,6 +120,7 @@ rustlex! IcLexer {
     "NEXT"         => |l: Lx<R>| l.tok(TT::NEXT)
     "RESUME"       => |l: Lx<R>| l.tok(TT::RESUME)
     "FORGET"       => |l: Lx<R>| l.tok(TT::FORGET)
+    "IGNORE"       => |l: Lx<R>| l.tok(TT::IGNORE)
     "REMEMBER"     => |l: Lx<R>| l.tok(TT::REMEMBER)
     "STASH"        => |l: Lx<R>| l.tok(TT::STASH)
     "RETRIEVE"     => |l: Lx<R>| l.tok(TT::RETRIEVE)
@@ -132,6 +135,7 @@ rustlex! IcLexer {
     "NEXTING"      => |l: Lx<R>| l.tok(TT::NEXTING)
     "RESUMING"     => |l: Lx<R>| l.tok(TT::RESUMING)
     "FORGETTING"   => |l: Lx<R>| l.tok(TT::FORGETTING)
+    "IGNORING"     => |l: Lx<R>| l.tok(TT::IGNORING)
     "REMEMBERING"  => |l: Lx<R>| l.tok(TT::REMEMBERING)
     "STASHING"     => |l: Lx<R>| l.tok(TT::STASHING)
     "RETRIEVING"   => |l: Lx<R>| l.tok(TT::RETRIEVING)
