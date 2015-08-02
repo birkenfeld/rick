@@ -29,12 +29,14 @@ mod lex;
 mod parse;
 mod eval;
 mod util;
+mod opt;
 
 use std::env::args;
 use std::io::Read;
 use std::fs::File;
 
 use parse::Parser;
+use opt::Optimizer;
 use eval::Eval;
 
 
@@ -76,12 +78,17 @@ fn main() {
         Err(err)    => { println!("{}", err.to_string()); return },
     };
 
+    let t1 = time::get_time();
+    let program = Optimizer::new(program).optimize();
+    println!("Optimized:\n\n{}", program);
+
     let t2 = time::get_time();
     if let Err(err) = Eval::new(program).eval() {
         println!("{}", err.to_string());
     }
 
     let t3 = time::get_time();
-    println!("parsing:    {}", (t2 - t0));
+    println!("parsing:    {}", (t1 - t0));
+    println!("optimizing: {}", (t2 - t1));
     println!("execution:  {}", (t3 - t2));
 }
