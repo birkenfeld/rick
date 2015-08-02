@@ -33,7 +33,7 @@ pub struct Array<T> {
 
 impl<T: Clone + Default> Array<T> {
     pub fn new(dims: Vec<usize>) -> Array<T> {
-        let total = dims.iter().product();
+        let total = dims.iter().fold(1, |p, e| p * e);
         let value = Default::default();
         Array { dims: dims, elems: vec![value; total] }
     }
@@ -108,7 +108,7 @@ impl<T: LikeU16 + Default> Bind<Array<T>> {
     }
 
     pub fn dimension(&mut self, dims: Vec<usize>) -> Res<()> {
-        if dims.iter().product::<usize>() == 0 {
+        if dims.iter().fold(1, |p, e| p * e) == 0 {
             return IE240.err();
         }
         if self.rw {

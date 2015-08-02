@@ -15,7 +15,7 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
-#![feature(plugin, iter_arith, box_syntax, box_patterns, append, slice_patterns)]
+#![feature(plugin, box_syntax, box_patterns, append)]
 #![plugin(rustlex)]
 #![plugin(rick_syntex)]
 
@@ -46,7 +46,6 @@ use codegen::Generator;
 
 
 // XXX introduce E774
-// XXX remove unstable for generated code
 // XXX test suite
 // XXX make user comfortable while rustc is running
 // XXX syntax extensions:

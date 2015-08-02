@@ -87,7 +87,7 @@ impl Generator {
     }
 
     fn gen_attrs(&mut self) -> WRes {
-        w!(self.o; "#![feature(iter_arith)]\n\n");
+        // no attributes needed at the moment
         Ok(())
     }
 
