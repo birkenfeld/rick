@@ -26,17 +26,21 @@ pub enum TT {
     // special tokens
     UNKNOWN(String),
     NUMBER(u32),
-    LABEL(u32),
-    DO(bool),
+
+    // statement initiators
+    WAX,
+    WANE,
+    DO,
+    PLEASEDO,
     NOT,
 
     // sigils
-    SPOT(u32),
-    TWOSPOT(u32),
-    TAIL(u32),
-    HYBRID(u32),
-    WOW(u32),
-    MESH(u32),
+    SPOT,
+    TWOSPOT,
+    TAIL,
+    HYBRID,
+    WOW,
+    MESH,
 
     // word stmt types
     NEXT,
@@ -97,23 +101,17 @@ rustlex! IcLexer {
     let WS = [' ' '\t']+;
     let NL = '\n';
     let ANY = .;
-    let LBL = '(' ['0'-'9']+ ')';
-    let SPOT = '.' ['0'-'9']+;
-    let SPOT2 = ':' ['0'-'9']+;
-    let TAIL = ',' ['0'-'9']+;
-    let TAIL2 = ';' ['0'-'9']+;
-    let WOW = '!' ['0'-'9']+;
-    let MESH = '#' ['0'-'9']+;
 
     ANY   => |l: Lx<R>| { let s = l.yystr(); l.tok(TT::UNKNOWN(s)) }
     WS    => |_: Lx<R>| -> Option<Token> { None }
     NL    => |l: Lx<R>| -> Option<Token> { l.line += 1; None }
     NUM   => |l: Lx<R>| { let s = l.yystr(); l.tok(TT::NUMBER(s.parse().unwrap())) }
-    LBL   => |l: Lx<R>| { let s = l.yystr(); l.tok(TT::LABEL(s[1..s.len()-1].parse().unwrap())) }
 
-    "PLEASE"       => |l: Lx<R>| l.tok(TT::DO(true))
-    "PLEASE DO"    => |l: Lx<R>| l.tok(TT::DO(true))
-    "DO"           => |l: Lx<R>| l.tok(TT::DO(false))
+    '('            => |l: Lx<R>| l.tok(TT::WAX)
+    ')'            => |l: Lx<R>| l.tok(TT::WANE)
+    "PLEASE"       => |l: Lx<R>| l.tok(TT::PLEASEDO)
+    "PLEASE DO"    => |l: Lx<R>| l.tok(TT::PLEASEDO)
+    "DO"           => |l: Lx<R>| l.tok(TT::DO)
     "NOT"          => |l: Lx<R>| l.tok(TT::NOT)
     "N'T"          => |l: Lx<R>| l.tok(TT::NOT)
 
@@ -145,12 +143,12 @@ rustlex! IcLexer {
     "READING OUT"  => |l: Lx<R>| l.tok(TT::READINGOUT)
     "WRITING IN"   => |l: Lx<R>| l.tok(TT::WRITINGIN)
 
-    SPOT  => |l: Lx<R>| { let s = l.yystr(); l.tok(TT::SPOT(s[1..].parse().unwrap())) }
-    SPOT2 => |l: Lx<R>| { let s = l.yystr(); l.tok(TT::TWOSPOT(s[1..].parse().unwrap())) }
-    TAIL  => |l: Lx<R>| { let s = l.yystr(); l.tok(TT::TAIL(s[1..].parse().unwrap())) }
-    TAIL2 => |l: Lx<R>| { let s = l.yystr(); l.tok(TT::HYBRID(s[1..].parse().unwrap())) }
-    WOW   => |l: Lx<R>| { let s = l.yystr(); l.tok(TT::WOW(s[1..].parse().unwrap())) }
-    MESH  => |l: Lx<R>| { let s = l.yystr(); l.tok(TT::MESH(s[1..].parse().unwrap())) }
+    '.'   => |l: Lx<R>| l.tok(TT::SPOT)
+    ':'   => |l: Lx<R>| l.tok(TT::TWOSPOT)
+    ','   => |l: Lx<R>| l.tok(TT::TAIL)
+    ';'   => |l: Lx<R>| l.tok(TT::HYBRID)
+    '!'   => |l: Lx<R>| l.tok(TT::WOW)
+    '#'   => |l: Lx<R>| l.tok(TT::MESH)
 
     "<-"  => |l: Lx<R>| l.tok(TT::GETS)
     "SUB" => |l: Lx<R>| l.tok(TT::SUB)
@@ -177,24 +175,36 @@ impl<R: Read> IcLexer<R> {
 
 
 pub struct LexerIter<R: Read> {
-    inner: IcLexer<R>,
+    inner:  IcLexer<R>,
     unkbuf: Option<String>,
     unklno: usize,
-    stash: Vec<Token>,
+    stash:  Vec<Token>,
+    lineno: usize,
 }
 
 impl<R: Read> Iterator for LexerIter<R> {
-    type Item = Token;
+    type Item = TT;
 
     fn next(&mut self) -> Option<Self::Item> {
+        let ret = self.inner_next();
+        if let Some(tok) = ret {
+            self.lineno = tok.1;
+            return Some(tok.0);
+        }
+        None
+    }
+}
+
+impl<R: Read> LexerIter<R> {
+    fn inner_next(&mut self) -> Option<Token> {
         // if we have some tokens stashed, just emit them
         while !self.stash.is_empty() {
             return self.stash.pop();
         }
         while let Some(mut tok) = self.inner.next() {
             // handle ! = '. combination right now
-            if let Token(TT::WOW(val), _) = tok {
-                self.stash.push(Token(TT::SPOT(val), tok.1));
+            if let Token(TT::WOW, _) = tok {
+                self.stash.push(Token(TT::SPOT, tok.1));
                 tok = Token(TT::SPARK, tok.1);
             }
             // unknowns: push them onto the buffer
@@ -220,30 +230,31 @@ impl<R: Read> Iterator for LexerIter<R> {
         // finally, nothing left
         return None;
     }
-}
 
-impl<R: Read> LexerIter<R> {
-
-    pub fn peek(&mut self) -> Option<&Token> {
+    pub fn peek(&mut self) -> Option<&TT> {
         if !self.stash.is_empty() {
-            return self.stash.last();
+            return self.stash.last().map(|v| &v.0);
         }
-        match self.next() {
+        match self.inner_next() {
             None => None,
             Some(tok) => {
                 self.stash.push(tok);
-                self.stash.last()
+                self.stash.last().map(|v| &v.0)
             }
         }
     }
 
-    pub fn push(&mut self, t: Token) {
-        self.stash.push(t);
+    pub fn push(&mut self, t: TT) {
+        self.stash.push(Token(t, self.lineno));
+    }
+
+    pub fn lineno(&self) -> usize {
+        self.lineno
     }
 }
 
 
 pub fn lex<R: Read>(reader: R) -> LexerIter<R> {
     let lexer = IcLexer::new(reader);
-    LexerIter { inner: lexer, unkbuf: None, unklno: 0, stash: vec![] }
+    LexerIter { inner: lexer, unkbuf: None, unklno: 0, stash: vec![], lineno: 0 }
 }

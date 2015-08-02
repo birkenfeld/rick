@@ -21,7 +21,7 @@ use std::u16;
 
 use ast;
 use err;
-use lex::{ lex, LexerIter, Token, TT };
+use lex::{ lex, LexerIter, TT };
 
 
 enum Error {
@@ -62,7 +62,7 @@ impl<'p> Parser<'p> {
                 // XXX
                 let stype = ast::StmtType::Error(err::full(&err::IE000,
                                                            Some(self.lines[srcline].clone()),
-                                                           self.tokens.peek().unwrap().1));
+                                                           self.tokens.lineno()));
                 let stmt = ast::Stmt { st: stype, props: props };
                 self.recover_splat();
                 return Ok(stmt);
@@ -74,7 +74,7 @@ impl<'p> Parser<'p> {
             Err(Error::ParseErr(srcline)) => {
                 let stype = ast::StmtType::Error(err::full(&err::IE000,
                                                            Some(self.lines[srcline].clone()),
-                                                           self.tokens.peek().unwrap().1));
+                                                           self.tokens.lineno()));
                 let stmt = ast::Stmt { st: stype, props: props };
                 self.recover_splat();
                 return Ok(stmt);
@@ -87,8 +87,9 @@ impl<'p> Parser<'p> {
         loop {
             match self.tokens.peek() {
                 None |
-                Some(&Token(TT::LABEL(_), _)) |
-                Some(&Token(TT::DO(_), _)) => break,
+                Some(&TT::WAX) |
+                Some(&TT::DO) |
+                Some(&TT::PLEASEDO) => break,
                 _ => { self.tokens.next(); }
             }
         }
@@ -96,29 +97,32 @@ impl<'p> Parser<'p> {
 
     fn parse_stmt_begin(&mut self, props: &mut ast::StmtProps) -> Res<()> {
         // parse logical line number
-        if let Some(&Token(TT::LABEL(lno), _)) = self.tokens.peek() {
-            let tok = self.tokens.next().unwrap();
+        if self.take(TT::WAX) {
+            let lno = try!(self.req_number());
             if lno > (u16::MAX as u32) {
-                return self.parser_err(&err::IE197, "", tok);
+                return self.parser_err(&err::IE197, "");
             }
+            try!(self.req(TT::WANE));
             props.label = lno as u16;
         }
         // parse statement inititiator
-        if let Some(Token(TT::DO(polite), lno)) = self.tokens.next() {
-            props.srcline = lno;
-            props.polite = polite;
+        if self.take(TT::DO) {
+            props.srcline = self.tokens.lineno();
+        } else if self.take(TT::PLEASEDO) {
+            props.srcline = self.tokens.lineno();
+            props.polite = true;
         } else {
             return self.decode_err();
         }
         // parse initial disable
-        if let Some(_) = self.take(TT::NOT) {
+        if self.take(TT::NOT) {
             props.disabled = true;
         }
         // parse percentage
-        if let Some(tok) = self.take(TT::OHOHSEVEN) {
+        if self.take(TT::OHOHSEVEN) {
             let schance = try!(self.req_number());
             if schance > 100 {
-                return self.parser_err(&err::IE017, "", tok);
+                return self.parser_err(&err::IE017, "");
             }
             props.chance = schance as u8;
         }
@@ -127,89 +131,84 @@ impl<'p> Parser<'p> {
 
     fn parse_stmt_inner(&mut self) -> Res<ast::StmtType> {
         // parse statement interior
-        if let Some(var) = try!(self.parse_var(true)) {
+        if let Some(var) = try!(self.parse_var_maybe(true)) {
             try!(self.req(TT::GETS));
             let expr = try!(self.parse_expr());
             return Ok(ast::StmtType::Calc(var, expr));
         }
-        if let Some(&Token(TT::LABEL(val), _)) = self.tokens.peek() {
-            let tok = self.tokens.next().unwrap();
-            if val > (u16::MAX as u32) {
-                return self.parser_err(&err::IE197, "", tok);
+        if self.take(TT::WAX) {
+            let lno = try!(self.req_number());
+            if lno > (u16::MAX as u32) {
+                return self.parser_err(&err::IE197, "");
             }
+            try!(self.req(TT::WANE));
             try!(self.req(TT::NEXT));
-            return Ok(ast::StmtType::DoNext(val as u16));
+            return Ok(ast::StmtType::DoNext(lno as u16));
         }
-        if let Some(_) = self.take(TT::COMEFROM) {
-            if let Some(&Token(TT::LABEL(val), _)) = self.tokens.peek() {
-                let tok = self.tokens.next().unwrap();
-                if val > (u16::MAX as u32) {
-                    return self.parser_err(&err::IE197, "", tok);
-                }
-                return Ok(ast::StmtType::ComeFrom(val as u16));
-            } else {
-                return self.decode_err();
+        if self.take(TT::COMEFROM) {
+            try!(self.req(TT::WAX));
+            let lno = try!(self.req_number());
+            if lno > (u16::MAX as u32) {
+                return self.parser_err(&err::IE197, "");
             }
+            try!(self.req(TT::WANE));
+            return Ok(ast::StmtType::ComeFrom(lno as u16));
         }
-        if let Some(_) = self.take(TT::RESUME) {
+        if self.take(TT::RESUME) {
             return Ok(ast::StmtType::Resume(try!(self.parse_expr())));
         }
-        if let Some(_) = self.take(TT::FORGET) {
+        if self.take(TT::FORGET) {
             return Ok(ast::StmtType::Forget(try!(self.parse_expr())));
         }
-        if let Some(_) = self.take(TT::IGNORE) {
+        if self.take(TT::IGNORE) {
             return Ok(ast::StmtType::Ignore(try!(self.parse_varlist())));
         }
-        if let Some(_) = self.take(TT::REMEMBER) {
+        if self.take(TT::REMEMBER) {
             return Ok(ast::StmtType::Remember(try!(self.parse_varlist())));
         }
-        if let Some(_) = self.take(TT::STASH) {
+        if self.take(TT::STASH) {
             return Ok(ast::StmtType::Stash(try!(self.parse_varlist())));
         }
-        if let Some(_) = self.take(TT::RETRIEVE) {
+        if self.take(TT::RETRIEVE) {
             return Ok(ast::StmtType::Retrieve(try!(self.parse_varlist())));
         }
-        if let Some(_) = self.take(TT::ABSTAIN) {
+        if self.take(TT::ABSTAIN) {
             return Ok(ast::StmtType::Abstain(try!(self.parse_abstain())));
         }
-        if let Some(_) = self.take(TT::REINSTATE) {
+        if self.take(TT::REINSTATE) {
             return Ok(ast::StmtType::Reinstate(try!(self.parse_abstain())));
         }
-        if let Some(_) = self.take(TT::WRITEIN) {
-            if let Some(var) = try!(self.parse_var(true)) {
-                return Ok(ast::StmtType::WriteIn(var));
-            } else {
-                return self.decode_err();
-            }
+        if self.take(TT::WRITEIN) {
+            return Ok(ast::StmtType::WriteIn(try!(self.parse_var(true))));
         }
-        if let Some(_) = self.take(TT::READOUT) {
+        if self.take(TT::READOUT) {
             return Ok(ast::StmtType::ReadOut(try!(self.parse_expr())));
         }
-        if let Some(_) = self.take(TT::GIVEUP) {
+        if self.take(TT::GIVEUP) {
             return Ok(ast::StmtType::GiveUp);
         }
         self.decode_err()
     }
 
-    fn parse_var(&mut self, subs_allowed: bool) -> Res<Option<ast::Var>> {
-        if let Some(&Token(TT::SPOT(val), _)) = self.tokens.peek() {
-            let tok = self.tokens.next().unwrap();
+    fn parse_var_maybe(&mut self, subs_allowed: bool) -> Res<Option<ast::Var>> {
+        if self.take(TT::SPOT) {
+            let val = try!(self.req_number());
             if val > (u16::MAX as u32) {
-                return self.parser_err(&err::IE200, "", tok);
+                return self.parser_err(&err::IE200, "");
             }
             return Ok(Some(ast::Var::I16(val as u16)));
         }
-        if let Some(&Token(TT::TWOSPOT(val), _)) = self.tokens.peek() {
-            let tok = self.tokens.next().unwrap();
+        if self.take(TT::TWOSPOT) {
+            let val = try!(self.req_number());
             if val > (u16::MAX as u32) {
-                return self.parser_err(&err::IE200, "", tok);
+                return self.parser_err(&err::IE200, "");
             }
             return Ok(Some(ast::Var::I32(val as u16)));
         }
-        if let Some(&Token(TT::TAIL(val), _)) = self.tokens.peek() {
-            let tok = self.tokens.next().unwrap();
+        if self.take(TT::TAIL) {
+            let val = try!(self.req_number());
             if val > (u16::MAX as u32) {
-                return self.parser_err(&err::IE200, "", tok);
+                return self.parser_err(&err::IE200, "");
             }
             let subs = if subs_allowed {
                 try!(self.parse_subs())
@@ -218,10 +217,10 @@ impl<'p> Parser<'p> {
             };
             return Ok(Some(ast::Var::A16(val as u16, subs)));
         }
-        if let Some(&Token(TT::HYBRID(val), _)) = self.tokens.peek() {
-            let tok = self.tokens.next().unwrap();
+        if self.take(TT::HYBRID) {
+            let val = try!(self.req_number());
             if val > (u16::MAX as u32) {
-                return self.parser_err(&err::IE200, "", tok);
+                return self.parser_err(&err::IE200, "");
             }
             let subs = if subs_allowed {
                 try!(self.parse_subs())
@@ -233,9 +232,17 @@ impl<'p> Parser<'p> {
         return Ok(None);
     }
 
+    fn parse_var(&mut self, subs_allowed: bool) -> Res<ast::Var> {
+        if let Some(v) = try!(self.parse_var_maybe(subs_allowed)) {
+            Ok(v)
+        } else {
+            self.decode_err()
+        }
+    }
+
     fn parse_subs(&mut self) -> Res<Vec<ast::Expr>> {
         let mut res = Vec::new();
-        if let Some(_) = self.take(TT::SUB) {
+        if self.take(TT::SUB) {
             while let Ok(expr) = self.parse_expr() {
                 res.push(expr);
             }
@@ -245,64 +252,59 @@ impl<'p> Parser<'p> {
 
     fn parse_varlist(&mut self) -> Res<Vec<ast::Var>> {
         let mut res = Vec::new();
-        match try!(self.parse_var(false)) {
-            None => return self.decode_err(),
-            Some(v) => res.push(v),
-        }
-        while let Some(_) = self.take(TT::INTERSECTION) {
-            match try!(self.parse_var(false)) {
-                None => return self.decode_err(),
-                Some(v) => res.push(v),
-            }
+        res.push(try!(self.parse_var(false)));
+        while self.take(TT::INTERSECTION) {
+            res.push(try!(self.parse_var(false)));
         }
         Ok(res)
     }
 
     fn parse_abstain(&mut self) -> Res<ast::Abstain> {
-        if let Some(&Token(TT::LABEL(val), _)) = self.tokens.peek() {
-            let tok = self.tokens.next().unwrap();
-            if val > (u16::MAX as u32) {
-                return self.parser_err(&err::IE197, "", tok);
+        if self.take(TT::WAX) {
+            let lno = try!(self.req_number());
+            if lno > (u16::MAX as u32) {
+                return self.parser_err(&err::IE197, "");
             }
-            return Ok(ast::Abstain::Line(val as u16));
+            try!(self.req(TT::WANE));
+            return Ok(ast::Abstain::Line(lno as u16));
         }
-        if let Some(_) = self.take(TT::CALCULATING) {
+        if self.take(TT::CALCULATING) {
             return Ok(ast::Abstain::Calc);
         }
-        if let Some(_) = self.take(TT::NEXTING) {
+        if self.take(TT::NEXTING) {
             return Ok(ast::Abstain::Next);
         }
-        if let Some(_) = self.take(TT::RESUMING) {
+        if self.take(TT::RESUMING) {
             return Ok(ast::Abstain::Resume);
         }
-        if let Some(_) = self.take(TT::FORGETTING) {
+        if self.take(TT::FORGETTING) {
             return Ok(ast::Abstain::Forget);
         }
-        if let Some(_) = self.take(TT::IGNORING) {
+        if self.take(TT::IGNORING) {
             return Ok(ast::Abstain::Ignore);
         }
-        if let Some(_) = self.take(TT::REMEMBERING) {
+        if self.take(TT::REMEMBERING) {
             return Ok(ast::Abstain::Remember);
         }
-        if let Some(_) = self.take(TT::STASHING) {
+        if self.take(TT::STASHING) {
             return Ok(ast::Abstain::Stash);
         }
-        if let Some(_) = self.take(TT::RETRIEVING) {
+        if self.take(TT::RETRIEVING) {
             return Ok(ast::Abstain::Retrieve);
         }
-        if let Some(_) = self.take(TT::ABSTAINING) {
+        if self.take(TT::ABSTAINING) {
             return Ok(ast::Abstain::Abstain);
         }
-        if let Some(_) = self.take(TT::REINSTATING) {
+        if self.take(TT::REINSTATING) {
             return Ok(ast::Abstain::Reinstate);
         }
-        if let Some(_) = self.take(TT::COMINGFROM) {
+        if self.take(TT::COMINGFROM) {
             return Ok(ast::Abstain::ComeFrom);
         }
-        if let Some(_) = self.take(TT::READINGOUT) {
+        if self.take(TT::READINGOUT) {
             return Ok(ast::Abstain::ReadOut);
         }
-        if let Some(_) = self.take(TT::WRITINGIN) {
+        if self.take(TT::WRITINGIN) {
             return Ok(ast::Abstain::WriteIn);
         }
         self.decode_err()
@@ -310,11 +312,11 @@ impl<'p> Parser<'p> {
 
     fn parse_expr(&mut self) -> Res<ast::Expr> {
         let at = try!(self.parse_expr2());
-        if let Some(_) = self.take(TT::MONEY) {
+        if self.take(TT::MONEY) {
             let at2 = try!(self.parse_expr2());
             return Ok(ast::Expr::Mingle(box at, box at2));
         }
-        if let Some(_) = self.take(TT::SQUIGGLE) {
+        if self.take(TT::SQUIGGLE) {
             let at2 = try!(self.parse_expr2());
             return Ok(ast::Expr::Select(box at, box at2));
         }
@@ -322,54 +324,55 @@ impl<'p> Parser<'p> {
     }
 
     fn parse_expr2(&mut self) -> Res<ast::Expr> {
-        if let Some(&Token(TT::MESH(val), _)) = self.tokens.peek() {
-            let tok = self.tokens.next().unwrap();
+        if self.take(TT::MESH) {
+            let val = try!(self.req_number());
             if val > (u16::MAX as u32) {
-                return self.parser_err(&err::IE017, "", tok);
+                return self.parser_err(&err::IE017, "");
             }
             return Ok(ast::Expr::Num(ast::Val::I16(val as u16)))
         }
-        if let Some(var) = try!(self.parse_var(true)) {
+        if let Some(var) = try!(self.parse_var_maybe(true)) {
             return Ok(ast::Expr::Var(var));
         }
-        if let Some(_) = self.take(TT::RABBITEARS) {
+        if self.take(TT::RABBITEARS) {
             let expr = try!(self.parse_expr());
             try!(self.req(TT::RABBITEARS));
             return Ok(expr);
         }
-        if let Some(_) = self.take(TT::SPARK) {
+        if self.take(TT::SPARK) {
             let expr = try!(self.parse_expr());
             try!(self.req(TT::SPARK));
             return Ok(expr);
         }
-        if let Some(_) = self.take(TT::AMPERSAND) {
+        if self.take(TT::AMPERSAND) {
             let expr = try!(self.parse_expr());
             return Ok(ast::Expr::And(box expr));
         }
-        if let Some(_) = self.take(TT::BOOK) {
+        if self.take(TT::BOOK) {
             let expr = try!(self.parse_expr());
             return Ok(ast::Expr::Or(box expr));
         }
-        if let Some(_) = self.take(TT::WHAT) {
+        if self.take(TT::WHAT) {
             let expr = try!(self.parse_expr());
             return Ok(ast::Expr::Xor(box expr));
         }
         self.decode_err()
     }
 
-    fn take(&mut self, t: TT) -> Option<Token> {
+    fn take(&mut self, t: TT) -> bool {
         match self.tokens.peek() {
-            Some(&Token(ref v, _)) if *v == t => { },
-            _ => return None,
+            Some(ref v) if **v == t => { },
+            _ => return false,
         }
-        Some(self.tokens.next().unwrap())
+        self.tokens.next();
+        true
     }
 
     fn req_number(&mut self) -> Res<u32> {
         match self.tokens.next() {
-            None                          => self.decode_err(),
-            Some(Token(TT::NUMBER(x), _)) => Ok(x),
-            Some(t)                       => {
+            None                => self.decode_err(),
+            Some(TT::NUMBER(x)) => Ok(x),
+            Some(t)             => {
                 self.tokens.push(t);
                 self.decode_err()
             }
@@ -378,9 +381,9 @@ impl<'p> Parser<'p> {
 
     fn req(&mut self, t: TT) -> Res<()> {
         match self.tokens.next() {
-            None                     => self.decode_err(),
-            Some(ref x) if x.0 == t  => Ok(()),
-            Some(t)                  => {
+            None                    => self.decode_err(),
+            Some(ref x) if *x == t  => Ok(()),
+            Some(t)                 => {
                 self.tokens.push(t);
                 self.decode_err()
             }
@@ -388,14 +391,15 @@ impl<'p> Parser<'p> {
     }
 
     fn decode_err<T>(&mut self) -> Res<T> {
-        Err(Error::ParseErr(self.tokens.peek().unwrap().1))
+        Err(Error::ParseErr(self.tokens.lineno()))
     }
 
-    fn parser_err<T>(&self, error: &'static err::ErrDesc, msg: &str, tok: Token) -> Res<T> {
+    fn parser_err<T>(&self, error: &'static err::ErrDesc, msg: &str) -> Res<T> {
         if msg == "" {
-            Err(Error::IcErr(err::full(error, Some(msg.into()), tok.1)))
+            Err(Error::IcErr(err::full(error, Some(msg.into()),
+                                       self.tokens.lineno())))
         } else {
-            Err(Error::IcErr(err::with_line(error, tok.1)))
+            Err(Error::IcErr(err::with_line(error, self.tokens.lineno())))
         }
     }
 
