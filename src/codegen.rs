@@ -110,7 +110,7 @@ impl Generator {
         }
         // check abstention
         if stmt.can_abstain {
-            w!(self.o, 16; "if !abstain[{}] {{", i);
+            w!(self.o, 16; "if abstain[{}] == 0 {{", i);
         } else {
             if stmt.props.disabled {
                 w!(self.o, 16; "if false {{");
@@ -132,7 +132,7 @@ impl Generator {
         // COME FROM check
         if let Some(next) = stmt.comefrom {
             let chance = self.program.stmts[next as usize].props.chance;
-            w!(self.o, 16; "if !abstain[{}] {{   // COME FROM", next);
+            w!(self.o, 16; "if abstain[{}] == 0 {{   // COME FROM", next);
             if chance < 100 {
                 w!(self.o, 18; "if check_chance({}) {{", chance);
             }
@@ -191,7 +191,7 @@ impl Generator {
                 w!(self.o, 20; "let (old_pctr, comefrom) = \
                    try!(pop_jumps(&mut jumps, val, true)).unwrap();");
                 w!(self.o, 20; "if let Some(next) = comefrom {{
-                        if !abstain[next] {{
+                        if abstain[next] == 0 {{
                             // XXX: chance check missing here
                             pctr = next;
                             continue;
@@ -224,14 +224,21 @@ impl Generator {
                     w!(self.o, 20; "try!({}.retrieve());", Generator::get_varname(var));
                 }
             }
-            StmtBody::Abstain(ref whats) => {
+            StmtBody::Abstain(ref expr, ref whats) => {
+                let f: Box<Fn(String) -> String> = if let Some(ref e) = *expr {
+                    try!(self.gen_eval_expr(e));
+                    box |v| format!("{}.saturating_add(val)", v)
+                } else {
+                    box |_| format!("1")
+                };
                 for what in whats {
-                    try!(self.gen_abstain(what, "true"));
+                    try!(self.gen_abstain(what, &*f));
                 }
             }
             StmtBody::Reinstate(ref whats) => {
+                w!(self.o, 20; "let val = 1;");
                 for what in whats {
-                    try!(self.gen_abstain(what, "false"));
+                    try!(self.gen_abstain(what, &|v| format!("{}.saturating_sub(1)", v)));
                 }
             }
             StmtBody::ReadOut(ref exprs) => {
@@ -324,14 +331,14 @@ impl Generator {
         Ok(())
     }
 
-    fn gen_abstain(&mut self, what: &Abstain, yesno: &str) -> WRes {
+    fn gen_abstain(&mut self, what: &Abstain, gen: &Fn(String) -> String) -> WRes {
         if let &Abstain::Label(lbl) = what {
             let idx = self.program.labels[&lbl];
-            w!(self.o, 20; "abstain[{}] = {};", idx, yesno);
+            w!(self.o, 20; "abstain[{}] = {};", idx, gen(format!("(abstain[{}] as u32)", idx)));
         } else {
             for (i, stype) in self.program.stmt_types.iter().enumerate() {
                 if stype == what {
-                    w!(self.o, 20; "abstain[{}] = {};", i, yesno);
+                    w!(self.o, 20; "abstain[{}] = {};", i, gen(format!("(abstain[{}] as u32)", i)));
                 }
             }
         }
@@ -529,10 +536,10 @@ impl Generator {
         }
         w!(self.o, 4; "let mut abstain = [");
         for (i, stmt) in self.program.stmts.iter().enumerate() {
-            if i % 10 == 0 {
+            if i % 24 == 0 {
                 w!(self.o, 7; "");
             }
-            w!(self.o; " {},", if stmt.props.disabled { "true" } else { "false" });
+            w!(self.o; " {},", if stmt.props.disabled { "1" } else { "0" });
         }
         w!(self.o, 4; "];");
         Ok(())

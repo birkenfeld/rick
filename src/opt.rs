@@ -404,7 +404,7 @@ impl Optimizer {
         let mut can_abstain = vec![false; program.stmts.len()];
         for stmt in &program.stmts {
             match stmt.body {
-                StmtBody::Abstain(ref whats) |
+                StmtBody::Abstain(_, ref whats) |
                 StmtBody::Reinstate(ref whats) => {
                     for what in whats {
                         if let &Abstain::Label(lbl) = what {

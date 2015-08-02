@@ -186,9 +186,9 @@ impl<'p> Parser<'p> {
         } else if self.take(TT::RETRIEVE) {
             Ok(StmtBody::Retrieve(try!(self.parse_varlist(false))))
         } else if self.take(TT::ABSTAIN) {
-            Ok(StmtBody::Abstain(try!(self.parse_abstain())))
+            Ok(try!(self.parse_abstain()))
         } else if self.take(TT::REINSTATE) {
-            Ok(StmtBody::Reinstate(try!(self.parse_abstain())))
+            Ok(StmtBody::Reinstate(try!(self.parse_abstain_items())))
         } else if self.take(TT::WRITEIN) {
             Ok(StmtBody::WriteIn(try!(self.parse_varlist(true))))
         } else if self.take(TT::READOUT) {
@@ -344,8 +344,18 @@ impl<'p> Parser<'p> {
         return Ok(None);
     }
 
-    /// Parse an ABSTAIN and REINSTATE statement.
-    fn parse_abstain(&mut self) -> ParseRes<Vec<Abstain>> {
+    /// Parse an ABSTAIN statement.
+    fn parse_abstain(&mut self) -> ParseRes<StmtBody> {
+        let mut expr = None;
+        if !self.take(TT::FROM) {
+            expr = Some(try!(self.parse_expr()));
+            try!(self.req(TT::FROM));
+        }
+        Ok(StmtBody::Abstain(expr, try!(self.parse_abstain_items())))
+    }
+
+    /// Parse items following ABSTAIN FROM or REINSTATE.
+    fn parse_abstain_items(&mut self) -> ParseRes<Vec<Abstain>> {
         // first form: a single line label
         if let Some(lbl) = try!(self.parse_label_maybe()) {
             return Ok(vec![Abstain::Label(lbl)]);
@@ -606,6 +616,11 @@ impl<'p> Parser<'p> {
             StmtBody::Forget(ref mut e) => {
                 walk_expr(e, visitor);
             }
+            StmtBody::Abstain(ref mut maybe_e, _) => {
+                for e in maybe_e.iter_mut() {
+                    walk_expr(e, visitor);
+                }
+            }
             StmtBody::Ignore(ref mut vs) |
             StmtBody::Remember(ref mut vs) |
             StmtBody::Stash(ref mut vs) |
@@ -699,7 +714,7 @@ impl<'p> Parser<'p> {
                 comefroms.insert(n, i as u16);
             }
             self.rename_vars(&vars, &mut stmt);
-            if let StmtBody::Abstain(ref v) = stmt.body {
+            if let StmtBody::Abstain(_, ref v) = stmt.body {
                 if let Abstain::Label(n) = v[0] {
                     if !labels.contains_key(&n) {
                         return Err(IE139.new(None, stmt.props.onthewayto));

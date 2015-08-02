@@ -64,6 +64,7 @@ pub enum TT {
     BY,
     OHOHSEVEN,
     INTERSECTION,
+    FROM,
 
     // word stmt types
     NEXT,
@@ -138,7 +139,8 @@ rustlex! RawLexer {
     "REMEMBER"     => |l: Lx<R>| l.tok(TT::REMEMBER)
     "STASH"        => |l: Lx<R>| l.tok(TT::STASH)
     "RETRIEVE"     => |l: Lx<R>| l.tok(TT::RETRIEVE)
-    "ABSTAIN FROM" => |l: Lx<R>| l.tok(TT::ABSTAIN)
+    "ABSTAIN"      => |l: Lx<R>| l.tok(TT::ABSTAIN)
+    "FROM"         => |l: Lx<R>| l.tok(TT::FROM)
     "REINSTATE"    => |l: Lx<R>| l.tok(TT::REINSTATE)
     COMEFROM       => |l: Lx<R>| l.tok_with_nl(TT::COMEFROM)
     READOUT        => |l: Lx<R>| l.tok_with_nl(TT::READOUT)

@@ -79,7 +79,7 @@ pub struct Eval<'a> {
     tail: Vec<Bind<Array<u16>>>,
     hybrid: Vec<Bind<Array<u32>>>,
     jumps: Vec<ast::LogLine>,
-    abstain: Vec<bool>,
+    abstain: Vec<u32>,
     last_in: u8,
     last_out: u8,
     stmt_ctr: usize,
@@ -94,7 +94,7 @@ enum StmtRes {
 
 impl<'a> Eval<'a> {
     pub fn new(program: &'a Program, stdout: &'a mut Write, debug: bool) -> Eval<'a> {
-        let abs = program.stmts.iter().map(|stmt| stmt.props.disabled).collect();
+        let abs = program.stmts.iter().map(|stmt| stmt.props.disabled as u32).collect();
         let nvars = (program.var_info.0.len(),
                      program.var_info.1.len(),
                      program.var_info.2.len(),
@@ -127,7 +127,7 @@ impl<'a> Eval<'a> {
             }
             self.stmt_ctr += 1;
             // execute statement if not abstained
-            if !self.abstain[pctr] {
+            if self.abstain[pctr] == 0 {
                 let stmt = &program.stmts[pctr];
                 // check execution chance
                 if check_chance(stmt.props.chance) {
@@ -164,7 +164,7 @@ impl<'a> Eval<'a> {
             if let Some(next) = self.program.stmts[pctr].comefrom {
                 // check for abstained COME FROM
                 let next = next as usize;
-                if !self.abstain[next] {
+                if self.abstain[next] == 0 {
                     if check_chance(program.stmts[next].props.chance) {
                         pctr = next;
                         continue;
@@ -241,15 +241,21 @@ impl<'a> Eval<'a> {
                 }
                 Ok(StmtRes::Next)
             }
-            StmtBody::Abstain(ref whats) => {
+            StmtBody::Abstain(ref expr, ref whats) => {
+                let f: Box<Fn(u32) -> u32> = if let Some(ref e) = *expr {
+                    let n = try!(self.eval_expr(e)).as_u32();
+                    box move |v: u32| v.saturating_add(n)
+                } else {
+                    box |_| 1
+                };
                 for what in whats {
-                    self.abstain(what, true);
+                    self.abstain(what, &*f);
                 }
                 Ok(StmtRes::Next)
             }
             StmtBody::Reinstate(ref whats) => {
                 for what in whats {
-                    self.abstain(what, false);
+                    self.abstain(what, &|v: u32| v.saturating_sub(1));
                 }
                 Ok(StmtRes::Next)
             }
@@ -465,16 +471,16 @@ impl<'a> Eval<'a> {
     }
 
     /// P()rocess an ABSTAIN or REINSTATE statement.  Cannot fail.
-    fn abstain(&mut self, what: &ast::Abstain, abstain: bool) {
+    fn abstain(&mut self, what: &ast::Abstain, f: &Fn(u32) -> u32) {
         if let &ast::Abstain::Label(lbl) = what {
-            let idx = self.program.labels[&lbl];
-            if self.program.stmts[idx as usize].body != StmtBody::GiveUp {
-                self.abstain[idx as usize] = abstain;
+            let idx = self.program.labels[&lbl] as usize;
+            if self.program.stmts[idx].body != StmtBody::GiveUp {
+                self.abstain[idx] = f(self.abstain[idx]);
             }
         } else {
             for (i, stype) in self.program.stmt_types.iter().enumerate() {
                 if stype == what {
-                    self.abstain[i] = abstain;
+                    self.abstain[i] = f(self.abstain[i]);
                 }
             }
         }
@@ -509,6 +515,7 @@ impl<'a> Eval<'a> {
         if self.jumps.len() > 0 {
             println!("Next stack: {:?}", self.jumps);
         }
+        //println!("Abstained: {:?}", self.abstain);
     }
 
     fn dump_state_one<T: Debug + Display>(&self, vec: &Vec<Bind<T>>, sigil: &str) {
