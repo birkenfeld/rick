@@ -254,8 +254,8 @@ impl Generator {
                     if val > (u16::MAX as u32) {{
                         return err::IE275.err_with(None, {});
                     }}
-                    try!(v{}.assign(val as u16));", line, n),
-            Var::I32(n) => w!(self.o, 20; "try!(w{}.assign(val));", n),
+                    v{}.assign(val as u16);", line, n),
+            Var::I32(n) => w!(self.o, 20; "w{}.assign(val);", n),
             Var::A16(n, ref subs) => {
                 try!(self.gen_eval_subs(subs, line));
                 w!(self.o; "

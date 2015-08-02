@@ -162,7 +162,7 @@ impl Eval {
 
     /// Process a single statement.
     fn eval_stmt(&mut self, stmt: &Stmt) -> Res<StmtRes> {
-        //println!("        {}", stmt);
+        //println!("{}", stmt);
         match stmt.body {
             StmtBody::Calc(ref var, ref expr) => {
                 let val = try!(self.eval_expr(expr));
@@ -318,8 +318,8 @@ impl Eval {
     fn assign(&mut self, var: &Var, val: Val) -> Res<()> {
         //println!("assign: {:?} = {}", var, val.as_u32());
         match *var {
-            Var::I16(n) => self.spot[n].assign(try!(val.as_u16())),
-            Var::I32(n) => self.twospot[n].assign(val.as_u32()),
+            Var::I16(n) => Ok(self.spot[n].assign(try!(val.as_u16()))),
+            Var::I32(n) => Ok(self.twospot[n].assign(val.as_u32())),
             Var::A16(n, ref subs) => {
                 let subs = try!(self.eval_subs(subs));
                 self.tail[n].arr_assign(subs, try!(val.as_u16()))

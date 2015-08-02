@@ -55,11 +55,10 @@ impl<T: Clone> Bind<T> {
         Bind { val: t, stack: Vec::new(), rw: true }
     }
 
-    pub fn assign(&mut self, v: T) -> Res<()> {
+    pub fn assign(&mut self, v: T) {
         if self.rw {
             self.val = v;
         }
-        Ok(())
     }
 
     pub fn stash(&mut self) {
