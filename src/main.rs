@@ -50,8 +50,6 @@ use codegen::Generator;
 
 
 // XXX introduce E774
-// XXX syntax extensions:
-// - ONCE, AGAIN
 fn main() {
     match main_inner() {
         Ok(code) => exit(code),
