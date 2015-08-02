@@ -71,6 +71,7 @@ def run_test(testname, testcode, compiled):
 
 def main():
     long_flag = '--long' in sys.argv
+    short_flag = '--short' in sys.argv
     tests = [path.splitext(test.replace('/', os.sep))[0]
              for test in sys.argv[1:] if not test.startswith('-')]
     print('Building...')
@@ -84,6 +85,8 @@ def main():
         dirs.sort()
         for fn in sorted(files):
             if not fn.endswith('.chk'):
+                continue
+            if short_flag and fn.startswith(('fft-', 'life-', 'tpk')):
                 continue
             testname = path.join(root, fn)[:-4]
             if tests and testname not in tests:
