@@ -393,7 +393,9 @@ impl Eval {
     fn abstain(&mut self, what: &ast::Abstain, abstain: bool) {
         if let &ast::Abstain::Label(lbl) = what {
             let idx = self.program.labels[&lbl];
-            self.abstain[idx as usize] = abstain;
+            if self.program.stmts[idx as usize].body != StmtBody::GiveUp {
+                self.abstain[idx as usize] = abstain;
+            }
         } else {
             for (i, stype) in self.program.stmt_types.iter().enumerate() {
                 if stype == what {

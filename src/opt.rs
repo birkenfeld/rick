@@ -33,6 +33,7 @@ impl Optimizer {
     pub fn optimize(self) -> ast::Program {
         let program = self.program;
         let program = Optimizer::opt_constant_fold(program);
+        let program = Optimizer::opt_abstain_check(program);
         let program = Optimizer::opt_var_check(program);
         program
     }
@@ -109,6 +110,37 @@ impl Optimizer {
         if let Some(result) = result {
             *expr = result;
         }
+    }
+
+    /// Set "can_abstain" to false for all statements that can't be abstained from.
+    pub fn opt_abstain_check(mut program: ast::Program) -> ast::Program {
+        let mut can_abstain = vec![false; program.stmts.len()];
+        for stmt in &program.stmts {
+            match stmt.body {
+                ast::StmtBody::Abstain(ref whats) |
+                ast::StmtBody::Reinstate(ref whats) => {
+                    for what in whats {
+                        if let &ast::Abstain::Label(lbl) = what {
+                            let idx = program.labels[&lbl];
+                            can_abstain[idx as usize] = true;
+                        } else {
+                            for (i, stype) in program.stmt_types.iter().enumerate() {
+                                if stype == what {
+                                    can_abstain[i] = true;
+                                }
+                            }
+                        }
+                    }
+                }
+                _ => { }
+            }
+        }
+        for (stmt, can_abstain) in program.stmts.iter_mut().zip(can_abstain) {
+            if stmt.body != ast::StmtBody::GiveUp {
+                stmt.can_abstain = can_abstain;
+            }
+        }
+        program
     }
 
     /// Determine "can_ignore" and "can_stash" for variables.

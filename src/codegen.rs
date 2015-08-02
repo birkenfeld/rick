@@ -105,7 +105,15 @@ impl Generator {
             w!(self.o, 16; "println!(\"{{}}\", \"{}\");", stmt);
         }
         // check abstention
-        w!(self.o, 16; "if !abstain[{}] {{", i);
+        if stmt.can_abstain {
+            w!(self.o, 16; "if !abstain[{}] {{", i);
+        } else {
+            if stmt.props.disabled {
+                w!(self.o, 16; "if false {{");
+            } else {
+                w!(self.o, 16; "{{");
+            }
+        }
         // check chance for statement execution
         if stmt.props.chance < 100 {
             w!(self.o, 18; "if check_chance({}) {{", stmt.props.chance);
@@ -435,7 +443,7 @@ use std::u16;
 
 use stdops::*;
 
-#[allow(unused_mut, unused_variables)]
+#[allow(unused_mut, unused_variables, unreachable_code)]
 fn main_inner() -> err::Res<()> {
     seed_chance();")
     }

@@ -40,6 +40,7 @@ pub struct Stmt {
     pub body: StmtBody,
     pub props: StmtProps,
     pub comefrom: Option<LogLine>,
+    pub can_abstain: bool,
 }
 
 /// Common properties for all statements.

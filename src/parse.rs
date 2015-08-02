@@ -99,10 +99,14 @@ impl<'p> Parser<'p> {
                     }
                 }
                 // return the botched statement
-                Ok(Stmt { body: body, props: props, comefrom: None })
+                Ok(Stmt { body: body, props: props, comefrom: None, can_abstain: true })
             }
             // a full statement!
-            Ok(body) => Ok(Stmt { body: body, props: props, comefrom: None }),
+            Ok(body) => {
+                let can_abstain = body != StmtBody::GiveUp;
+                Ok(Stmt { body: body, props: props, comefrom: None,
+                          can_abstain: can_abstain })
+            }
         }
     }
 
