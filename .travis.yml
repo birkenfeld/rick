@@ -2,4 +2,4 @@ language: rust
 rust:
   - nightly
 script:
-  - python test.py --long --short
+  - python test.py --compiled --short

@@ -70,7 +70,7 @@ def run_test(testname, testcode, compiled):
 
 def main():
     start = time.time()
-    long_flag = '--long' in sys.argv
+    long_flag = '--compiled' in sys.argv
     short_flag = '--short' in sys.argv
     tests = [path.splitext(test.replace('/', os.sep))[0]
              for test in sys.argv[1:] if not test.startswith('-')]
