@@ -51,7 +51,6 @@ use codegen::Generator;
 
 // XXX introduce E774
 // XXX syntax extensions:
-// - computed come from
 // - ONCE, AGAIN
 fn main() {
     match main_inner() {

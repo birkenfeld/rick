@@ -20,7 +20,7 @@ use std::io::{ BufWriter, Write };
 use std::rc::Rc;
 use std::u16;
 
-use ast::{ Program, Stmt, StmtBody, Expr, Var, VType, Abstain };
+use ast::{ Program, Stmt, StmtBody, Expr, Var, VType, Abstain, ComeFrom };
 use err::{ Res, IE129, IE533 };
 use lex::SrcLine;
 
@@ -130,7 +130,15 @@ impl Generator {
         // end of abstain check
         w!(self.o, 16; "}}");
         // COME FROM check
-        if let Some(next) = stmt.comefrom {
+        if self.program.uses_complex_comefrom {
+            let cand1 = if let Some(next) = stmt.comefrom {
+                format!("Some({})", next)
+            } else {
+                format!("None")
+            };
+            let label = format!("{}", stmt.props.label);
+            try!(self.gen_comefrom_check(&cand1, &label));
+        } else if let Some(next) = stmt.comefrom {
             let chance = self.program.stmts[next as usize].props.chance;
             w!(self.o, 16; "if abstain[{}] == 0 {{   // COME FROM", next);
             if chance < 100 {
@@ -160,10 +168,10 @@ impl Generator {
                     if jumps.len() >= 80 {{
                         return err::IE123.err_with(None, {});
                     }}
-                    jumps.push((pctr, {:?}));
+                    jumps.push((pctr, {:?}, {}));
                     pctr = {};
                     continue;", self.program.stmts[*next as usize].props.srcline,
-                   stmt.comefrom, next);
+                   stmt.comefrom, stmt.props.label, next);
             }
             StmtBody::GiveUp => {
                 w!(self.o, 20; "break;");
@@ -188,16 +196,20 @@ impl Generator {
             }
             StmtBody::Resume(ref expr) => {
                 try!(self.gen_eval_expr(expr));
-                w!(self.o, 20; "let (old_pctr, comefrom) = \
+                w!(self.o, 20; "let (old_pctr, comefrom, label) = \
                    try!(pop_jumps(&mut jumps, val, true)).unwrap();");
-                w!(self.o, 20; "if let Some(next) = comefrom {{
+                if self.program.uses_complex_comefrom {
+                    try!(self.gen_comefrom_check("comefrom", "label"));
+                } else {
+                    // XXX: chance check missing here
+                    w!(self.o, 20; "if let Some(next) = comefrom {{
                         if abstain[next] == 0 {{
-                            // XXX: chance check missing here
                             pctr = next;
                             continue;
                         }}
-                    }}
-                    pctr = old_pctr + 1;
+                    }}");
+                }
+                w!(self.o, 20; "pctr = old_pctr + 1;
                     continue;");
             }
             StmtBody::Forget(ref expr) => {
@@ -279,6 +291,27 @@ impl Generator {
                 w!(self.o, 20; "print!(\"{{}}\", {:?});", s);
             }
         }
+        Ok(())
+    }
+
+    fn gen_comefrom_check(&mut self, cand1: &str, label: &str) -> WRes {
+        w!(self.o, 20; "let mut candidates = vec![];
+                    if let Some(c) = {} {{ candidates.push(c); }}", cand1);
+        let program = self.program.clone();
+        for (i, stmt) in program.stmts.iter().enumerate() {
+            if let StmtBody::ComeFrom(ComeFrom::Expr(ref e)) = stmt.body {
+                try!(self.gen_eval_expr(e));
+                w!(self.o, 20; "if val == {} && {} > 0 {{ candidates.push({}); }}",
+                   label, label, i);
+            }
+        }
+        w!(self.o, 20; "if candidates.len() > 1 {{ return err::IE555.err_with(None, {}); }}",
+           self.line);
+        // XXX: chance check missing here
+        w!(self.o, 20; "if candidates.len() == 1 && abstain[candidates[0]] == 0 {{");
+        w!(self.o, 24; "pctr = candidates[0];");
+        w!(self.o, 24; "continue;");
+        w!(self.o, 20; "}}");
         Ok(())
     }
 
@@ -523,7 +556,7 @@ impl Generator {
         let vars = &self.program.var_info;
         w!(self.o, 4; "let mut pctr: usize = 0;");
         w!(self.o, 4; "let mut stdout = std::io::stdout();");
-        w!(self.o, 4; "let mut jumps: Vec<(usize, Option<usize>)> = Vec::with_capacity(80);");
+        w!(self.o, 4; "let mut jumps: Vec<(usize, Option<usize>, u16)> = Vec::with_capacity(80);");
         w!(self.o, 4; "let mut last_in: u8 = 0;");
         w!(self.o, 4; "let mut last_out: u8 = 0;");
         for i in 0..vars.0.len() {

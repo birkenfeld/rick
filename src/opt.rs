@@ -394,6 +394,7 @@ impl Optimizer {
             labels: BTreeMap::new(),
             stmt_types: vec![Abstain::Label(0)],
             var_info: (vec![], vec![], vec![], vec![]),
+            uses_complex_comefrom: false,
             added_syslib: false,
             added_floatlib: false
         }

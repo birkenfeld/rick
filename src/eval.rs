@@ -19,8 +19,8 @@ use std::fmt::{ Debug, Display };
 use std::io::Write;
 use std::u16;
 
-use err::{ Res, IE123, IE129, IE275, IE633 };
-use ast::{ self, Program, Stmt, StmtBody, Expr, Var, VType };
+use err::{ Res, IE123, IE129, IE275, IE555, IE633 };
+use ast::{ self, Program, Stmt, StmtBody, ComeFrom, Expr, Var, VType };
 use stdops::{ Bind, Array, write_number, read_number, check_chance, check_ovf, pop_jumps,
               seed_chance, mingle, select, and_16, and_32, or_16, or_32, xor_16, xor_32 };
 
@@ -169,10 +169,33 @@ impl<'a> Eval<'a> {
                     }
                 }
             }
+            let mut maybe_next = None;
+            let my_label = self.program.stmts[pctr].props.label;
+            if program.uses_complex_comefrom && my_label > 0 {
+                let mut candidates = vec![];
+                if let Some(i) = self.program.stmts[pctr].comefrom.map(|v| v as usize) {
+                    candidates.push(i);
+                }
+                for (i, stmt) in program.stmts.iter().enumerate() {
+                    if let StmtBody::ComeFrom(ComeFrom::Expr(ref e)) = stmt.body {
+                        let v = try!(try!(self.eval_expr(e)).as_u16());
+                        if v == my_label {
+                            candidates.push(i);
+                        }
+                    }
+                }
+                if candidates.len() > 1 {
+                    return IE555.err();
+                }
+                if candidates.len() == 1 {
+                    maybe_next = Some(candidates[0]);
+                }
+            } else {
+                maybe_next = self.program.stmts[pctr].comefrom.map(|v| v as usize);
+            }
             // check for COME FROMs from this line
-            if let Some(next) = self.program.stmts[pctr].comefrom {
+            if let Some(next) = maybe_next {
                 // check for abstained COME FROM
-                let next = next as usize;
                 if self.abstain[next] == 0 {
                     if check_chance(program.stmts[next].props.chance) {
                         pctr = next;

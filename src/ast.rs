@@ -32,6 +32,7 @@ pub struct Program {
     pub labels: BTreeMap<Label, LogLine>,
     pub stmt_types: Vec<Abstain>,
     pub var_info: (Vec<VarInfo>, Vec<VarInfo>, Vec<VarInfo>, Vec<VarInfo>),
+    pub uses_complex_comefrom: bool,
     pub added_syslib: bool,
     pub added_floatlib: bool,
 }
@@ -63,7 +64,7 @@ pub enum StmtBody {
     Calc(Var, Expr),
     Dim(Var, Vec<Expr>),
     DoNext(Label),
-    ComeFrom(Label),
+    ComeFrom(ComeFrom),
     Resume(Expr),
     Forget(Expr),
     Ignore(Vec<Var>),
@@ -140,6 +141,14 @@ pub enum Abstain {
     ReadOut,
     WriteIn,
     TryAgain,
+}
+
+/// Specification for a COME FROM.
+#[derive(PartialEq, Eq, Debug)]
+pub enum ComeFrom {
+    Label(Label),
+    Expr(Expr),
+    Gerund(Abstain),
 }
 
 /// Information about a variable.
@@ -312,7 +321,7 @@ impl Display for StmtBody {
             StmtBody::Dim(ref var, ref exprs) => write!(fmt, "{} <- {}", var,
                                                         self.fmt_bylist(exprs)),
             StmtBody::DoNext(ref line) => write!(fmt, "({}) NEXT", line),
-            StmtBody::ComeFrom(ref line) => write!(fmt, "COME FROM ({})", line),
+            StmtBody::ComeFrom(ref spec) => write!(fmt, "COME FROM {}", spec),
             StmtBody::Resume(ref expr) => write!(fmt, "RESUME {}", expr),
             StmtBody::Forget(ref expr) => write!(fmt, "FORGET {}", expr),
             StmtBody::Ignore(ref vars) => write!(fmt, "IGNORE {}", self.fmt_pluslist(vars)),
@@ -402,6 +411,16 @@ impl Display for Abstain {
             Abstain::ReadOut => write!(fmt, "READING OUT"),
             Abstain::WriteIn => write!(fmt, "WRITING IN"),
             Abstain::TryAgain => write!(fmt, "TRYING AGAIN"),
+        }
+    }
+}
+
+impl Display for ComeFrom {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        match *self {
+            ComeFrom::Label(n) => write!(fmt, "({})", n),
+            ComeFrom::Expr(ref e) => write!(fmt, "{}", e),
+            ComeFrom::Gerund(ref g) => write!(fmt, "{}", g),
         }
     }
 }

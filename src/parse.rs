@@ -19,7 +19,7 @@ use std::collections::{ BTreeMap, HashMap };
 use std::io::{ Read, BufRead, BufReader, Cursor };
 use std::u16;
 
-use ast::{ self, Program, Stmt, StmtBody, StmtProps, Expr, Abstain, Var, VType, VarInfo };
+use ast::{ self, Program, Stmt, StmtBody, StmtProps, Expr, Abstain, ComeFrom, Var, VType, VarInfo };
 use err::{ Res, RtError, ErrDesc, IE000, IE017, IE079, IE099, IE139, IE182, IE197, IE200,
            IE444, IE555, IE993 };
 use lex::{ lex, Lexer, SrcLine, TT };
@@ -171,8 +171,13 @@ impl<'p> Parser<'p> {
         }
         // other statements headed by keyword
         if self.take(TT::COMEFROM) {
-            let lbl = try!(self.parse_label());
-            Ok(StmtBody::ComeFrom(lbl))
+            if let Some(lbl) = try!(self.parse_label_maybe()) {
+                Ok(StmtBody::ComeFrom(ComeFrom::Label(lbl)))
+            } else if let Ok(gerund) = self.parse_gerund() {
+                Ok(StmtBody::ComeFrom(ComeFrom::Gerund(gerund)))
+            } else {
+                Ok(StmtBody::ComeFrom(ComeFrom::Expr(try!(self.parse_expr()))))
+            }
         } else if self.take(TT::RESUME) {
             Ok(StmtBody::Resume(try!(self.parse_expr())))
         } else if self.take(TT::FORGET) {
@@ -211,11 +216,6 @@ impl<'p> Parser<'p> {
         } else {
             Ok(None)
         }
-    }
-
-    /// Require a line label.
-    fn parse_label(&mut self) -> ParseRes<ast::Label> {
-        try!(self.parse_label_maybe()).ok_or_else(|| self.invalid())
     }
 
     /// Maybe parse a variable reference [.:,;]N {SUB X}.
@@ -625,6 +625,11 @@ impl<'p> Parser<'p> {
                     walk_expr(e, visitor);
                 }
             }
+            StmtBody::ComeFrom(ref mut spec) => {
+                if let ComeFrom::Expr(ref mut e) = *spec {
+                    walk_expr(e, visitor);
+                }
+            }
             StmtBody::Ignore(ref mut vs) |
             StmtBody::Remember(ref mut vs) |
             StmtBody::Stash(ref mut vs) |
@@ -678,7 +683,7 @@ impl<'p> Parser<'p> {
         let mut npolite = 0;
         let mut types = Vec::new();
         let mut labels = BTreeMap::new();
-        let mut comefroms = HashMap::new();
+        let mut comefroms: HashMap<usize, u16> = HashMap::new();
         let mut vars = Vars { counts: vec![0, 0, 0, 0], map: HashMap::new() };
         for (i, mut stmt) in stmts.iter_mut().enumerate() {
             types.push(stmt.stype());
@@ -707,15 +712,36 @@ impl<'p> Parser<'p> {
         // - create a map of all come-froms to logical lines
         // - apply new variable names
         // - make sure abstain labels exist
+        // - make sure TRY AGAIN is last in the file
+        let mut uses_complex_comefrom = false;
         for (i, mut stmt) in stmts.iter_mut().enumerate() {
-            if let StmtBody::ComeFrom(n) = stmt.body {
-                if !labels.contains_key(&n) {
-                    return Err(IE444.new(None, stmt.props.onthewayto));
+            if let StmtBody::ComeFrom(ref spec) = stmt.body {
+                match *spec {
+                    ComeFrom::Label(n) => {
+                        match labels.get(&n) {
+                            None => return Err(IE444.new(None, stmt.props.onthewayto)),
+                            Some(j) => {
+                                if comefroms.contains_key(&(*j as usize)) {
+                                    return Err(IE555.new(None, stmt.props.onthewayto));
+                                }
+                                comefroms.insert(*j as usize, i as u16);
+                            }
+                        }
+                    }
+                    ComeFrom::Gerund(ref g) => {
+                        for (j, stype) in types.iter().enumerate() {
+                            if *g == *stype {
+                                if comefroms.contains_key(&j) {
+                                    return Err(IE555.new(None, stmt.props.onthewayto));
+                                }
+                                comefroms.insert(j, i as u16);
+                            }
+                        }
+                    }
+                    ComeFrom::Expr(_) => {
+                        uses_complex_comefrom = true;
+                    }
                 }
-                if comefroms.contains_key(&n) {
-                    return Err(IE555.new(None, stmt.props.onthewayto));
-                }
-                comefroms.insert(n, i as u16);
             }
             self.rename_vars(&vars, &mut stmt);
             if let StmtBody::Abstain(_, ref v) = stmt.body {
@@ -734,12 +760,8 @@ impl<'p> Parser<'p> {
         }
         // here we:
         // - assign comefroms to statements
-        for mut stmt in stmts.iter_mut() {
-            if stmt.props.label > 0 {
-                if let Some(from) = comefroms.get(&stmt.props.label) {
-                    stmt.comefrom = Some(*from);
-                }
-            }
+        for (i, mut stmt) in stmts.iter_mut().enumerate() {
+            stmt.comefrom = comefroms.remove(&i);
         }
         let var_info = (vec![VarInfo::new(); vars.counts[0]],
                         vec![VarInfo::new(); vars.counts[1]],
@@ -749,6 +771,7 @@ impl<'p> Parser<'p> {
                      labels: labels,
                      stmt_types: types,
                      var_info: var_info,
+                     uses_complex_comefrom: uses_complex_comefrom,
                      added_syslib: added_syslib,
                      added_floatlib: added_floatlib })
     }
