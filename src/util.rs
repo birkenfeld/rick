@@ -64,6 +64,10 @@ const ROMAN_DIGIT_TBL: [[(char, char); 4]; 10] = [
     [(' ', 'm'), ('_', 'i'), ('_', 'v'), ('_', 'x')]];
 
 pub fn to_roman(mut val: u32) -> String {
+    if val == 0 {
+        // zero is just a lone overbar
+        return format!("_\n\n");
+    }
     let mut l1 = Vec::new();
     let mut l2 = Vec::new();
     let mut place = 0;
