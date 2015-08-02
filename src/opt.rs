@@ -352,10 +352,13 @@ impl Optimizer {
         for stmt in &program.stmts {
             // if we have a statement with %, no chance
             if stmt.props.chance < 100 {
-                // except if it is the syslib itself
+                // except if it is one of the stdlibs itself
                 if !(program.added_syslib && prev_lbl == 1901) {
-                    possible = false;
-                    break;
+                    if !(program.added_floatlib &&
+                         (prev_lbl == 5401 || prev_lbl == 5402)) {
+                        possible = false;
+                        break;
+                    }
                 }
             }
             match stmt.body {
@@ -364,9 +367,9 @@ impl Optimizer {
                     possible = false;
                     break;
                 }
-                // if we call one of the syslib random routines, bail out
-                StmtBody::DoNext(n)
-                    if (n == 1900 || n == 1910) && !(prev_lbl == 1911) => {
+                // if we call one of the stdlib random routines, bail out
+                StmtBody::DoNext(n) if ((n == 1900 || n == 1910 || n == 5400) &&
+                                        prev_lbl != 1911) => {
                     possible = false;
                     break;
                 }
@@ -391,7 +394,8 @@ impl Optimizer {
             labels: BTreeMap::new(),
             stmt_types: vec![Abstain::Label(0)],
             var_info: (vec![], vec![], vec![], vec![]),
-            added_syslib: false
+            added_syslib: false,
+            added_floatlib: false
         }
     }
 

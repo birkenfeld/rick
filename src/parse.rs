@@ -500,27 +500,44 @@ impl<'p> Parser<'p> {
     }
 
     /// Add the syslib to `stmts` if necessary.
-    fn add_syslib(&self, mut stmts: Vec<Stmt>, added: &mut bool) -> Vec<Stmt> {
-        let mut need_syslib = false;
+    fn add_stdlibs(&self, mut stmts: Vec<Stmt>,
+                   added_syslib: &mut bool, added_floatlib: &mut bool) -> Vec<Stmt> {
+        let mut need_syslib = 0;
+        let mut need_floatlib = 0;
         for stmt in &stmts {
             if stmt.props.label >= 1000 && stmt.props.label < 1999 {
                 // we *are* the syslib or override its labels
-                need_syslib = false;
-                break;
+                need_syslib = -1;
+            }
+            if stmt.props.label >= 5000 && stmt.props.label < 5999 {
+                // we *are* the floatlib or override its labels
+                need_floatlib = -1;
             }
             if let StmtBody::DoNext(n) = stmt.body {
                 // jumping to a syslib label? we might need it then
-                if n >= 1000 && n < 1999 {
-                    need_syslib = true;
+                if n >= 1000 && n < 1999 && need_syslib > -1 {
+                    need_syslib = 1;
+                }
+                if n >= 5000 && n < 5999 && need_floatlib > -1 {
+                    need_floatlib = 1;
                 }
             }
         }
-        if need_syslib {
+        let mut last_lineno = self.tokens.lineno();
+        if need_syslib == 1 {
             let code = syslib::SYSLIB_CODE.to_vec();
-            let mut p = Parser::new(&code, self.tokens.lineno());
+            let mut p = Parser::new(&code, last_lineno);
             let mut syslib_stmts = p.parse().unwrap();
             stmts.append(&mut syslib_stmts);
-            *added = true;
+            *added_syslib = true;
+            last_lineno = p.tokens.lineno();
+        }
+        if need_floatlib == 1 {
+            let code = syslib::FLOATLIB_CODE.to_vec();
+            let mut p = Parser::new(&code, last_lineno);
+            let mut floatlib_stmts = p.parse().unwrap();
+            stmts.append(&mut floatlib_stmts);
+            *added_floatlib = true;
         }
         stmts
     }
@@ -629,7 +646,8 @@ impl<'p> Parser<'p> {
 
     fn post_process(&self, stmts: Vec<Stmt>) -> Res<Program> {
         let mut added_syslib = false;
-        let mut stmts = self.add_syslib(stmts, &mut added_syslib);
+        let mut added_floatlib = false;
+        let mut stmts = self.add_stdlibs(stmts, &mut added_syslib, &mut added_floatlib);
         let nstmts = stmts.len();
         let srclines = stmts.iter().map(|s| s.props.srcline).collect::<Vec<_>>();
         // here we:
@@ -706,7 +724,8 @@ impl<'p> Parser<'p> {
                      labels: labels,
                      stmt_types: types,
                      var_info: var_info,
-                     added_syslib: added_syslib })
+                     added_syslib: added_syslib,
+                     added_floatlib: added_floatlib })
     }
 }
 

@@ -33,6 +33,7 @@ pub struct Program {
     pub stmt_types: Vec<Abstain>,
     pub var_info: (Vec<VarInfo>, Vec<VarInfo>, Vec<VarInfo>, Vec<VarInfo>),
     pub added_syslib: bool,
+    pub added_floatlib: bool,
 }
 
 /// A single statement.
