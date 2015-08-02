@@ -4,10 +4,12 @@ version = "0.1.0"
 authors = ["Georg Brandl <georg@python.org>"]
 
 [dependencies]
-rustlex = "*"
 getopts = "*"
 rand = "*"
 time = "*"
 
 [dependencies.rick_syntex]
 path = "rick_syntex"
+
+[dependencies.rustlex]
+git = "http://github.com/birkenfeld/rustlex"
