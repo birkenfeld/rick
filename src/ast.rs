@@ -15,6 +15,10 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
+/// Provides the Abstract Sadist Tree, for representing INTERCAL programs in memory.
+///
+/// Most of the stuff here should be pretty standard.
+
 use std::collections::BTreeMap;
 use std::default::Default;
 use std::fmt::{ Display, Error, Formatter };
@@ -22,19 +26,31 @@ use std::fmt::{ Display, Error, Formatter };
 use err::RtError;
 use lex::SrcLine;
 
+/// A label
 pub type Label = u16;
+/// A logical line (a single statement).  A logical line can span multiple
+/// source lines, or a source line can contain multiple logical lines!
 pub type LogLine = u16;
 
 /// A whole program, with meta-information used at eval-time.
 #[derive(PartialEq, Eq, Debug)]
 pub struct Program {
+    /// Statements in the program.
     pub stmts: Vec<Stmt>,
+    /// Maps label numbers to logical line (statement) numbers.
     pub labels: BTreeMap<Label, LogLine>,
+    /// A list of statement types (for processing ABSTAINs), represented by the
+    /// `Abstain` type that contains an enum item for every type.
     pub stmt_types: Vec<Abstain>,
+    /// Info about variables in the program, by type: spot, twospot, tail, hybrid.
     pub var_info: (Vec<VarInfo>, Vec<VarInfo>, Vec<VarInfo>, Vec<VarInfo>),
+    /// True if the program uses computed COME FROM.
     pub uses_complex_comefrom: bool,
+    /// True if we added the syslib or floatlib to the program.
     pub added_syslib: bool,
     pub added_floatlib: bool,
+    /// The line on which the compiler bug E774 should be triggered.
+    /// If this is set to a number >= stmts.len(), the bug is disabled.
     pub bugline: LogLine,
 }
 
@@ -43,6 +59,7 @@ pub struct Program {
 pub struct Stmt {
     pub body: StmtBody,
     pub props: StmtProps,
+    // the next two properties are determined after parsing
     pub comefrom: Option<LogLine>,
     pub can_abstain: bool,
 }
@@ -50,19 +67,30 @@ pub struct Stmt {
 /// Common properties for all statements.
 #[derive(PartialEq, Eq, Debug)]
 pub struct StmtProps {
-    pub label: Label,
+    /// Source line of the statement.
     pub srcline: SrcLine,
+    /// Source line of the next statement (provides "on the way to") in error
+    /// messages.
     pub onthewayto: SrcLine,
+    /// Label of the line, or zero if no label.
+    pub label: Label,
+    /// Execution chance in %, usually 100.
     pub chance: u8,
+    /// True if the statement is polite (programmer said PLEASE).
     pub polite: bool,
+    /// True if the statement is initially abstained (NOT or DON'T).
     pub disabled: bool,
 }
 
 /// Type-of-statement dependent data.
 #[derive(PartialEq, Eq, Debug)]
 pub enum StmtBody {
+    /// An undecodable statement ("splat"), resulting in a runtime error when
+    /// executed (and not abstained).
     Error(RtError),
+    /// A calculation ("gets") operation.
     Calc(Var, Expr),
+    /// An array dimensioning operation (same syntax as Calc).
     Dim(Var, Vec<Expr>),
     DoNext(Label),
     ComeFrom(ComeFrom),
@@ -78,24 +106,33 @@ pub enum StmtBody {
     ReadOut(Vec<Expr>),
     TryAgain,
     GiveUp,
-    // only used after optimizing
+    /// Print the given bytes.  Only used when the constant-output optimization
+    /// kicks in and reduces the whole program to this statement.
     Print(Vec<u8>),
 }
 
 /// A variable reference (store or load).
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Var {
+    /// 16-bit "spot".
     I16(usize),
+    /// 32-bit "twospot".
     I32(usize),
+    /// 16-bit array "tail", with subscripts.
     A16(usize, Vec<Expr>),
+    /// 32-bit array "hybrid", with subscripts.
     A32(usize, Vec<Expr>),
 }
 
 /// An expression.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Expr {
+    /// A literal number.  In the source, this can only be 16-bit (enforced by
+    /// the parser), but after optimizations we can end up with 32-bit values.
     Num(VType, u32),
+    /// A variable reference.
     Var(Var),
+    // INTERCAL operators
     Mingle(Box<Expr>, Box<Expr>),
     Select(VType, Box<Expr>, Box<Expr>),
     And(VType, Box<Expr>),
@@ -117,14 +154,14 @@ pub enum Expr {
     // RsModulus(Box<Expr>, Box<Expr>),
 }
 
-/// Type of an expression.
+/// Type of an expression, used when the width actually matters.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum VType {
     I16,
     I32,
 }
 
-/// Specification for an ABSTAIN or REINSTATE.
+/// Specification of targets for an ABSTAIN or REINSTATE.
 #[derive(PartialEq, Eq, Debug)]
 pub enum Abstain {
     Label(Label),
@@ -144,7 +181,7 @@ pub enum Abstain {
     TryAgain,
 }
 
-/// Specification for a COME FROM.
+/// Specification of the target for a COME FROM.
 #[derive(PartialEq, Eq, Debug)]
 pub enum ComeFrom {
     Label(Label),
@@ -155,7 +192,9 @@ pub enum ComeFrom {
 /// Information about a variable.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct VarInfo {
+    /// Variable is IGNOREd somewhere in the program.
     pub can_ignore: bool,
+    /// Variable is STASHed somewhere in the program.
     pub can_stash: bool,
 }
 
@@ -205,6 +244,8 @@ impl StmtBody {
 }
 
 impl Expr {
+    /// Get the variable width for this expression.  Defaults to 32-bit if the
+    /// type of expression has no information about the width.
     pub fn get_vtype(&self) -> VType {
         match *self {
             Expr::Num(vtype, _) => vtype,
@@ -279,6 +320,8 @@ impl Default for StmtProps {
     }
 }
 
+
+// Display implementation to be able to pretty-print parts of an AST.
 
 impl Display for Program {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {

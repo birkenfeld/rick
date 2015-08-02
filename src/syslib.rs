@@ -309,6 +309,8 @@ pub const SYSLIB_CODE: &'static [u8; 7156] = br##"
 		DO RESUME #1
 "##;
 
+// This is the floatlib.i from C-INTERCAL 0.30.
+
 pub const FLOATLIB_CODE: &'static [u8; 49231] = br##"
 	PLEASE USE A DESIGNATED ENTRY POINT
 
