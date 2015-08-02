@@ -127,8 +127,13 @@ impl<'p> Parser<'p> {
         // assignment?
         if let Some(var) = try!(self.parse_var_maybe(true)) {
             try!(self.req(TT::GETS));
-            let expr = try!(self.parse_expr());
-            return Ok(ast::StmtBody::Calc(var, expr));
+            if var.is_dim() {
+                let exprs = try!(self.parse_by_exprs());
+                return Ok(ast::StmtBody::Dim(var, exprs));
+            } else {
+                let expr = try!(self.parse_expr());
+                return Ok(ast::StmtBody::Calc(var, expr));
+            }
         }
         // next jump?
         if let Some(lno) = try!(self.parse_label_maybe()) {
@@ -158,7 +163,7 @@ impl<'p> Parser<'p> {
         } else if self.take(TT::WRITEIN) {
             Ok(ast::StmtBody::WriteIn(try!(self.parse_var(true))))
         } else if self.take(TT::READOUT) {
-            Ok(ast::StmtBody::ReadOut(try!(self.parse_expr())))
+            Ok(ast::StmtBody::ReadOut(try!(self.parse_readlist())))
         } else if self.take(TT::GIVEUP) {
             return Ok(ast::StmtBody::GiveUp)
         } else {
@@ -222,8 +227,22 @@ impl<'p> Parser<'p> {
     fn parse_subs(&mut self) -> ParseRes<Vec<ast::Expr>> {
         let mut res = Vec::new();
         if self.take(TT::SUB) {
-            while let Ok(expr) = self.parse_expr() {
-                res.push(expr);
+            // we need one expr at least
+            res.push(try!(self.parse_expr()));
+            // all others are optional; we need backtracking here
+            loop {
+                let state = self.stash.len();
+                match self.parse_expr() {
+                    Ok(expr) => res.push(expr),
+                    Err(Error::Soft(_)) => {
+                        // now backtrack:
+                        while self.stash.len() > state {
+                            self.tokens.push(self.stash.pop().unwrap());
+                        }
+                        break
+                    },
+                    Err(harderr) => return Err(harderr),
+                }
             }
         }
         Ok(res)
@@ -239,6 +258,27 @@ impl<'p> Parser<'p> {
         Ok(res)
     }
 
+    /// Parse a list of variables (with subscripts) or consts separated by +.
+    fn parse_readlist(&mut self) -> ParseRes<Vec<ast::Readout>> {
+        let mut res = Vec::new();
+        if self.take(TT::MESH) {
+            let val = try!(self.req_number(u16::MAX, &err::IE017));
+            res.push(ast::Readout::Const(val));
+        } else {
+            res.push(ast::Readout::Var(try!(self.parse_var(true))));
+        }
+        while self.take(TT::INTERSECTION) {
+            if self.take(TT::MESH) {
+                let val = try!(self.req_number(u16::MAX, &err::IE017));
+                res.push(ast::Readout::Const(val));
+            } else {
+                res.push(ast::Readout::Var(try!(self.parse_var(true))));
+            }
+        }
+        Ok(res)
+    }
+
+    /// Parse an ABSTAIN and REINSTATE statement.
     fn parse_abstain(&mut self) -> ParseRes<ast::Abstain> {
         if let Some(lno) = try!(self.parse_label_maybe()) {
             return Ok(ast::Abstain::Line(lno));
@@ -274,6 +314,17 @@ impl<'p> Parser<'p> {
         }
     }
 
+    /// Parse a list of exprs separated by BY.
+    fn parse_by_exprs(&mut self) -> ParseRes<Vec<ast::Expr>> {
+        let mut res = Vec::new();
+        res.push(try!(self.parse_expr()));
+        while self.take(TT::BY) {
+            res.push(try!(self.parse_expr()));
+        }
+        Ok(res)
+    }
+
+    /// Parse a single expression.
     fn parse_expr(&mut self) -> ParseRes<ast::Expr> {
         let left = try!(self.parse_expr2());
         if self.take(TT::MONEY) {

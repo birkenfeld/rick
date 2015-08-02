@@ -43,7 +43,6 @@ impl Optimizer {
                 ast::StmtBody::Calc(_, ref mut expr) => Optimizer::fold(expr),
                 ast::StmtBody::Resume(ref mut expr)  => Optimizer::fold(expr),
                 ast::StmtBody::Forget(ref mut expr)  => Optimizer::fold(expr),
-                ast::StmtBody::ReadOut(ref mut expr) => Optimizer::fold(expr),
                 _ => { }
             }
         }

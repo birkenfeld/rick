@@ -53,6 +53,7 @@ pub struct StmtProps {
 pub enum StmtBody {
     Error(err::Error),
     Calc(Var, Expr),
+    Dim(Var, Vec<Expr>),
     DoNext(Label),
     ComeFrom(Label),
     Resume(Expr),
@@ -64,8 +65,14 @@ pub enum StmtBody {
     Abstain(Abstain),
     Reinstate(Abstain),
     WriteIn(Var),
-    ReadOut(Expr),
+    ReadOut(Vec<Readout>),
     GiveUp,
+}
+
+#[derive(PartialEq, Eq, Debug)]
+pub enum Readout {
+    Var(Var),
+    Const(u16),
 }
 
 #[derive(PartialEq, Eq, Debug)]
@@ -117,6 +124,7 @@ impl Stmt {
         match self.body {
             StmtBody::Error(_) => Abstain::Line(0),
             StmtBody::Calc(..) => Abstain::Calc,
+            StmtBody::Dim(..) => Abstain::Calc,
             StmtBody::DoNext(_) => Abstain::Next,
             StmtBody::ComeFrom(_) => Abstain::ComeFrom,
             StmtBody::Resume(_) => Abstain::Resume,
@@ -135,12 +143,24 @@ impl Stmt {
 }
 
 impl StmtBody {
-    fn fmt_varlist(&self, vars: &Vec<Var>) -> String {
-        vars.iter().map(|v| format!("{}", v)).collect::<Vec<_>>().connect("+")
+    fn fmt_pluslist<T: Display>(&self, vars: &Vec<T>) -> String {
+        vars.iter().map(|v| format!("{}", v)).collect::<Vec<_>>().connect(" + ")
+    }
+
+    fn fmt_bylist(&self, vars: &Vec<Expr>) -> String {
+        vars.iter().map(|v| format!("{}", v)).collect::<Vec<_>>().connect(" BY ")
     }
 }
 
 impl Var {
+    pub fn is_dim(&self) -> bool {
+        match *self {
+            Var::A16(_, ref v) if v.is_empty() => true,
+            Var::A32(_, ref v) if v.is_empty() => true,
+            _ => false,
+        }
+    }
+
     pub fn ignore_key(&self) -> (u8, u16) {
         match *self {
             Var::I16(n)    => (1, n),
@@ -231,19 +251,30 @@ impl Display for StmtBody {
         match *self {
             StmtBody::Error(ref err) => write!(fmt, "* {}", err.short_string()),
             StmtBody::Calc(ref var, ref expr) => write!(fmt, "{} <- {}", var, expr),
+            StmtBody::Dim(ref var, ref exprs) => write!(fmt, "{} <- {}", var,
+                                                        self.fmt_bylist(exprs)),
             StmtBody::DoNext(ref line) => write!(fmt, "({}) NEXT", line),
             StmtBody::ComeFrom(ref line) => write!(fmt, "COME FROM ({})", line),
             StmtBody::Resume(ref expr) => write!(fmt, "RESUME {}", expr),
             StmtBody::Forget(ref expr) => write!(fmt, "FORGET {}", expr),
-            StmtBody::Ignore(ref vars) => write!(fmt, "IGNORE {}", self.fmt_varlist(vars)),
-            StmtBody::Remember(ref vars) => write!(fmt, "REMEMBER {}", self.fmt_varlist(vars)),
-            StmtBody::Stash(ref vars) => write!(fmt, "STASH {}", self.fmt_varlist(vars)),
-            StmtBody::Retrieve(ref vars) => write!(fmt, "RETRIEVE {}", self.fmt_varlist(vars)),
+            StmtBody::Ignore(ref vars) => write!(fmt, "IGNORE {}", self.fmt_pluslist(vars)),
+            StmtBody::Remember(ref vars) => write!(fmt, "REMEMBER {}", self.fmt_pluslist(vars)),
+            StmtBody::Stash(ref vars) => write!(fmt, "STASH {}", self.fmt_pluslist(vars)),
+            StmtBody::Retrieve(ref vars) => write!(fmt, "RETRIEVE {}", self.fmt_pluslist(vars)),
             StmtBody::Abstain(ref what) => write!(fmt, "ABSTAIN FROM {}", what),
             StmtBody::Reinstate(ref what) => write!(fmt, "REINSTATE {}", what),
             StmtBody::WriteIn(ref var) => write!(fmt, "WRITE IN {}", var),
-            StmtBody::ReadOut(ref expr) => write!(fmt, "READ OUT {}", expr),
+            StmtBody::ReadOut(ref vars) => write!(fmt, "READ OUT {}", self.fmt_pluslist(vars)),
             StmtBody::GiveUp => write!(fmt, "GIVE UP"),
+        }
+    }
+}
+
+impl Display for Readout {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        match *self {
+            Readout::Var(ref v) => write!(fmt, "{}", v),
+            Readout::Const(n) => write!(fmt, "#{}", n),
         }
     }
 }
