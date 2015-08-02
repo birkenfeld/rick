@@ -1,5 +1,5 @@
 // -------------------------------------------------------------------------------------------------
-// Rick, a Rust intercal interpreter.  Save your souls!
+// Rick, a Rust intercal compiler.  Save your souls!
 //
 // Copyright (c) 2015 Georg Brandl
 //
