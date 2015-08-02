@@ -85,10 +85,10 @@ impl Eval {
         let nv = program.n_vars;
         Eval {
             program: Rc::new(program),
-            spot:    vec![Bind::new(0); nv.0 as usize],
-            twospot: vec![Bind::new(0); nv.1 as usize],
-            tail:    vec![Bind::new(Array::empty()); nv.2 as usize],
-            hybrid:  vec![Bind::new(Array::empty()); nv.3 as usize],
+            spot:    vec![Bind::new(0); nv.0],
+            twospot: vec![Bind::new(0); nv.1],
+            tail:    vec![Bind::new(Array::empty()); nv.2],
+            hybrid:  vec![Bind::new(Array::empty()); nv.3],
             jumps:   Vec::new(),
             abstentions: abs,
             _in_state: 0,
@@ -103,7 +103,7 @@ impl Eval {
         loop {
             // check for falling off the end
             if pctr >= nstmts {
-                return Err(err::with_line(&err::IE663, nstmts as usize));
+                return Err(err::with_line(&err::IE663, nstmts));
             }
             // execute statement if not abstained
             if !self.abstentions[pctr] {
@@ -226,11 +226,11 @@ impl Eval {
             &StmtBody::ReadOut(ref vars) => {
                 for var in vars {
                     match var {
-                        &ast::Readout::Var(ref v) if v.is_dim() => {
-                            try!(self.array_readout(v));
+                        &ast::Readout::Var(ref var) if var.is_dim() => {
+                            try!(self.array_readout(var));
                         },
-                        &ast::Readout::Var(ref v) => {
-                            let varval = try!(self.lookup(v));
+                        &ast::Readout::Var(ref var) => {
+                            let varval = try!(self.lookup(var));
                             write_number(varval.as_u32());
                         },
                         &ast::Readout::Const(n) => write_number(n as u32),
@@ -280,22 +280,19 @@ impl Eval {
                 select(v.as_u32(), w.as_u32()).map(Val::I32)
             },
             Expr::And(ref vx) => {
-                let v = try!(self.eval_expr(vx));
-                match v {
+                match try!(self.eval_expr(vx)) {
                     Val::I16(v) => Ok(Val::I16(and_16(v))),
                     Val::I32(v) => Ok(Val::I32(and_32(v))),
                 }
             },
             Expr::Or(ref vx) => {
-                let v = try!(self.eval_expr(vx));
-                match v {
+                match try!(self.eval_expr(vx)) {
                     Val::I16(v) => Ok(Val::I16(or_16(v))),
                     Val::I32(v) => Ok(Val::I32(or_32(v))),
                 }
             },
             Expr::Xor(ref vx) => {
-                let v = try!(self.eval_expr(vx));
-                match v {
+                match try!(self.eval_expr(vx)) {
                     Val::I16(v) => Ok(Val::I16(xor_16(v))),
                     Val::I32(v) => Ok(Val::I32(xor_32(v))),
                 }
@@ -312,16 +309,16 @@ impl Eval {
         //println!("assign: {:?} = {}", var, val.as_u32());
         match *var {
             Var::I16(n) => {
-                let vent = &mut self.spot[n as usize];
-                if vent.rw {
-                    vent.val = try!(val.as_u16());
+                let bind = &mut self.spot[n as usize];
+                if bind.rw {
+                    bind.val = try!(val.as_u16());
                 }
                 Ok(())
             },
             Var::I32(n) => {
-                let vent = &mut self.twospot[n as usize];
-                if vent.rw {
-                    vent.val = val.as_u32();
+                let bind = &mut self.twospot[n as usize];
+                if bind.rw {
+                    bind.val = val.as_u32();
                 }
                 Ok(())
             },
@@ -372,7 +369,7 @@ impl Eval {
 
     /// Process a STASH statement.
     fn stash(&mut self, var: &Var) -> EvalRes<()> {
-        fn generic_stash<T: Clone>(vtbl: &mut Vec<Bind<T>>, n: u16) -> EvalRes<()> {
+        fn generic_stash<T: Clone>(vtbl: &mut Vec<Bind<T>>, n: usize) -> EvalRes<()> {
             let vent = &mut vtbl[n as usize];
             vent.stack.push(vent.val.clone());
             Ok(())
@@ -387,7 +384,7 @@ impl Eval {
 
     /// Process a RETRIEVE statement.
     fn retrieve(&mut self, var: &Var) -> EvalRes<()> {
-        fn generic_retrieve<T>(vtbl: &mut Vec<Bind<T>>, n: u16) -> EvalRes<()> {
+        fn generic_retrieve<T>(vtbl: &mut Vec<Bind<T>>, n: usize) -> EvalRes<()> {
             let vent = &mut vtbl[n as usize];
             match vent.stack.pop() {
                 None => Err(err::new(&err::IE436)),
@@ -407,7 +404,7 @@ impl Eval {
 
     /// Process an IGNORE or REMEMBER statement.
     fn set_rw(&mut self, var: &Var, rw: bool) -> EvalRes<()> {
-        fn generic_set_rw<T>(vtbl: &mut Vec<Bind<T>>, n: u16, rw: bool) {
+        fn generic_set_rw<T>(vtbl: &mut Vec<Bind<T>>, n: usize, rw: bool) {
             let vent = &mut vtbl[n as usize];
             vent.rw = rw;
         }
@@ -439,7 +436,7 @@ impl Eval {
     }
 
     /// Generic array dimension helper.
-    fn array_dimension<T: Clone + Default>(vtbl: &mut Vec<Bind<Array<T>>>, n: u16,
+    fn array_dimension<T: Clone + Default>(vtbl: &mut Vec<Bind<Array<T>>>, n: usize,
                                            dims: Vec<Val>) -> EvalRes<()> {
         let dims = try!(dims.iter().map(|v| v.as_u16()).collect::<Result<Vec<_>, _>>());
         if dims.iter().product::<u16>() == 0 {
@@ -471,7 +468,7 @@ impl Eval {
     }
 
     /// Generic array assignment helper.
-    fn array_assign<T>(vtbl: &mut Vec<Bind<Array<T>>>, n: u16,
+    fn array_assign<T>(vtbl: &mut Vec<Bind<Array<T>>>, n: usize,
                        subs: Vec<Val>, val: T) -> EvalRes<()> {
         let vent = &mut vtbl[n as usize];
         if vent.rw {
@@ -483,7 +480,7 @@ impl Eval {
     }
 
     /// Generic array lookup helper.
-    fn array_lookup<T: Copy>(vtbl: &Vec<Bind<Array<T>>>, n: u16, subs: Vec<Val>) -> EvalRes<T> {
+    fn array_lookup<T: Copy>(vtbl: &Vec<Bind<Array<T>>>, n: usize, subs: Vec<Val>) -> EvalRes<T> {
         let vent = &vtbl[n as usize];
         let ix = try!(Eval::array_get_index(vent, subs));
         Ok(vent.val.elems[ix])
@@ -491,7 +488,7 @@ impl Eval {
 
     /// Array readout helper.
     fn array_readout(&mut self, var: &Var) -> EvalRes<()> {
-        fn generic_readout<T: Copy, F>(vtbl: &Vec<Bind<Array<T>>>, n: u16,
+        fn generic_readout<T: Copy, F>(vtbl: &Vec<Bind<Array<T>>>, n: usize,
                                        mut state: u8, cb: F) -> EvalRes<u8>
             where F: Fn(T, u8) -> u8
         {

@@ -33,7 +33,7 @@ pub struct Program {
     pub labels: HashMap<Label, LogLine>,
     pub comefroms: HashMap<Label, LogLine>,
     pub stmt_types: Vec<Abstain>,
-    pub n_vars: (u16, u16, u16, u16),
+    pub n_vars: (usize, usize, usize, usize),
 }
 
 /// A single statement.
@@ -84,10 +84,10 @@ pub enum Readout {
 /// A variable reference (store or load).
 #[derive(PartialEq, Eq, Debug)]
 pub enum Var {
-    I16(u16),
-    I32(u16),
-    A16(u16, Vec<Expr>),
-    A32(u16, Vec<Expr>),
+    I16(usize),
+    I32(usize),
+    A16(usize, Vec<Expr>),
+    A32(usize, Vec<Expr>),
 }
 
 /// An expression.
@@ -175,7 +175,7 @@ impl Var {
     }
 
     /// Get a unique key that identifies this variable among all var types.
-    pub fn unique(&self) -> (u8, u16) {
+    pub fn unique(&self) -> (u8, usize) {
         match *self {
             Var::I16(n)    => (0, n),
             Var::I32(n)    => (1, n),
@@ -185,7 +185,7 @@ impl Var {
     }
 
     /// Rename the variable with a new number.
-    pub fn rename(&mut self, new: u16) {
+    pub fn rename(&mut self, new: usize) {
         match *self {
             Var::I16(ref mut n) |
             Var::I32(ref mut n) |

@@ -197,11 +197,11 @@ impl<'p> Parser<'p> {
     fn parse_var_maybe(&mut self, subs_allowed: bool) -> ParseRes<Option<ast::Var>> {
         if self.take(TT::SPOT) {
             let val = try!(self.req_number(u16::MAX, &err::IE200));
-            return Ok(Some(ast::Var::I16(val)));
+            return Ok(Some(ast::Var::I16(val as usize)));
         }
         if self.take(TT::TWOSPOT) {
             let val = try!(self.req_number(u16::MAX, &err::IE200));
-            return Ok(Some(ast::Var::I32(val)));
+            return Ok(Some(ast::Var::I32(val as usize)));
         }
         if self.take(TT::TAIL) {
             let val = try!(self.req_number(u16::MAX, &err::IE200));
@@ -210,7 +210,7 @@ impl<'p> Parser<'p> {
             } else {
                 vec![]
             };
-            return Ok(Some(ast::Var::A16(val, subs)));
+            return Ok(Some(ast::Var::A16(val as usize, subs)));
         }
         if self.take(TT::HYBRID) {
             let val = try!(self.req_number(u16::MAX, &err::IE200));
@@ -219,7 +219,7 @@ impl<'p> Parser<'p> {
             } else {
                 vec![]
             };
-            return Ok(Some(ast::Var::A32(val, subs)));
+            return Ok(Some(ast::Var::A32(val as usize, subs)));
         }
         return Ok(None);
     }
@@ -605,6 +605,6 @@ impl<'p> Parser<'p> {
 
 #[derive(Debug)]
 struct Vars {
-    counts: Vec<u16>,
-    map: HashMap<(u8, u16), u16>,
+    counts: Vec<usize>,
+    map: HashMap<(u8, usize), usize>,
 }
