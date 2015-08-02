@@ -22,7 +22,7 @@ use std::u16;
 use ast;
 use err;
 use syslib;
-use lex::{ lex, LexerIter, TT };
+use lex::{ lex, Lexer, TT };
 
 
 enum Error {
@@ -33,8 +33,9 @@ enum Error {
 type ParseRes<T> = Result<T, Error>;
 
 pub struct Parser<'p> {
-    lines: Vec<String>,
-    tokens: LexerIter<Cursor<&'p [u8]>>,
+    lines:  Vec<String>,
+    tokens: Lexer<Cursor<&'p [u8]>>,
+    stash:  Vec<TT>,  // used for backtracking
 }
 
 
@@ -43,9 +44,10 @@ impl<'p> Parser<'p> {
         let cursor1 = Cursor::new(&code[..]);
         let lines = BufReader::new(cursor1).lines().map(|v| v.unwrap()).collect();
         let cursor2 = Cursor::new(&code[..]);
-        Parser { lines: lines, tokens: lex(cursor2) }
+        Parser { lines: lines, tokens: lex(cursor2), stash: Vec::new() }
     }
 
+    /// Parse the whole file as a program.
     pub fn parse(&mut self) -> Result<ast::Program, err::Error> {
         // a program is a series of statements until EOF
         let mut stmts = Vec::new();
@@ -59,23 +61,33 @@ impl<'p> Parser<'p> {
         self.post_process(stmts)
     }
 
+    /// Parse a single statement (correct or botched).
     fn parse_stmt(&mut self) -> Result<ast::Stmt, err::Error> {
         let mut props = ast::StmtProps::default();
         // try to decode a statement
+        self.stash.clear();
         match self.parse_stmt_maybe(&mut props) {
             // a hard error while parsing (rare)
             Err(Error::Hard(err)) => Err(err),
             // a "soft" error: thrown at runtime as E000
             Err(Error::Soft(srcline)) => {
                 let body = ast::StmtBody::Error(
-                    err::full(&err::IE000, Some(self.lines[srcline].clone()), srcline));
+                    err::full(&err::IE000, Some(self.lines[srcline - 1].clone()), srcline));
                 // jump over tokens until the next statement beginning
                 loop {
                     match self.tokens.peek() {
                         None |
-                        Some(&TT::WAX) |
                         Some(&TT::DO) |
                         Some(&TT::PLEASEDO) => break,
+                        Some(&TT::WAX) => {
+                            let wax = self.tokens.next().unwrap();
+                            if let Some(&TT::NUMBER(_)) = self.tokens.peek() {
+                                self.tokens.push(wax);
+                                break;
+                            } else {
+                                self.tokens.next();
+                            }
+                        },
                         _ => { self.tokens.next(); }
                     }
                 }
@@ -87,6 +99,7 @@ impl<'p> Parser<'p> {
         }
     }
 
+    /// Try to parse a full statement.
     fn parse_stmt_maybe(&mut self, props: &mut ast::StmtProps) -> ParseRes<ast::StmtBody> {
         // parse logical line number label
         if let Some(label) = try!(self.parse_label_maybe()) {
@@ -153,6 +166,7 @@ impl<'p> Parser<'p> {
         }
     }
 
+    /// Maybe parse a line label (N).
     fn parse_label_maybe(&mut self) -> ParseRes<Option<u16>> {
         if self.take(TT::WAX) {
             let lno = try!(self.req_number(u16::MAX, &err::IE197));
@@ -163,10 +177,12 @@ impl<'p> Parser<'p> {
         }
     }
 
+    /// Require a line label.
     fn parse_label(&mut self) -> ParseRes<u16> {
         try!(self.parse_label_maybe()).ok_or_else(|| self.invalid())
     }
 
+    /// Maybe parse a variable reference [.:,;]N {SUB X}.
     fn parse_var_maybe(&mut self, subs_allowed: bool) -> ParseRes<Option<ast::Var>> {
         if self.take(TT::SPOT) {
             let val = try!(self.req_number(u16::MAX, &err::IE200));
@@ -197,10 +213,12 @@ impl<'p> Parser<'p> {
         return Ok(None);
     }
 
+    /// Require a variable reference.
     fn parse_var(&mut self, subs_allowed: bool) -> ParseRes<ast::Var> {
         try!(self.parse_var_maybe(subs_allowed)).ok_or_else(|| self.invalid())
     }
 
+    /// Parse subscripts for a variable reference.
     fn parse_subs(&mut self) -> ParseRes<Vec<ast::Expr>> {
         let mut res = Vec::new();
         if self.take(TT::SUB) {
@@ -211,6 +229,7 @@ impl<'p> Parser<'p> {
         Ok(res)
     }
 
+    /// Parse a list of variables separated by + (without subscripts).
     fn parse_varlist(&mut self) -> ParseRes<Vec<ast::Var>> {
         let mut res = Vec::new();
         res.push(try!(self.parse_var(false)));
@@ -298,41 +317,48 @@ impl<'p> Parser<'p> {
         }
     }
 
+    /// If the next token is `t`, consume it and return true.
     #[inline]
     fn take(&mut self, t: TT) -> bool {
         match self.tokens.peek() {
             Some(ref v) if **v == t => { },
             _ => return false,
         }
-        self.tokens.next();
+        self.stash.push(self.tokens.next().unwrap());
         true
     }
 
+    /// Require a number as next token, with bounds checking.
     fn req_number(&mut self, max: u16, err: &'static err::ErrDesc) -> ParseRes<u16> {
         match self.tokens.next() {
             Some(TT::NUMBER(x)) => {
                 if x > max as u32 {
                     Err(Error::Hard(err::with_line(err, self.tokens.lineno())))
                 } else {
+                    self.stash.push(TT::NUMBER(x));
                     Ok(x as u16)
                 }
             },
             Some(t)  => {
                 self.tokens.push(t);
                 Err(self.invalid())
-            }
+            },
             None     => Err(self.invalid()),
         }
     }
 
+    /// Require a token `t` next.
     fn req(&mut self, t: TT) -> ParseRes<()> {
         match self.tokens.next() {
             None                    => Err(self.invalid()),
-            Some(ref x) if *x == t  => Ok(()),
+            Some(ref x) if *x == t  => {
+                self.stash.push(t);
+                Ok(())
+            },
             Some(t)                 => {
                 self.tokens.push(t);
                 Err(self.invalid())
-            }
+            },
         }
     }
 

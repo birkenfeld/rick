@@ -92,20 +92,20 @@ pub enum TT {
 }
 
 
-type Lx<'a, R> = &'a mut IcLexer<R>;
+type Lx<'a, R> = &'a mut RawLexer<R>;
 
-rustlex! IcLexer {
-    property line: usize = 0;
+rustlex! RawLexer {
+    property line: usize = 1;
 
-    let NUM = ['0'-'9']+;
-    let WS = [' ' '\t']+;
-    let NL = '\n';
     let ANY = .;
+    let NUM = ['0'-'9']+;
+    let WS  = [' ' '\t']+;
+    let NL  = '\n';
 
     ANY   => |l: Lx<R>| { let s = l.yystr(); l.tok(TT::UNKNOWN(s)) }
+    NUM   => |l: Lx<R>| { let s = l.yystr(); l.tok(TT::NUMBER(s.parse().unwrap())) }
     WS    => |_: Lx<R>| -> Option<Token> { None }
     NL    => |l: Lx<R>| -> Option<Token> { l.line += 1; None }
-    NUM   => |l: Lx<R>| { let s = l.yystr(); l.tok(TT::NUMBER(s.parse().unwrap())) }
 
     '('            => |l: Lx<R>| l.tok(TT::WAX)
     ')'            => |l: Lx<R>| l.tok(TT::WANE)
@@ -143,30 +143,30 @@ rustlex! IcLexer {
     "READING OUT"  => |l: Lx<R>| l.tok(TT::READINGOUT)
     "WRITING IN"   => |l: Lx<R>| l.tok(TT::WRITINGIN)
 
-    '.'   => |l: Lx<R>| l.tok(TT::SPOT)
-    ':'   => |l: Lx<R>| l.tok(TT::TWOSPOT)
-    ','   => |l: Lx<R>| l.tok(TT::TAIL)
-    ';'   => |l: Lx<R>| l.tok(TT::HYBRID)
-    '!'   => |l: Lx<R>| l.tok(TT::WOW)
-    '#'   => |l: Lx<R>| l.tok(TT::MESH)
+    '.'            => |l: Lx<R>| l.tok(TT::SPOT)
+    ':'            => |l: Lx<R>| l.tok(TT::TWOSPOT)
+    ','            => |l: Lx<R>| l.tok(TT::TAIL)
+    ';'            => |l: Lx<R>| l.tok(TT::HYBRID)
+    '!'            => |l: Lx<R>| l.tok(TT::WOW)
+    '#'            => |l: Lx<R>| l.tok(TT::MESH)
 
-    "<-"  => |l: Lx<R>| l.tok(TT::GETS)
-    "SUB" => |l: Lx<R>| l.tok(TT::SUB)
-    "BY"  => |l: Lx<R>| l.tok(TT::BY)
-    '%'   => |l: Lx<R>| l.tok(TT::OHOHSEVEN)
-    '+'   => |l: Lx<R>| l.tok(TT::INTERSECTION)
+    "<-"           => |l: Lx<R>| l.tok(TT::GETS)
+    "SUB"          => |l: Lx<R>| l.tok(TT::SUB)
+    "BY"           => |l: Lx<R>| l.tok(TT::BY)
+    '%'            => |l: Lx<R>| l.tok(TT::OHOHSEVEN)
+    '+'            => |l: Lx<R>| l.tok(TT::INTERSECTION)
 
-    '"'   => |l: Lx<R>| l.tok(TT::RABBITEARS)
-    '\''  => |l: Lx<R>| l.tok(TT::SPARK)
+    '"'            => |l: Lx<R>| l.tok(TT::RABBITEARS)
+    '\''           => |l: Lx<R>| l.tok(TT::SPARK)
 
-    '$'   => |l: Lx<R>| l.tok(TT::MONEY)
-    '~'   => |l: Lx<R>| l.tok(TT::SQUIGGLE)
-    '&'   => |l: Lx<R>| l.tok(TT::AMPERSAND)
-    'V'   => |l: Lx<R>| l.tok(TT::BOOK)
-    '?'   => |l: Lx<R>| l.tok(TT::WHAT)
+    '$'            => |l: Lx<R>| l.tok(TT::MONEY)
+    '~'            => |l: Lx<R>| l.tok(TT::SQUIGGLE)
+    '&'            => |l: Lx<R>| l.tok(TT::AMPERSAND)
+    'V'            => |l: Lx<R>| l.tok(TT::BOOK)
+    '?'            => |l: Lx<R>| l.tok(TT::WHAT)
 }
 
-impl<R: Read> IcLexer<R> {
+impl<R: Read> RawLexer<R> {
     #[inline]
     fn tok(&self, t: TT) -> Option<Token> {
         Some(Token(t, self.line))
@@ -174,61 +174,42 @@ impl<R: Read> IcLexer<R> {
 }
 
 
-pub struct LexerIter<R: Read> {
-    inner:  IcLexer<R>,
-    unkbuf: Option<String>,
-    unklno: usize,
-    stash:  Vec<Token>,
-    lineno: usize,
+pub struct Lexer<R: Read> {
+    inner: RawLexer<R>,
+    stash: Vec<Token>,
+    line:  usize,
 }
 
-impl<R: Read> Iterator for LexerIter<R> {
+impl<R: Read> Iterator for Lexer<R> {
     type Item = TT;
 
     fn next(&mut self) -> Option<Self::Item> {
         let ret = self.inner_next();
         if let Some(tok) = ret {
-            self.lineno = tok.1;
+            self.line = tok.1;
             return Some(tok.0);
         }
         None
     }
 }
 
-impl<R: Read> LexerIter<R> {
+impl<R: Read> Lexer<R> {
     fn inner_next(&mut self) -> Option<Token> {
         // if we have some tokens stashed, just emit them
-        while !self.stash.is_empty() {
+        if !self.stash.is_empty() {
             return self.stash.pop();
         }
-        while let Some(mut tok) = self.inner.next() {
+        // else, request a new token from the lexer
+        if let Some(mut tok) = self.inner.next() {
             // handle ! = '. combination right now
-            if let Token(TT::WOW, _) = tok {
-                self.stash.push(Token(TT::SPOT, tok.1));
-                tok = Token(TT::SPARK, tok.1);
+            if let Token(TT::WOW, lno) = tok {
+                self.stash.push(Token(TT::SPOT, lno));
+                tok = Token(TT::SPARK, lno);
             }
-            // unknowns: push them onto the buffer
-            if let Token(TT::UNKNOWN(s), l) = tok {
-                match self.unkbuf {
-                    Some(ref mut buf) => buf.push_str(&s),
-                    None => { self.unkbuf = Some(s); self.unklno = l; },
-                }
-                continue;
-            }
-            // not an unknown: output the collected unknowns
-            if self.unkbuf.is_some() {
-                self.stash.push(tok);
-                return self.unkbuf.take().map(|v| Token(TT::UNKNOWN(v), self.unklno));
-            }
-            // else just return the current token
-            return Some(tok);
+            Some(tok)
+        } else {
+            None
         }
-        // no token anymore, check if unknown buffer has something
-        if self.unkbuf.is_some() {
-            return self.unkbuf.take().map(|v| Token(TT::UNKNOWN(v), self.unklno));
-        }
-        // finally, nothing left
-        return None;
     }
 
     pub fn peek(&mut self) -> Option<&TT> {
@@ -245,16 +226,15 @@ impl<R: Read> LexerIter<R> {
     }
 
     pub fn push(&mut self, t: TT) {
-        self.stash.push(Token(t, self.lineno));
+        self.stash.push(Token(t, self.line));
     }
 
     pub fn lineno(&self) -> usize {
-        self.lineno
+        self.line
     }
 }
 
-
-pub fn lex<R: Read>(reader: R) -> LexerIter<R> {
-    let lexer = IcLexer::new(reader);
-    LexerIter { inner: lexer, unkbuf: None, unklno: 0, stash: vec![], lineno: 0 }
+pub fn lex<R: Read>(reader: R) -> Lexer<R> {
+    let raw = RawLexer::new(reader);
+    Lexer { inner: raw, stash: vec![], line: 1 }
 }
