@@ -33,3 +33,8 @@ to Rust code is the syntax extension living in `rick_syntex`.  It contains an
 attribute that will embed the decorated module's code as a string into the
 module at compile time.  This is then written to the generated Rust files while
 translating.
+
+## Testing
+
+The test suite consists of input and output files for the demo programs in
+`code`.  Run `python test.py` to run the test suite.
