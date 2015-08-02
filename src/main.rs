@@ -77,7 +77,8 @@ fn main_inner() -> Result<i32, err::RtError> {
     // parse args
     let matches = match opts.parse(&args[1..]) {
         Ok(m)  => m,
-        Err(e) => panic!(e.to_string()),
+        Err(e) => { println!("{}", e.to_string());
+                    return err::IE990.err() },
     };
 
     // handle help option

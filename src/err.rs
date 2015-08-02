@@ -286,6 +286,13 @@ pub static IE888: ErrDesc = ErrDesc {
     way: None,
 };
 
+/* Unknown invocation flag. */
+pub static IE990: ErrDesc = ErrDesc {
+    num: 990,
+    msg: "FLAG ETIQUETTE FAILURE BAD SCOUT NO BISCUIT",
+    way: None,
+};
+
 /* Command found after TRY AGAIN. */
 pub static IE993: ErrDesc = ErrDesc {
     num: 993,
