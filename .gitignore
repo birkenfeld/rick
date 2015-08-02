@@ -19,7 +19,7 @@ code/pi
 code/pow
 code/primes
 code/quine
-code/random2
+code/random
 code/rot13
 code/rot13b
 code/sample
@@ -42,6 +42,7 @@ code/tests/sink
 code/tests/test1
 code/tests/test2
 code/tests/testarray
+code/tests/testcf
 code/tests/testi18n
 code/tests/testlib2
 code/tests/testonce

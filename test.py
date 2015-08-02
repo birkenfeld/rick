@@ -21,6 +21,8 @@ import difflib
 from os import path
 from subprocess import Popen, PIPE, STDOUT
 
+already_compiled = set()
+
 
 def run_test(testname, testcode, compiled):
     stdin = b''
@@ -56,9 +58,11 @@ def run_test(testname, testcode, compiled):
 
     if compiled:
         print('  > Step 3: compiled + optimized')
-        if os.system('cargo run -- -Ro %s > /dev/null' % testcode) != 0:
-            print('*** ERROR: compilation failed')
-            raise RuntimeError
+        if testcode not in already_compiled:
+            if os.system('cargo run -- -Ro %s > /dev/null' % testcode) != 0:
+                print('*** ERROR: compilation failed')
+                raise RuntimeError
+            already_compiled.add(testcode)
         check(Popen([testcode[:-2]], stdin=PIPE, stdout=PIPE, stderr=STDOUT),
               False)
 
@@ -88,6 +92,8 @@ def main():
             # special case
             if fn.startswith('fft-'):
                 testcode = path.join(root, 'fft.i')
+            elif fn.startswith('life-'):
+                testcode = path.join(root, 'life2.i')
             if not path.isfile(testcode):
                 print('')
                 print('*** WARNING: found %s.chk, but not %s' % (testname, testcode))

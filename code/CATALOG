@@ -15,44 +15,39 @@ corresponding .tst files) and are part of the regression-test suite.
 Contents:
 
 from original manual:
-  sample.i		Returns absolute value of a 16-bit 2s-complement number
+  sample.i		  Returns absolute value of a 16-bit 2s-complement number
 
 by Jon Blow <jon@sampo.com>
-  random.i		Random number program
+  random.i		+ Random number program
   tests/sink.i		+ Simple test program, should sink into the Black Lagoon
 
 by Louis Howell <nazgul@netcom.com>
   bubble.i		+ Bubble sort - list of numbers to be sorted must
-  			be preceded with the length of the list
-  change.i      	Count up different ways to make change
+  			  be preceded with the length of the list
   icat.i		+ Sends input to output
-  iching1.i     	Generates I Ching hexagrams
-  iching2.i     	This one uses a lookup table to find the sequence number
-  life.i		Conway's game of Life, standard INTERCAL version
-  life2.i		This version uses COME FROM and character output
+  iching1.i     	+ Generates I Ching hexagrams
+  iching2.i     	+ This one uses a lookup table to find the sequence number
+  life.i		  Conway's game of Life, standard INTERCAL version
+  life2.i		+ This version uses COME FROM and character output
     life-blinkers.tst
     life-t_tet.tst
     life-glider.tst
-    life-gun.tst	Input files for both Life programs
+    life-gun.tst	  Input files for both Life programs
   pi.i			+ Calculate pi to a specified number of digits
   pow.i			+ Prints a list of nth powers using old exponentiation 
-  			routine, expect this to fail with overflow
-  primes.i		Find prime numbers
-  lib/syslib.i		Corrected version of system library
-  lib/lib2.i		New library routines: decrement, decrement and branch on 0,
-                        add bit, 16-bit division with remainder, exponentiation
+  			  routine, expect this to fail with overflow
+  primes.i		  Find prime numbers
+  lib/syslib.i		  Corrected version of system library
+  lib/lib2.i		  New library routines: decrement, decrement and branch on 0,
+                          add bit, 16-bit division with remainder, exponentiation
   tests/limits.i        + To test read in/write out limits
-  tests/test16bit.i     Tests operations depending on number width
   tests/testarray.i     + Tests arrays and assignment width
-  tests/testcf.i        Test program with interesting random number use
-  tests/testlib2.i      General test program
+  tests/testcf.i        + Test program with interesting random number use
+  tests/testlib2.i      + General test program
   tests/testsplat.i	+ Tests behavior of comments and things resembling comments
 
 by Matt Dimeo <mdimeo@brooktree.com>
   beer.i		+ Print out lyrics to "99 Bottles of Beer On The Wall"
-
-by Stinglai Ka'abi <stinglai@bureau.World.GOV>:
-  random2.i		Another random-number generator
 
 by Jacob Mandelson <jlm@cco.caltech.edu>
   rot13.i		+ Prints ROT-13 of its input
@@ -62,12 +57,12 @@ by Clemens Meier <clmeier@lili.uni-bielefeld.de>
 
 By Brian Raiter <breadbox@muppetlabs.com>
   fft.i			+ Fast Fourier Transform (requires syslib and floatlib)
-  ins.i			Intersections & Splats, a Mastermind-style game
+  ins.i			  Intersections & Splats, a Mastermind-style game
   flonck.i		+ An RPN calculator
   quine.i		+ Prints itself
   yapp.i		+ Prints an INTERCAL program that prints
-  lib/floatlib.i	Floating-point routines
-  lib/numio.i		I/O routines
+  lib/floatlib.i	  Floating-point routines
+  lib/numio.i		  I/O routines
   tests/hello.i		+ The traditional hello world program
 
 by Donald Knuth
@@ -77,7 +72,7 @@ by Oerjan Johansen
   unlambda.i		+ An Unlambda interpreter in INTERCAL
 
 by Brendan Gregg
-  guess.i		Guessing game implementation in INTERCAL
+  guess.i		  Guessing game implementation in INTERCAL
 
 by David Moews
   tests/test1.i		+ Prints DO THIS TEST HAS BEEN SUCCESSFULLY COMPLETED
@@ -86,12 +81,12 @@ by David Moews
 by Alex Smith
   sort.i		+ An insertion-sort program testing computed ABSTAIN
   tests/ais1.i		+ Reads in numbers terminated with zero and writes them back
-                        out, testing COME FROM/NEXT interaction
+                          out, testing COME FROM/NEXT interaction
   tests/ais2.i		+ A demonstration of computed ABSTAIN's power: computes the
-                        Fibonacci sequence; in the input file, ONE means compute the
-                        next term and ZERO means stop
-  tests/arrtest.i	A program to test some changes I made to the grammar,
-  			no output expected as it's just a parser test
-  tests/compucome.i	A program to test computed COME FROM
+                          Fibonacci sequence; in the input file, ONE means compute the
+                          next term and ZERO means stop
+  tests/arrtest.i	+ A program to test some changes I made to the grammar,
+  			  no output expected as it's just a parser test
+  tests/compucome.i	+ A program to test computed COME FROM
   tests/ignorearray.i   + Checking that IGNORE works correctly on arrays
   tests/ignorret.i	+ Testing interactions of IGNORE and RETRIEVE
