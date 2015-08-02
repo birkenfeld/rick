@@ -22,7 +22,7 @@ use std::u16;
 use err::{ Res, IE123, IE129, IE275, IE555, IE633 };
 use ast::{ self, Program, Stmt, StmtBody, ComeFrom, Expr, Var, VType };
 use stdops::{ Bind, Array, write_number, read_number, check_chance, check_ovf, pop_jumps,
-              seed_chance, mingle, select, and_16, and_32, or_16, or_32, xor_16, xor_32 };
+              get_random_seed, mingle, select, and_16, and_32, or_16, or_32, xor_16, xor_32 };
 
 
 /// Type of an expression.
@@ -82,6 +82,7 @@ pub struct Eval<'a> {
     abstain: Vec<u32>,
     last_in: u8,
     last_out: u8,
+    rand_st: u32,
     stmt_ctr: usize,
 }
 
@@ -94,7 +95,8 @@ enum StmtRes {
 }
 
 impl<'a> Eval<'a> {
-    pub fn new(program: &'a Program, stdout: &'a mut Write, debug: bool) -> Eval<'a> {
+    pub fn new(program: &'a Program, stdout: &'a mut Write, debug: bool,
+               random: bool) -> Eval<'a> {
         let abs = program.stmts.iter().map(|stmt| stmt.props.disabled as u32).collect();
         let nvars = (program.var_info.0.len(),
                      program.var_info.1.len(),
@@ -109,6 +111,7 @@ impl<'a> Eval<'a> {
             tail:     vec![Bind::new(Array::empty()); nvars.2],
             hybrid:   vec![Bind::new(Array::empty()); nvars.3],
             jumps:    Vec::with_capacity(80),
+            rand_st:  if random { get_random_seed() } else { 0 },
             abstain:  abs,
             last_in:  0,
             last_out: 0,
@@ -120,7 +123,6 @@ impl<'a> Eval<'a> {
         let mut pctr = 0;  // index of current statement
         let program = self.program.clone();
         let nstmts = program.stmts.len();
-        seed_chance();
         loop {
             // check for falling off the end
             if pctr >= nstmts {
@@ -135,7 +137,9 @@ impl<'a> Eval<'a> {
             if self.abstain[pctr] == 0 {
                 let stmt = &program.stmts[pctr];
                 // check execution chance
-                if check_chance(stmt.props.chance) {
+                let (passed, rand_st) = check_chance(stmt.props.chance, self.rand_st);
+                self.rand_st = rand_st;
+                if passed {
                     // try to eval this statement
                     let res = match self.eval_stmt(stmt) {
                         // on error, set the correct line number and bubble up
@@ -197,7 +201,10 @@ impl<'a> Eval<'a> {
             if let Some(next) = maybe_next {
                 // check for abstained COME FROM
                 if self.abstain[next] == 0 {
-                    if check_chance(program.stmts[next].props.chance) {
+                    let (passed, rand_st) = check_chance(program.stmts[next].props.chance,
+                                                         self.rand_st);
+                    self.rand_st = rand_st;
+                    if passed {
                         pctr = next;
                         continue;
                     }

@@ -20,8 +20,6 @@
 use std::fmt::{ Debug, Display, Error, Formatter };
 use std::fs::File;
 use std::io::{ BufRead, Read, Write, stdin };
-use std::mem;
-use std::os::raw::{ c_int, c_uint };
 use std::{ u16, u32 };
 
 use err::{ Res, IE240, IE241, IE436, IE533, IE562, IE579, IE621, IE632 };
@@ -221,33 +219,28 @@ impl<T: Debug> Display for Array<T> {
     }
 }
 
-/// Check statement execution chance (false -> skip).
-
-#[link(name = "c")]
-extern {
-    pub fn rand() -> c_int;
-    pub fn srand(seed: c_uint);
-}
-
-pub fn seed_chance() {
+/// Generate a 32-bit random seed.
+pub fn get_random_seed() -> u32 {
     let seed: u32;
     if let Ok(mut fp) = File::open("/dev/urandom") {
         let mut buf = [0; 4];
         fp.read(&mut buf).unwrap();
-        seed = unsafe { mem::transmute(buf) };
+        seed = (buf[0] as u32) << 24 | (buf[1] as u32) << 16 | (buf[2] as u32) << 8 | (buf[3] as u32);
     } else {
         seed = 4;  // chosen by fair dice roll. guaranteed to be random.
     }
-    unsafe { srand(seed); }
+    seed
 }
 
-pub fn check_chance(chance: u8) -> bool {
-
+/// Check statement execution chance (false -> skip).
+pub fn check_chance(chance: u8, state: u32) -> (bool, u32) {
     if chance == 100 {
-        return true;
+        (true, state)
+    } else {
+        let new_state = state.wrapping_mul(1103515245).wrapping_add(12345);
+        let random = (new_state / 65536) % 100;
+        (random < (chance as u32), new_state)
     }
-    let random = unsafe { rand() } % 100;
-    random < (chance as i32)
 }
 
 /// Pop "n" jumps from the jump stack and return the last one.

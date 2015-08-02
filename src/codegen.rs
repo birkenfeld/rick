@@ -33,6 +33,7 @@ type WRes = Res<()>;  // write result, always unit
 pub struct Generator {
     program: Rc<Program>,
     debug: bool,
+    random: bool,
     o: BufWriter<File>,
     line: SrcLine,
 }
@@ -59,10 +60,11 @@ macro_rules! w {
 
 
 impl Generator {
-    pub fn new(program: Program, outfile: File, debug: bool) -> Generator {
+    pub fn new(program: Program, outfile: File, debug: bool, random: bool) -> Generator {
         Generator {
             program: Rc::new(program),
             debug: debug,
+            random: random,
             o: BufWriter::new(outfile),
             line: 0,
         }
@@ -120,7 +122,10 @@ impl Generator {
         }
         // check chance for statement execution
         if stmt.props.chance < 100 {
-            w!(self.o, 18; "if check_chance({}) {{", stmt.props.chance);
+            w!(self.o, 18; "let (passed, new_rand_st) = check_chance({}, rand_st);",
+               stmt.props.chance);
+            w!(self.o, 18; "rand_st = new_rand_st;");
+            w!(self.o, 18; "if passed {{");
         }
         try!(self.gen_stmt(stmt));
         // end of chance check
@@ -142,7 +147,10 @@ impl Generator {
             let chance = self.program.stmts[next as usize].props.chance;
             w!(self.o, 16; "if abstain[{}] == 0 {{   // COME FROM", next);
             if chance < 100 {
-                w!(self.o, 18; "if check_chance({}) {{", chance);
+                w!(self.o, 18; "let (passed, new_rand_st) = check_chance({}, rand_st);",
+                   chance);
+                w!(self.o, 18; "rand_st = new_rand_st;");
+                w!(self.o, 18; "if passed {{");
             }
             w!(self.o, 20; "pctr = {};", next);
             w!(self.o, 20; "continue;");
@@ -564,6 +572,7 @@ impl Generator {
         w!(self.o, 4; "let mut jumps: Vec<(usize, Option<usize>, u16)> = Vec::with_capacity(80);");
         w!(self.o, 4; "let mut last_in: u8 = 0;");
         w!(self.o, 4; "let mut last_out: u8 = 0;");
+        w!(self.o, 4; "let mut rand_st: u32;");
         for i in 0..vars.0.len() {
             w!(self.o, 4; "let mut v{}: Bind<u16> = Bind::new(0);", i);
         }
@@ -588,6 +597,11 @@ impl Generator {
     }
 
     fn gen_loop_header(&mut self) -> WRes {
+        if self.random {
+            w!(self.o, 4; "rand_st = get_random_seed();");
+        } else {
+            w!(self.o, 4; "rand_st = 0;");
+        }
         self.write("
     loop {
         match pctr {")
@@ -612,8 +626,7 @@ impl Generator {
 use stdops::*;
 
 #[allow(unused_mut, unused_parens, unused_variables, unreachable_code)]
-fn main_inner() -> err::Res<()> {
-    seed_chance();")
+fn main_inner() -> err::Res<()> {")
     }
 
     fn gen_footer(&mut self) -> WRes {

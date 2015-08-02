@@ -68,6 +68,7 @@ fn main_inner() -> Result<i32, err::RtError> {
     opts.optflag("c", "no-compile", "do not call rustc");
     opts.optflag("o", "opt", "optimize parsed code");
     opts.optflag("O", "rustc-opt", "run rustc in optimized mode");
+    opts.optflag("R", "no-random", "use deterministic random seed");
     opts.optflag("d", "debug", "activate printing out debug messages");
     opts.optflag("t", "timing", "print out timing messages");
     opts.optflag("h", "help", "print help message");
@@ -88,6 +89,7 @@ fn main_inner() -> Result<i32, err::RtError> {
     let debug_flag = matches.opt_present("d");
     let timing_flag = matches.opt_present("t");
     let opt_flag = matches.opt_present("o");
+    let rand_flag = !matches.opt_present("R");
     let rustc_flag = !matches.opt_present("c");
     let rustc_opt_flag = matches.opt_present("O");
 
@@ -145,7 +147,7 @@ fn main_inner() -> Result<i32, err::RtError> {
             Ok(f)  => f,
         };
         // generate Rust code
-        try!(Generator::new(program, output, debug_flag).generate());
+        try!(Generator::new(program, output, debug_flag, rand_flag).generate());
         let t3 = time::get_time();
         // if wanted, compile to binary
         if rustc_flag {
@@ -163,7 +165,8 @@ fn main_inner() -> Result<i32, err::RtError> {
         if debug_flag {
             println!("Running:");
         }
-        let num = try!(Eval::new(&program, &mut stdout, debug_flag).eval());
+        let mut eval = Eval::new(&program, &mut stdout, debug_flag, rand_flag);
+        let num = try!(eval.eval());
         let t3 = time::get_time();
         if timing_flag {
             println!("#stmts:     {}", num);

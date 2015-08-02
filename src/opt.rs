@@ -383,7 +383,7 @@ impl Optimizer {
         // we can do it! evaluate the program and replace all statements
         let out = Vec::new();
         let mut cursor = Cursor::new(out);
-        if let Err(_) = eval::Eval::new(&program, &mut cursor, false).eval() {
+        if let Err(_) = eval::Eval::new(&program, &mut cursor, false, false).eval() {
             // if eval fails, don't pretend to do anything.
             return program;
         }

@@ -47,16 +47,16 @@ def run_test(testname, testcode, compiled):
     print('')
     print('>>> Test: ' + testname)
     print('  > Step 1: interpreted')
-    check(Popen(['cargo', 'run', '--', '-i', testcode],
+    check(Popen(['cargo', 'run', '--', '-Ri', testcode],
                 stdin=PIPE, stdout=PIPE, stderr=STDOUT), True)
 
     print('  > Step 2: interpreted + optimized')
-    check(Popen(['cargo', 'run', '--', '-io', testcode],
+    check(Popen(['cargo', 'run', '--', '-Rio', testcode],
                 stdin=PIPE, stdout=PIPE, stderr=STDOUT), True)
 
     if compiled:
         print('  > Step 3: compiled + optimized')
-        if os.system('cargo run -- -o %s > /dev/null' % testcode) != 0:
+        if os.system('cargo run -- -Ro %s > /dev/null' % testcode) != 0:
             print('*** ERROR: compilation failed')
             raise RuntimeError
         check(Popen([testcode[:-2]], stdin=PIPE, stdout=PIPE, stderr=STDOUT),
