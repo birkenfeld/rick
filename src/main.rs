@@ -42,25 +42,27 @@ use eval::Eval;
 
 
 fn main() {
-
+    // "iching1.i" from C-INTERCAL
     let demo_prog = r##"
-(1900)  DO STASH .2 + .3
-        DO .3 <- #65535
-        DO (1903) NEXT
-(1903)  PLEASE FORGET #1
-        DO .2 <- #0
-        PLEASE %50 IGNORE .2
-        DO .2 <- #1
-        PLEASE REMEMBER .2
-        DO .1 <- !1$.2'~"#65535$#1"
-        DO .3 <- .3~#65534
-        DO (1902) NEXT
-        DO (1903) NEXT
-(1902)  DO (1904) NEXT
-        DO RETRIEVE .2 + .3
-        DO FORGET #1
-        PLEASE RESUME #1
-(1904)  PLEASE RESUME '?"!3~.3'~#1"$#1'~#3
+        DO .2 <- #32
+        PLEASE COME FROM (10)
+        DO .1 <- #0
+        DO (1020) NEXT
+        DO (1020) NEXT
+        PLEASE DO %50 (1020) NEXT
+        DO (1020) NEXT
+        DO (1020) NEXT
+        PLEASE DO %50 (1020) NEXT
+        DO (1020) NEXT
+        DO (1020) NEXT
+        PLEASE DO %50 (1020) NEXT
+        DO READ OUT .1
+        DO (30) NEXT
+(10)    DO .2 <- .2~#62
+(20)    DO RESUME "?.2$#2"~#3
+(30)    DO (20) NEXT
+        PLEASE FORGET #1
+        PLEASE GIVE UP
 "##;
 
     let mut v;
