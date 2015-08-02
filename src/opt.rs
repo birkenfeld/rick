@@ -30,7 +30,8 @@ impl Optimizer {
     }
 
     pub fn optimize(self) -> ast::Program {
-        let program = Optimizer::opt_constant_fold(self.program);
+        let program = self.program;
+        let program = Optimizer::opt_constant_fold(program);
         program
     }
 
@@ -38,10 +39,11 @@ impl Optimizer {
     /// since you can't have 32-bit literals.
     pub fn opt_constant_fold(mut program: ast::Program) -> ast::Program {
         for stmt in &mut program.stmts {
-            match &mut stmt.st {
-                &mut ast::StmtType::Calc(_, ref mut expr) => {
-                    Optimizer::fold(expr)
-                },
+            match stmt.st {
+                ast::StmtType::Calc(_, ref mut expr) => Optimizer::fold(expr),
+                ast::StmtType::Resume(ref mut expr)  => Optimizer::fold(expr),
+                ast::StmtType::Forget(ref mut expr)  => Optimizer::fold(expr),
+                ast::StmtType::ReadOut(ref mut expr) => Optimizer::fold(expr),
                 _ => { }
             }
         }
@@ -54,8 +56,8 @@ impl Optimizer {
             ast::Expr::Mingle(ref mut vx, ref mut wx) => {
                 Optimizer::fold(vx);
                 Optimizer::fold(wx);
-                if let &mut box ast::Expr::Num(ref v) = vx {
-                    if let &mut box ast::Expr::Num(ref w) = wx {
+                if let box ast::Expr::Num(ref v) = *vx {
+                    if let box ast::Expr::Num(ref w) = *wx {
                         if let Ok(z) = mingle(v.as_u32(), w.as_u32()) {
                             result = Some(ast::Expr::Num(ast::Val::I32(z)));
                         }
@@ -65,8 +67,8 @@ impl Optimizer {
             ast::Expr::Select(ref mut vx, ref mut wx) => {
                 Optimizer::fold(vx);
                 Optimizer::fold(wx);
-                if let &mut box ast::Expr::Num(ref v) = vx {
-                    if let &mut box ast::Expr::Num(ref w) = wx {
+                if let box ast::Expr::Num(ref v) = *vx {
+                    if let box ast::Expr::Num(ref w) = *wx {
                         if let Ok(z) = select(v.as_u32(), w.as_u32()) {
                             result = Some(ast::Expr::Num(ast::Val::I32(z)));
                         }
@@ -75,7 +77,7 @@ impl Optimizer {
             }
             ast::Expr::And(ref mut vx) => {
                 Optimizer::fold(vx);
-                if let &mut box ast::Expr::Num(ref v) = vx {
+                if let box ast::Expr::Num(ref v) = *vx {
                     result = Some(ast::Expr::Num(match v {
                         &ast::Val::I16(v) => ast::Val::I16(and_16(v)),
                         &ast::Val::I32(v) => ast::Val::I32(and_32(v)),
@@ -84,7 +86,7 @@ impl Optimizer {
             }
             ast::Expr::Or(ref mut vx) => {
                 Optimizer::fold(vx);
-                if let &mut box ast::Expr::Num(ref v) = vx {
+                if let box ast::Expr::Num(ref v) = *vx {
                     result = Some(ast::Expr::Num(match v {
                         &ast::Val::I16(v) => ast::Val::I16(or_16(v)),
                         &ast::Val::I32(v) => ast::Val::I32(or_32(v)),
@@ -93,7 +95,7 @@ impl Optimizer {
             }
             ast::Expr::Xor(ref mut vx) => {
                 Optimizer::fold(vx);
-                if let &mut box ast::Expr::Num(ref v) = vx {
+                if let box ast::Expr::Num(ref v) = *vx {
                     result = Some(ast::Expr::Num(match v {
                         &ast::Val::I16(v) => ast::Val::I16(xor_16(v)),
                         &ast::Val::I32(v) => ast::Val::I32(xor_32(v)),
