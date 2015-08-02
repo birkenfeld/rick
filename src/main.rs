@@ -30,6 +30,7 @@ mod parse;
 mod eval;
 mod util;
 mod opt;
+mod syslib;
 
 use std::env::args;
 use std::io::Read;
