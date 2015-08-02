@@ -30,13 +30,14 @@ def run_test(testname, testcode, compiled):
     with open(testname + '.chk', 'rb') as stdoutfile:
         stdout = stdoutfile.read()
 
-    def check(proc):
+    def check(proc, remove_firstline):
         real_stdout, _ = proc.communicate(stdin)
         if proc.returncode != 0:
             print('*** ERROR: process returned status %d' % proc.returncode)
             raise RuntimeError
         # remove cargo's "Running" line
-        real_stdout = real_stdout[real_stdout.index('\n') + 1:]
+        if remove_firstline:
+            real_stdout = real_stdout[real_stdout.index('\n') + 1:]
         if real_stdout != stdout:
             print('*** ERROR: standard output does not match check file')
             print(''.join(difflib.unified_diff(stdout.splitlines(True),
@@ -47,24 +48,26 @@ def run_test(testname, testcode, compiled):
     print('>>> Test: ' + testname)
     print('  > Step 1: interpreted')
     check(Popen(['cargo', 'run', '--', '-i', testcode],
-                stdin=PIPE, stdout=PIPE))
+                stdin=PIPE, stdout=PIPE), True)
 
     print('  > Step 2: interpreted + optimized')
     check(Popen(['cargo', 'run', '--', '-io', testcode],
-                stdin=PIPE, stdout=PIPE))
+                stdin=PIPE, stdout=PIPE), True)
 
     if compiled:
         print('  > Step 3: compiled + optimized')
         if os.system('cargo run -- -o %s > /dev/null' % testcode) != 0:
             print('*** ERROR: compilation failed')
             raise RuntimeError
-        check(Popen([testcode[:-2]], stdin=PIPE, stdout=PIPE))
+        check(Popen([testcode[:-2]], stdin=PIPE, stdout=PIPE), False)
 
     print ('  - passed')
 
 
 def main():
     long_flag = '--long' in sys.argv
+    tests = [path.splitext(test.replace('/', os.sep))[0]
+             for test in sys.argv[1:] if not test.startswith('-')]
     print('Building...')
     if os.system('cargo build') != 0:
         return 2
@@ -77,6 +80,8 @@ def main():
             if not fn.endswith('.chk'):
                 continue
             testname = path.join(root, fn)[:-4]
+            if tests and testname not in tests:
+                continue
             testcode = testname + '.i'
             # special case
             if fn.startswith('fft-'):

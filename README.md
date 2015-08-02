@@ -37,4 +37,5 @@ translating.
 ## Testing
 
 The test suite consists of input and output files for the demo programs in
-`code`.  Run `python test.py` to run the test suite.
+`code`.  Run `python test.py` to run the test suite.  Run `python test.py
+--long` to also test compiled code, note however that this takes a while.
