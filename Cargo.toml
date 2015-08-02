@@ -6,3 +6,4 @@ authors = ["Georg Brandl <georg@python.org>"]
 [dependencies]
 rustlex = "*"
 rand = "*"
+time = "*"

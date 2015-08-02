@@ -21,6 +21,7 @@
 #[allow(plugin_as_library)]
 extern crate rustlex;
 extern crate rand;
+extern crate time;
 
 mod ast;
 mod err;
@@ -29,15 +30,17 @@ mod parse;
 mod eval;
 mod util;
 
+use std::env::args;
+use std::io::Read;
+use std::fs::File;
+
+use parse::Parser;
+use eval::Eval;
+
 
 fn main() {
-    use std::env::args;
-    use std::io::Read;
-    use std::fs::File;
-    use parse::Parser;
-    use eval::Eval;
 
-    let demo_prog = "
+    let demo_prog = r##"
 (1900)  DO STASH .2 + .3
         DO .3 <- #65535
         DO (1903) NEXT
@@ -46,7 +49,7 @@ fn main() {
         PLEASE %50 IGNORE .2
         DO .2 <- #1
         PLEASE REMEMBER .2
-        DO .1 <- !1$.2'~\"#65535$#1\"
+        DO .1 <- !1$.2'~"#65535$#1"
         DO .3 <- .3~#65534
         DO (1902) NEXT
         DO (1903) NEXT
@@ -54,8 +57,8 @@ fn main() {
         DO RETRIEVE .2 + .3
         DO FORGET #1
         PLEASE RESUME #1
-(1904)  PLEASE RESUME '?\"!3~.3'~#1\"$#1'~#3
-";
+(1904)  PLEASE RESUME '?"!3~.3'~#1"$#1'~#3
+"##;
 
     let mut v;
     let argv = args().collect::<Vec<_>>();
@@ -67,12 +70,18 @@ fn main() {
         f.read_to_end(&mut v).unwrap();
     }
 
+    let t0 = time::get_time();
     let program = match Parser::new(&v).parse() {
         Ok(program) => { println!("{}", program); program },
         Err(err)    => { println!("{}", err.to_string()); return },
     };
 
+    let t2 = time::get_time();
     if let Err(err) = Eval::new(program).eval() {
         println!("{}", err.to_string());
     }
+
+    let t3 = time::get_time();
+    println!("parsing:    {}", (t2 - t0));
+    println!("execution:  {}", (t3 - t2));
 }
