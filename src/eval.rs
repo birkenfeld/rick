@@ -25,7 +25,7 @@ use stdops::{ Bind, Array, write_number, read_number, check_chance, check_ovf, p
               get_random_seed, mingle, select, and_16, and_32, or_16, or_32, xor_16, xor_32 };
 
 
-/// Type of an expression.
+/// Represents a value (either 16-bit or 32-bit) at runtime.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Val {
     I16(u16),
@@ -33,7 +33,7 @@ pub enum Val {
 }
 
 impl Val {
-    /// Cast as a 16-bit value; returns an Error if 32-bit and too big.
+    /// Cast as a 16-bit value; returns an error if 32-bit and too big.
     pub fn as_u16(&self) -> Res<u16> {
         match *self {
             Val::I16(v) => Ok(v),
@@ -69,32 +69,48 @@ impl Val {
     }
 }
 
-
+/// The state of the interpreter's evaluator.
 pub struct Eval<'a> {
+    /// Program to execute.
     program: &'a Program,
+    /// Stream to use for printing output.
     stdout: &'a mut Write,
+    /// Whether to print debugging output during execution.
     debug: bool,
+    /// Variable bindings for the four types of variables.
     spot: Vec<Bind<u16>>,
     twospot: Vec<Bind<u32>>,
     tail: Vec<Bind<Array<u16>>>,
     hybrid: Vec<Bind<Array<u32>>>,
+    /// The infamous NEXT stack, capable of holding 80 elements.
     jumps: Vec<ast::LogLine>,
+    /// Abstain counter for each statement.
     abstain: Vec<u32>,
+    /// Binary I/O "tape" state.
     last_in: u8,
     last_out: u8,
+    /// Random number generator state.
     rand_st: u32,
+    /// Counts the number of executed statements.
     stmt_ctr: usize,
 }
 
+/// Represents the control flow effect of an executed statement.
 enum StmtRes {
-    Next,         // normal execution, next statement
-    Jump(usize),  // DO ... NEXT
-    Back(usize),  // RESUME
-    FromTop,      // TRY AGAIN
-    End,          // GIVE UP
+    /// normal execution, next statement
+    Next,
+    /// jump around, from DO ... NEXT
+    Jump(usize),
+    /// jump back, from RESUME
+    Back(usize),
+    /// start from the first statement, from TRY AGAIN
+    FromTop,
+    /// end the program, from GIVE UP
+    End,
 }
 
 impl<'a> Eval<'a> {
+    /// Construct a new evaluator.
     pub fn new(program: &'a Program, stdout: &'a mut Write, debug: bool,
                random: bool) -> Eval<'a> {
         let abs = program.stmts.iter().map(|stmt| stmt.props.disabled as u32).collect();
@@ -119,6 +135,8 @@ impl<'a> Eval<'a> {
         }
     }
 
+    /// Interpret the program.  Returns either the number of executed statements,
+    /// or an error (RtError).
     pub fn eval(&mut self) -> Res<usize> {
         let mut pctr = 0;  // index of current statement
         let program = self.program.clone();
@@ -145,7 +163,7 @@ impl<'a> Eval<'a> {
                         // on error, set the correct line number and bubble up
                         Err(mut err) => {
                             err.set_line(stmt.props.onthewayto);
-                            // special treatment for Next
+                            // special treatment for NEXT
                             if let StmtBody::DoNext(n) = stmt.body {
                                 if let Some(i) = program.labels.get(&n) {
                                     err.set_line(program.stmts[*i as usize].props.srcline);
@@ -155,6 +173,7 @@ impl<'a> Eval<'a> {
                         }
                         Ok(res)  => res
                     };
+                    // handle control flow effects
                     match res {
                         StmtRes::Next    => { }
                         StmtRes::Jump(n) => {
@@ -173,6 +192,7 @@ impl<'a> Eval<'a> {
                     }
                 }
             }
+            // if we are on the line with the compiler bug, error out
             if pctr == self.program.bugline as usize {
                 return IE774.err_with(None, stmt.props.onthewayto);
             }
@@ -202,6 +222,7 @@ impl<'a> Eval<'a> {
                 let next = next as usize;
                 // check for abstained COME FROM
                 if self.abstain[next] == 0 {
+                    // the COME FROM can also have a % chance
                     let (passed, rand_st) = check_chance(program.stmts[next].props.chance,
                                                          self.rand_st);
                     self.rand_st = rand_st;
@@ -217,7 +238,7 @@ impl<'a> Eval<'a> {
         Ok(self.stmt_ctr)
     }
 
-    /// Process a single statement.
+    /// Interpret a single statement.
     fn eval_stmt(&mut self, stmt: &Stmt) -> Res<StmtRes> {
         if self.debug {
             println!("\nExecuting Stmt #{} (state before following)", self.stmt_ctr);
@@ -235,12 +256,11 @@ impl<'a> Eval<'a> {
                 Ok(StmtRes::Next)
             }
             StmtBody::DoNext(n) => {
-                let j = self.jumps.len();
                 match self.program.labels.get(&n) {
                     // too many jumps on stack already?
-                    Some(_) if j >= 80 => IE123.err(),
-                    Some(i)            => Ok(StmtRes::Jump(*i as usize)),
-                    None               => IE129.err(),
+                    Some(_) if self.jumps.len() >= 80 => IE123.err(),
+                    Some(i)                           => Ok(StmtRes::Jump(*i as usize)),
+                    None                              => IE129.err(),
                 }
             }
             StmtBody::ComeFrom(_) => {
@@ -249,6 +269,8 @@ impl<'a> Eval<'a> {
             }
             StmtBody::Resume(ref expr) => {
                 let n = try!(self.eval_expr(expr)).as_u32();
+                // this unwrap() is safe: if the third arg is true, there will
+                // be no Ok(None) returns
                 let next = try!(pop_jumps(&mut self.jumps, n, true, 0)).unwrap();
                 Ok(StmtRes::Back(next as usize))
             }
@@ -302,14 +324,18 @@ impl<'a> Eval<'a> {
             StmtBody::ReadOut(ref vars) => {
                 for var in vars {
                     match *var {
+                        // read out whole array
                         Expr::Var(ref var) if var.is_dim() => {
                             try!(self.array_readout(var));
                         }
+                        // read out single var or array element
                         Expr::Var(ref var) => {
                             let varval = try!(self.lookup(var));
                             write_number(self.stdout, varval.as_u32());
                         }
+                        // read out constant
                         Expr::Num(_, v) => write_number(self.stdout, v),
+                        // others will not be generated
                         _ => unreachable!(),
                     };
                 }
@@ -318,14 +344,17 @@ impl<'a> Eval<'a> {
             StmtBody::WriteIn(ref vars) => {
                 for var in vars {
                     if var.is_dim() {
+                        // write in whole array
                         try!(self.array_writein(var));
                     } else {
+                        // write in single var or array element
                         let n = try!(read_number(0));
                         try!(self.assign(var, Val::from_u32(n)));
                     }
                 }
                 Ok(StmtRes::Next)
             }
+            // this one is only generated by the constant-program optimizer
             StmtBody::Print(ref s) => {
                 write!(self.stdout, "{}", s).unwrap();
                 Ok(StmtRes::Next)
@@ -450,7 +479,6 @@ impl<'a> Eval<'a> {
 
     /// Assign to a variable.
     fn assign(&mut self, var: &Var, val: Val) -> Res<()> {
-        //println!("assign: {:?} = {}", var, val.as_u32());
         match *var {
             Var::I16(n) => Ok(self.spot[n].assign(try!(val.as_u16()))),
             Var::I32(n) => Ok(self.twospot[n].assign(val.as_u32())),
@@ -547,7 +575,7 @@ impl<'a> Eval<'a> {
         }
     }
 
-    /// Debug helper.
+    /// Debug helpers.
     fn dump_state(&self) {
         self.dump_state_one(&self.spot, ".");
         self.dump_state_one(&self.twospot, ":");
