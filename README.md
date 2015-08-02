@@ -12,6 +12,8 @@ binary I/O) is adapted from there, as well as the standard library in
 Also, all the sample code from the `code` directory comes from the C-INTERCAL
 distribution.  See the CATALOG file there for an overview of programs.
 
+The idea of printing Mandelbrot while compiling is taken from PyPy.
+
 ## The interpreter
 
 The INTERCAL interpreter takes a source file, parses it into an AST (abstract

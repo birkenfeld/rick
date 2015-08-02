@@ -22,6 +22,7 @@
 #[allow(plugin_as_library)]
 extern crate rustlex;
 extern crate getopts;
+extern crate rand;
 extern crate time;
 
 mod err;
@@ -33,11 +34,14 @@ mod eval;
 mod codegen;
 mod stdops;
 mod syslib;
+mod mandel;
 
 use std::env::args;
 use std::io::Read;
 use std::fs::{ File, remove_file };
 use std::process::{ Command, Stdio };
+use std::sync::mpsc;
+use std::thread;
 
 use parse::Parser;
 use opt::Optimizer;
@@ -47,7 +51,6 @@ use codegen::Generator;
 
 // XXX introduce E774
 // XXX test suite
-// XXX make user comfortable while rustc is running
 // XXX syntax extensions:
 // - computed come from
 // - computed abstain (line number, #abstentions)
@@ -140,22 +143,9 @@ fn main() {
         let t3 = time::get_time();
         // if wanted, compile to binary
         if rustc_flag {
-            let mut cmd = Command::new("rustc");
-            if rustc_opt_flag {
-                cmd.arg("-O");
-            }
-            cmd.arg("-o").arg(&outname[..outname.len()-3]);
-            cmd.arg(&outname);
-            cmd.stdout(Stdio::inherit()).stderr(Stdio::inherit());
-            match cmd.output() {
-                // remove intermediate .rs file on success
-                Ok(ref s) if s.status.success() => {
-                    let _ = remove_file(outname);
-                },
-                _ => {
-                    print!("{}", err::IE666.new(None, 0).to_string());
-                    return;
-                }
+            if let Err(err) = run_compiler(&outname, rustc_opt_flag) {
+                print!("{}", err.to_string());
+                return;
             }
         }
         let t4 = time::get_time();
@@ -178,4 +168,42 @@ fn main() {
             println!("execute:    {}", (t3 - t2));
         }
     }
+}
+
+fn run_compiler(outname: &str, opt_flag: bool) -> Result<(), err::RtError> {
+    let mut cmd = Command::new("rustc");
+    if opt_flag {
+        cmd.arg("-O");
+    }
+    cmd.arg("-o").arg(&outname[..outname.len()-3]);
+    cmd.arg(&outname);
+    cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
+    let child = match cmd.spawn() {
+        Err(_) => return err::IE666.err(),
+        Ok(ch) => ch,
+    };
+    // make the user comfortable...
+    let (wchan, rchan) = mpsc::channel();
+    let threadhandle = thread::spawn(move || {
+        let mut printer = mandel::MandelPrinter::new();
+        while let Err(mpsc::TryRecvError::Empty) = rchan.try_recv() {
+            printer.print_char();
+            thread::sleep_ms((2 as u32).pow((rand::random::<u8>() / 40) as u32));
+        }
+        println!("");
+    });
+
+    let wait_res = child.wait_with_output();
+    wchan.send(()).unwrap();
+    threadhandle.join().unwrap();
+    let out = match wait_res {
+        Err(_)  => return err::IE666.err(),
+        Ok(out) => out,
+    };
+    print!("{}", String::from_utf8_lossy(&out.stderr));
+    if !out.status.success() {
+        return err::IE666.err();
+    }
+    let _ = remove_file(outname);
+    Ok(())
 }

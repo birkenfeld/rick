@@ -6,6 +6,7 @@ authors = ["Georg Brandl <georg@python.org>"]
 [dependencies]
 rustlex = "*"
 getopts = "*"
+rand = "*"
 time = "*"
 
 [dependencies.rick_syntex]
