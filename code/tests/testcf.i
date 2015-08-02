@@ -1,0 +1,22 @@
+	DO COME FROM (80)
+	PLEASE %50 REINSTATE (10)
+        DO .1 <- #1
+(10)    DO NOT %99 .1 <- #2
+        DO .1 <- #3
+	PLEASE COME FROM (10)
+        DO READ OUT .1
+        DO .1 <- #1
+(20)    DO %50 .1 <- #2
+        DO .1 <- #3
+(30)	PLEASE %50 COME FROM (20)
+	DO LOSE
+	PLEASE %90 COME FROM (30)
+(40)	PLEASE ABSTAIN FROM (50)
+        DO READ OUT .1
+(50)	PLEASE COME FROM (40)
+(60)	DO (70) NEXT
+        DO GIVE UP
+(70)	DO READ OUT #65535
+	DO RESUME #1
+	DO WIN
+(80)	DO COME FROM (60)

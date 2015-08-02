@@ -14,6 +14,19 @@ distribution.  See the CATALOG file there for an overview of programs.
 
 The idea of printing Mandelbrot while compiling is taken from PyPy.
 
+## Language
+
+A comprehensive INTERCAL resource page can be found at the C-INTERCAL page,
+http://catb.org/esr/intercal/.
+
+Rick implements the base INTERCAL-72 language with the following extensions:
+
+* `COME FROM`
+* Computed `COME FROM`
+* `TRY AGAIN`
+* Computed `ABSTAIN`
+* Binary array I/O
+
 ## The interpreter
 
 The INTERCAL interpreter takes a source file, parses it into an AST (abstract
@@ -33,6 +46,12 @@ to Rust code is the syntax extension living in `rick_syntex`.  It contains an
 attribute that will embed the decorated module's code as a string into the
 module at compile time.  This is then written to the generated Rust files while
 translating.
+
+## Running
+
+Run `cargo build` as usual.  Then you can run `cargo run -- --help` to see the
+available options for the compiler.  Basic usage is `cargo run -- input.i` to
+generate an executable and `cargo run -- -i input.i` to interpret.
 
 ## Testing
 
