@@ -393,47 +393,32 @@ impl Generator {
                 try!(self.gen_eval(vx, ""));
                 w!(self.o; "){}", astype);
             }
-            Expr::RsAnd(ref vx, ref wx) => {
-                w!(self.o; "(");
-                try!(self.gen_eval(vx, ""));
-                w!(self.o; " & ");
-                try!(self.gen_eval(wx, ""));
-                w!(self.o; "){}", astype);
-            }
-            Expr::RsOr(ref vx, ref wx) => {
-                w!(self.o; "(");
-                try!(self.gen_eval(vx, ""));
-                w!(self.o; " | ");
-                try!(self.gen_eval(wx, ""));
-                w!(self.o; "){}", astype);
-            }
-            Expr::RsXor(ref vx, ref wx) => {
-                w!(self.o; "(");
-                try!(self.gen_eval(vx, ""));
-                w!(self.o; " ^ ");
-                try!(self.gen_eval(wx, ""));
-                w!(self.o; "){}", astype);
-            }
             Expr::RsNot(ref vx) => {
                 w!(self.o; "(!");
                 try!(self.gen_eval(vx, ""));
                 w!(self.o; "){}", astype);
             }
-            Expr::RsRshift(ref vx, ref wx) => {
-                w!(self.o; "(");
-                try!(self.gen_eval(vx, ""));
-                w!(self.o; " >> ");
-                try!(self.gen_eval(wx, ""));
-                w!(self.o; "){}", astype);
-            }
-            Expr::RsLshift(ref vx, ref wx) => {
-                w!(self.o; "(");
-                try!(self.gen_eval(vx, ""));
-                w!(self.o; " << ");
-                try!(self.gen_eval(wx, ""));
-                w!(self.o; "){}", astype);
-            }
+            Expr::RsAnd(ref vx, ref wx) => try!(self.gen_binop(vx, wx, "&", astype)),
+            Expr::RsOr(ref vx, ref wx) => try!(self.gen_binop(vx, wx, "|", astype)),
+            Expr::RsXor(ref vx, ref wx) => try!(self.gen_binop(vx, wx, "^", astype)),
+            Expr::RsRshift(ref vx, ref wx) => try!(self.gen_binop(vx, wx, ">>", astype)),
+            Expr::RsLshift(ref vx, ref wx) => try!(self.gen_binop(vx, wx, "<<", astype)),
+            Expr::RsEqual(ref vx, ref wx) => try!(self.gen_binop(
+                vx, wx, "==", if astype == "" { " as u32" } else { astype })),
+            Expr::RsNotEqual(ref vx, ref wx) => try!(self.gen_binop(
+                vx, wx, "!=", if astype == "" { " as u32" } else { astype })),
+            Expr::RsPlus(ref vx, ref wx) => try!(self.gen_binop(vx, wx, "+", astype)),
+            Expr::RsMinus(ref vx, ref wx) => try!(self.gen_binop(vx, wx, "-", astype)),
         }
+        Ok(())
+    }
+
+    fn gen_binop(&mut self, vx: &Expr, wx: &Expr, op: &str, astype: &str) -> WRes {
+        w!(self.o; "(");
+        try!(self.gen_eval(vx, ""));
+        w!(self.o; " {} ", op);
+        try!(self.gen_eval(wx, ""));
+        w!(self.o; "){}", astype);
         Ok(())
     }
 
@@ -527,7 +512,7 @@ impl Generator {
         self.write("
 use stdops::*;
 
-#[allow(unused_mut, unused_variables, unreachable_code)]
+#[allow(unused_mut, unused_parens, unused_variables, unreachable_code)]
 fn main_inner() -> err::Res<()> {
     seed_chance();")
     }

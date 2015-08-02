@@ -97,24 +97,19 @@ pub enum Expr {
     Or(VType, Box<Expr>),
     Xor(VType, Box<Expr>),
     // only used after optimizing
+    RsNot(Box<Expr>),
     RsAnd(Box<Expr>, Box<Expr>),
     RsOr(Box<Expr>, Box<Expr>),
     RsXor(Box<Expr>, Box<Expr>),
-    RsNot(Box<Expr>),
     RsRshift(Box<Expr>, Box<Expr>),
     RsLshift(Box<Expr>, Box<Expr>),
-    // RsPlus(Box<Expr>, Box<Expr>),
-    // RsMinus(Box<Expr>, Box<Expr>),
+    RsEqual(Box<Expr>, Box<Expr>),
+    RsNotEqual(Box<Expr>, Box<Expr>),
+    RsPlus(Box<Expr>, Box<Expr>),
+    RsMinus(Box<Expr>, Box<Expr>),
     // RsTimes(Box<Expr>, Box<Expr>),
     // RsDivide(Box<Expr>, Box<Expr>),
     // RsModulus(Box<Expr>, Box<Expr>),
-    // RsEqual(Box<Expr>, Box<Expr>),
-    // RsNotequal(Box<Expr>, Box<Expr>),
-    // RsGreater(Box<Expr>, Box<Expr>),
-    // RsLess(Box<Expr>, Box<Expr>),
-    // RsLogand(Box<Expr>, Box<Expr>),
-    // RsLogor(Box<Expr>, Box<Expr>),
-    // RsLognot(Box<Expr>),
 }
 
 /// Type of an expression.
@@ -201,7 +196,9 @@ impl Expr {
             Expr::And(vtype, _) | Expr::Or(vtype, _) | Expr::Xor(vtype, _) => vtype,
             Expr::Select(..) | Expr::Mingle(..) => VType::I32,
             Expr::RsAnd(..) | Expr::RsOr(..) | Expr::RsXor(..) |
-            Expr::RsNot(..) | Expr::RsRshift(..) | Expr::RsLshift(..) => VType::I32,
+            Expr::RsNot(..) | Expr::RsRshift(..) | Expr::RsLshift(..) |
+            Expr::RsEqual(..) | Expr::RsNotEqual(..) | Expr::RsMinus(..) |
+            Expr::RsPlus(..) => VType::I32,
             Expr::Var(ref v) => v.get_vtype(),
         }
     }
@@ -351,23 +348,24 @@ impl Display for Var {
 impl Display for Expr {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         match *self {
-            Expr::Num(vtype, ref n) => match vtype {
-                VType::I16 => write!(fmt, "#{}", n),
-                VType::I32 => write!(fmt, "##{}", n),
-            },
+            Expr::Num(_, ref n) => write!(fmt, "#{:X}", n),
             Expr::Var(ref v) => v.fmt(fmt),
-            Expr::Mingle(ref x, ref y) => write!(fmt, "({})$({})", x, y),
-            Expr::Select(ref x, ref y) => write!(fmt, "({})~({})", x, y),
-            Expr::And(_, ref x) => write!(fmt, "&({})", x),
-            Expr::Or(_, ref x) => write!(fmt, "V({})", x),
-            Expr::Xor(_, ref x) => write!(fmt, "?({})", x),
+            Expr::Mingle(ref x, ref y) => write!(fmt, "({} $ {})", x, y),
+            Expr::Select(ref x, ref y) => write!(fmt, "({} ~ {})", x, y),
+            Expr::And(_, ref x) => write!(fmt, "&{}", x),
+            Expr::Or(_, ref x) => write!(fmt, "V{}", x),
+            Expr::Xor(_, ref x) => write!(fmt, "?{}", x),
             // optimized exprs
-            Expr::RsAnd(ref x, ref y) => write!(fmt, "({}).&.({})", x, y),
-            Expr::RsOr(ref x, ref y) => write!(fmt, "({}).|.({})", x, y),
-            Expr::RsXor(ref x, ref y) => write!(fmt, "({}).^.({})", x, y),
-            Expr::RsNot(ref x) => write!(fmt, "~.({})", x),
-            Expr::RsRshift(ref x, ref y) => write!(fmt, "({}).>>.({})", x, y),
-            Expr::RsLshift(ref x, ref y) => write!(fmt, "({}).<<.({})", x, y),
+            Expr::RsNot(ref x) => write!(fmt, "!{}", x),
+            Expr::RsAnd(ref x, ref y) => write!(fmt, "({} & {})", x, y),
+            Expr::RsOr(ref x, ref y) => write!(fmt, "({} | {})", x, y),
+            Expr::RsXor(ref x, ref y) => write!(fmt, "({} ^ {})", x, y),
+            Expr::RsRshift(ref x, ref y) => write!(fmt, "({} >> {})", x, y),
+            Expr::RsLshift(ref x, ref y) => write!(fmt, "({} << {})", x, y),
+            Expr::RsEqual(ref x, ref y) => write!(fmt, "({} == {})", x, y),
+            Expr::RsNotEqual(ref x, ref y) => write!(fmt, "({} != {})", x, y),
+            Expr::RsPlus(ref x, ref y) => write!(fmt, "({} + {})", x, y),
+            Expr::RsMinus(ref x, ref y) => write!(fmt, "({} - {})", x, y),
         }
     }
 }

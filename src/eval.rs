@@ -314,6 +314,10 @@ impl<'a> Eval<'a> {
                     Val::I32(v) => Ok(Val::I32(xor_32(v))),
                 }
             }
+            Expr::RsNot(ref vx) => {
+                let v = try!(self.eval_expr(vx));
+                Ok(Val::I32(!v.as_u32()))
+            }
             Expr::RsAnd(ref vx, ref wx) => {
                 let v = try!(self.eval_expr(vx));
                 let w = try!(self.eval_expr(wx));
@@ -329,10 +333,6 @@ impl<'a> Eval<'a> {
                 let w = try!(self.eval_expr(wx));
                 Ok(Val::I32(v.as_u32() ^ w.as_u32()))
             }
-            Expr::RsNot(ref vx) => {
-                let v = try!(self.eval_expr(vx));
-                Ok(Val::I32(!v.as_u32()))
-            }
             Expr::RsRshift(ref vx, ref wx) => {
                 let v = try!(self.eval_expr(vx));
                 let w = try!(self.eval_expr(wx));
@@ -342,6 +342,26 @@ impl<'a> Eval<'a> {
                 let v = try!(self.eval_expr(vx));
                 let w = try!(self.eval_expr(wx));
                 Ok(Val::I32(v.as_u32() << w.as_u32()))
+            }
+            Expr::RsEqual(ref vx, ref wx) => {
+                let v = try!(self.eval_expr(vx));
+                let w = try!(self.eval_expr(wx));
+                Ok(Val::I32((v.as_u32() == w.as_u32()) as u32))
+            }
+            Expr::RsNotEqual(ref vx, ref wx) => {
+                let v = try!(self.eval_expr(vx));
+                let w = try!(self.eval_expr(wx));
+                Ok(Val::I32((v.as_u32() != w.as_u32()) as u32))
+            }
+            Expr::RsPlus(ref vx, ref wx) => {
+                let v = try!(self.eval_expr(vx));
+                let w = try!(self.eval_expr(wx));
+                Ok(Val::I32(v.as_u32() + w.as_u32()))
+            }
+            Expr::RsMinus(ref vx, ref wx) => {
+                let v = try!(self.eval_expr(vx));
+                let w = try!(self.eval_expr(wx));
+                Ok(Val::I32(v.as_u32() - w.as_u32()))
             }
         }
     }
