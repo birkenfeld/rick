@@ -15,7 +15,7 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
-#![rick_embed_module_code]
+stringify_passthrough! {
 
 /// Provides runtime errors.
 ///
@@ -329,3 +329,6 @@ pub static IE998: ErrDesc = ErrDesc {
     msg: "EXCUSE ME",
     way: Some("YOU MUST HAVE ME CONFUSED WITH SOME OTHER COMPILER"),
 };
+
+}
+

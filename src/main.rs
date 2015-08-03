@@ -17,7 +17,6 @@
 
 #![feature(plugin, box_syntax, box_patterns, append, result_expect)]
 #![plugin(rustlex)]
-#![plugin(rick_syntex)]
 
 /// Main program for Rick.
 ///
@@ -28,6 +27,13 @@ extern crate rustlex;
 extern crate getopts;
 extern crate rand;
 extern crate time;
+
+macro_rules! stringify_passthrough {
+    ($($t:item)*) => {
+        pub const MODULE_CODE_STR: &'static str = stringify!($($t)*);
+        $($t)*
+    }
+}
 
 mod err;
 mod lex;
