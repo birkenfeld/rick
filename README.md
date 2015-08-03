@@ -64,9 +64,8 @@ on any input.
 ## Testing
 
 The test suite consists of input and output files for the demo programs in
-`code`.  Run `python test.py` to run the test suite.  Run `python test.py
---compiled` to also test compiled code, note however that this takes a while.
-Use the `--short` flag to skip the most time consuming tests.
+`code`.  Run `python test.py` to run the test suite.  Use the `--all` flag to
+also run the most time consuming tests, which will take about 10 minutes.
 
 ## Hacking
 

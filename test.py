@@ -70,8 +70,8 @@ def run_test(testname, testcode, compiled):
 
 def main():
     start = time.time()
-    long_flag = '--compiled' in sys.argv
-    short_flag = '--short' in sys.argv
+    compile_flag = '--nocompile' not in sys.argv
+    skip_flag = '--all' not in sys.argv
     tests = [path.splitext(test.replace('/', os.sep))[0]
              for test in sys.argv[1:] if not test.startswith('-')]
     print('Building...')
@@ -86,7 +86,7 @@ def main():
         for fn in sorted(files):
             if not fn.endswith('.chk'):
                 continue
-            if short_flag and fn.startswith(('fft-', 'flonck', 'unlambda')):
+            if skip_flag and fn.startswith(('fft-', 'flonck', 'unlambda')):
                 continue
             testname = path.join(root, fn)[:-4]
             if tests and testname not in tests:
@@ -104,7 +104,7 @@ def main():
             total += 1
             try:
                 t1 = time.time()
-                run_test(testname, testcode, long_flag)
+                run_test(testname, testcode, compile_flag)
                 t2 = time.time()
                 passed += 1
                 print('--- passed  (%5.2f sec)' % (t2 - t1))
