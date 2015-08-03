@@ -1,8 +1,0 @@
-[package]
-name = "rick_syntex"
-version = "0.1.0"
-authors = ["Georg Brandl <georg@python.org>"]
-
-[lib]
-name = "rick_syntex"
-plugin = true

@@ -17,7 +17,6 @@
 
 #![feature(plugin, box_syntax, box_patterns, append, result_expect)]
 #![plugin(rustlex)]
-#![plugin(rick_syntex)]
 
 /// Main program for Rick.
 ///

@@ -15,13 +15,10 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
-#![rick_embed_module_code]
-
 /// Runtime support for INTERCAL compiler and interpreter.
 ///
 /// This file provides code that is useful in the interpreter and in the compiled
-/// program.  The syntax extension called above embeds the module source into the
-/// module for use by the code generator.
+/// program.
 ///
 /// The basic things implemented here are:
 ///

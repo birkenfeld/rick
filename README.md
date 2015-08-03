@@ -46,12 +46,6 @@ performance (when compiled with `-O`), while being safe Rust code.
 
 Rick itself uses nightly Rust features, but the generated code is stable-only.
 
-One trick used for sharing code between the interpreter and programs translated
-to Rust code is the syntax extension living in `rick_syntex`.  It contains an
-attribute that will embed the decorated module's code as a string into the
-module at compile time.  This is then written to the generated Rust files while
-translating.
-
 ## Running
 
 Do `cargo build` as usual.  Then you can `cargo run -- --help` to see the

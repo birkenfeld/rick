@@ -26,10 +26,6 @@
 /// big switch over the current logical line (pctr is the "program counter").  This
 /// function is called from main(), which does not much else.
 ///
-/// The code for the modules err.rs and stdops.rs are included in the generated code
-/// courtesy of the syntax extension, and provide runtime support (that is hopefully
-/// inlined in all the right places by the Rust/LLVM optimizer).
-///
 /// A lot of the generated code is similar to what eval.rs does at runtime, but most
 /// of the common code lives in stdops.rs.
 
@@ -42,8 +38,8 @@ use ast::{ Program, Stmt, StmtBody, Expr, Var, VType, Abstain, ComeFrom };
 use err::{ Res, IE129, IE533, IE994 };
 use lex::SrcLine;
 
-use err::MODULE_CODE_STR as ERR_MOD_STR;
-use stdops::MODULE_CODE_STR as STDOPS_MOD_STR;
+const STDOPS_MOD_STR: &'static str = include_str!("stdops.rs");
+const ERR_MOD_STR:    &'static str = include_str!("err.rs");
 
 
 type WRes = Res<()>;  // write result, always unit
@@ -117,8 +113,8 @@ impl Generator {
     }
 
     fn gen_stdmods(&mut self) -> WRes {
-        w!(self.o; "#[allow(dead_code)]\n{}\n\n", ERR_MOD_STR);
-        w!(self.o; "#[allow(dead_code)]\n{}\n\n", STDOPS_MOD_STR);
+        w!(self.o; "#[allow(dead_code)]\nmod err{{\n{}\n}}\n\n", ERR_MOD_STR);
+        w!(self.o; "#[allow(dead_code)]\nmod stdops{{\n{}\n}}\n\n", STDOPS_MOD_STR);
         Ok(())
     }
 
