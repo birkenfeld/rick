@@ -784,8 +784,9 @@ impl<'p> Parser<'p> {
             stmt.comefrom = comefroms.remove(&i);
         }
         // select a line for the compiler bug
-        let bugline = if self.allow_bug {
-            rand::thread_rng().gen_range(0, stmts.len())
+        let mut rng = rand::thread_rng();
+        let bugline = if self.allow_bug && rng.gen_range(0, 10) == 0 {
+            rng.gen_range(0, stmts.len())
         } else {
             stmts.len()  // can never be reached
         } as u16;
