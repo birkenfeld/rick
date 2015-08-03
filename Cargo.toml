@@ -8,8 +8,5 @@ getopts = "*"
 rand = "*"
 time = "*"
 
-[dependencies.rick_syntex]
-path = "rick_syntex"
-
 [dependencies.rustlex]
 git = "http://github.com/birkenfeld/rustlex"

@@ -15,7 +15,7 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
-#![rick_embed_module_code]
+stringify_passthrough! {
 
 /// Runtime support for INTERCAL compiler and interpreter.
 ///
@@ -517,3 +517,6 @@ impl LikeU16 for u32 {
     fn from_u16(x: u16) -> u32 { x as u32 }
     fn to_u16(self) -> u16 { self as u16 }
 }
+
+}
+
