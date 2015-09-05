@@ -214,9 +214,9 @@ impl<'p> Parser<'p> {
         } else if self.take(TT::READOUT) {
             Ok(StmtBody::ReadOut(try!(self.parse_readlist())))
         } else if self.take(TT::TRYAGAIN) {
-            return Ok(StmtBody::TryAgain)
+            Ok(StmtBody::TryAgain)
         } else if self.take(TT::GIVEUP) {
-            return Ok(StmtBody::GiveUp)
+            Ok(StmtBody::GiveUp)
         } else {
             Err(self.invalid())
         }
@@ -261,7 +261,7 @@ impl<'p> Parser<'p> {
             };
             return Ok(Some(Var::A32(val as usize, subs)));
         }
-        return Ok(None);
+        Ok(None)
     }
 
     /// Require a variable reference.
@@ -358,7 +358,7 @@ impl<'p> Parser<'p> {
             let subs = try!(self.parse_subs());
             return Ok(Some(constr(Expr::Var(Var::A32(val as usize, subs)))));
         }
-        return Ok(None);
+        Ok(None)
     }
 
     /// Parse an ABSTAIN statement.
@@ -442,7 +442,7 @@ impl<'p> Parser<'p> {
             let right = try!(self.parse_expr2());
             return Ok(Expr::Select(right.get_vtype(), box left, box right));
         }
-        return Ok(left);
+        Ok(left)
     }
 
     fn parse_expr2(&mut self) -> ParseRes<Expr> {

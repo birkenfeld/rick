@@ -101,7 +101,7 @@ pub struct Eval<'a> {
 }
 
 /// Represents the control flow effect of an executed statement.
-enum StmtRes {
+enum Flow {
     /// normal execution, next statement
     Next,
     /// jump around, from DO ... NEXT
@@ -180,20 +180,20 @@ impl<'a> Eval<'a> {
                     };
                     // handle control flow effects
                     match res {
-                        StmtRes::Next    => { }
-                        StmtRes::Jump(n) => {
+                        Flow::Next    => { }
+                        Flow::Jump(n) => {
                             self.jumps.push(pctr as u16);  // push the line with the NEXT
                             pctr = n;
                             continue;  // do not increment or check for COME FROMs
                         }
-                        StmtRes::Back(n) => {
+                        Flow::Back(n) => {
                             pctr = n;  // will be incremented below after COME FROM check
                         }
-                        StmtRes::FromTop => {
+                        Flow::FromTop => {
                             pctr = 0;  // start from the beginning, do not push any stack
                             continue;
                         }
-                        StmtRes::End     => break,
+                        Flow::End     => break,
                     }
                 }
             }
@@ -244,7 +244,7 @@ impl<'a> Eval<'a> {
     }
 
     /// Interpret a single statement.
-    fn eval_stmt(&mut self, stmt: &Stmt) -> Res<StmtRes> {
+    fn eval_stmt(&mut self, stmt: &Stmt) -> Res<Flow> {
         if self.debug {
             println!("\nExecuting Stmt #{} (state before following)", self.stmt_ctr);
             self.dump_state();
@@ -254,23 +254,23 @@ impl<'a> Eval<'a> {
             StmtBody::Calc(ref var, ref expr) => {
                 let val = try!(self.eval_expr(expr));
                 try!(self.assign(var, val));
-                Ok(StmtRes::Next)
+                Ok(Flow::Next)
             }
             StmtBody::Dim(ref var, ref exprs) => {
                 try!(self.array_dim(var, exprs));
-                Ok(StmtRes::Next)
+                Ok(Flow::Next)
             }
             StmtBody::DoNext(n) => {
                 match self.program.labels.get(&n) {
                     // too many jumps on stack already?
                     Some(_) if self.jumps.len() >= 80 => IE123.err(),
-                    Some(i)                           => Ok(StmtRes::Jump(*i as usize)),
+                    Some(i)                           => Ok(Flow::Jump(*i as usize)),
                     None                              => IE129.err(),
                 }
             }
             StmtBody::ComeFrom(_) => {
                 // nothing to do here at runtime
-                Ok(StmtRes::Next)
+                Ok(Flow::Next)
             }
             StmtBody::Resume(ref expr) => {
                 let n = try!(self.eval_expr(expr)).as_u32();
@@ -278,36 +278,36 @@ impl<'a> Eval<'a> {
                 // be no Ok(None) returns
                 let next = try!(pop_jumps(&mut self.jumps, n, true, 0))
                     .expect("https://xkcd.com/378/ ?!");
-                Ok(StmtRes::Back(next as usize))
+                Ok(Flow::Back(next as usize))
             }
             StmtBody::Forget(ref expr) => {
                 let n = try!(self.eval_expr(expr)).as_u32();
                 try!(pop_jumps(&mut self.jumps, n, false, 0));
-                Ok(StmtRes::Next)
+                Ok(Flow::Next)
             }
             StmtBody::Ignore(ref vars) => {
                 for var in vars {
                     self.set_rw(var, false);
                 }
-                Ok(StmtRes::Next)
+                Ok(Flow::Next)
             }
             StmtBody::Remember(ref vars) => {
                 for var in vars {
                     self.set_rw(var, true);
                 }
-                Ok(StmtRes::Next)
+                Ok(Flow::Next)
             }
             StmtBody::Stash(ref vars) => {
                 for var in vars {
                     self.stash(var);
                 }
-                Ok(StmtRes::Next)
+                Ok(Flow::Next)
             }
             StmtBody::Retrieve(ref vars) => {
                 for var in vars {
                     try!(self.retrieve(var));
                 }
-                Ok(StmtRes::Next)
+                Ok(Flow::Next)
             }
             StmtBody::Abstain(ref expr, ref whats) => {
                 let f: Box<Fn(u32) -> u32> = if let Some(ref e) = *expr {
@@ -319,13 +319,13 @@ impl<'a> Eval<'a> {
                 for what in whats {
                     self.abstain(what, &*f);
                 }
-                Ok(StmtRes::Next)
+                Ok(Flow::Next)
             }
             StmtBody::Reinstate(ref whats) => {
                 for what in whats {
                     self.abstain(what, &|v: u32| v.saturating_sub(1));
                 }
-                Ok(StmtRes::Next)
+                Ok(Flow::Next)
             }
             StmtBody::ReadOut(ref vars) => {
                 for var in vars {
@@ -345,7 +345,7 @@ impl<'a> Eval<'a> {
                         _ => return IE994.err(),
                     };
                 }
-                Ok(StmtRes::Next)
+                Ok(Flow::Next)
             }
             StmtBody::WriteIn(ref vars) => {
                 for var in vars {
@@ -358,17 +358,17 @@ impl<'a> Eval<'a> {
                         try!(self.assign(var, Val::from_u32(n)));
                     }
                 }
-                Ok(StmtRes::Next)
+                Ok(Flow::Next)
             }
             // this one is only generated by the constant-program optimizer
             StmtBody::Print(ref s) => {
                 if let Err(_) = self.stdout.write(&s) {
                     return IE252.err();
                 }
-                Ok(StmtRes::Next)
+                Ok(Flow::Next)
             }
-            StmtBody::TryAgain => Ok(StmtRes::FromTop),
-            StmtBody::GiveUp => Ok(StmtRes::End),
+            StmtBody::TryAgain => Ok(Flow::FromTop),
+            StmtBody::GiveUp => Ok(Flow::End),
             StmtBody::Error(ref e) => Err((*e).clone()),
         }
     }
@@ -481,7 +481,7 @@ impl<'a> Eval<'a> {
         match *var {
             Var::A16(n, _) => self.tail[n].dimension(dims, 0),
             Var::A32(n, _) => self.hybrid[n].dimension(dims, 0),
-            _ => return IE994.err(),
+            _ => IE994.err()
         }
     }
 
@@ -569,7 +569,7 @@ impl<'a> Eval<'a> {
         match *var {
             Var::A16(n, _) => self.tail[n].readout(self.stdout, state, 0),
             Var::A32(n, _) => self.hybrid[n].readout(self.stdout, state, 0),
-            _ => return IE994.err(),
+            _ => IE994.err()
         }
     }
 
@@ -579,7 +579,7 @@ impl<'a> Eval<'a> {
         match *var {
             Var::A16(n, _) => self.tail[n].writein(state, 0),
             Var::A32(n, _) => self.hybrid[n].writein(state, 0),
-            _ => return IE994.err(),
+            _ => IE994.err()
         }
     }
 
@@ -589,14 +589,14 @@ impl<'a> Eval<'a> {
         self.dump_state_one(&self.twospot, ":");
         self.dump_state_one(&self.tail, ",");
         self.dump_state_one(&self.hybrid, ";");
-        if self.jumps.len() > 0 {
+        if !self.jumps.is_empty() {
             println!("Next stack: {:?}", self.jumps);
         }
         //println!("Abstained: {:?}", self.abstain);
     }
 
     fn dump_state_one<T: Debug + Display>(&self, vec: &Vec<Bind<T>>, sigil: &str) {
-        if vec.len() > 0 {
+        if !vec.is_empty() {
             for (i, v) in vec.iter().enumerate() {
                 print!("{}{} = {}, ", sigil, i, v);
             }

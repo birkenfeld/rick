@@ -177,7 +177,7 @@ impl<T: LikeU16 + Default> Bind<Array<T>> {
             return IE241.err_with(None, line);
         }
         let mut res = Vec::with_capacity(self.val.elems.len());
-        for val in self.val.elems.iter() {
+        for val in &self.val.elems {
             let byte = ((*state as i16 - val.to_u16() as i16) as u16 % 256) as u8;
             let mut c = byte;
             *state = byte as u8;
@@ -194,7 +194,7 @@ impl<T: LikeU16 + Default> Bind<Array<T>> {
             // only dimension-1 arrays can be input
             return IE241.err_with(None, line);
         }
-        for place in self.val.elems.iter_mut() {
+        for place in &mut self.val.elems {
             let byte = read_byte();
             let c = if byte == 256 {
                 *state = 0;
@@ -218,7 +218,7 @@ impl<T: Debug + Display> Display for Bind<T> {
         if !self.rw {
             try!(write!(fmt, " RO"));
         }
-        if self.stack.len() > 0 {
+        if !self.stack.is_empty() {
             try!(write!(fmt, " STACK={:?}", self.stack));
         }
         Ok(())
