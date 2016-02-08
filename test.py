@@ -39,6 +39,8 @@ def run_test(testname, testcode, compiled):
         if remove_cargo:
             real_stdout = real_stdout[real_stdout.index('\n') + 1:]
             errindex = real_stdout.find('An unknown error occurred')
+            if errindex == -1:
+                errindex = real_stdout.find('Process didn\'t exit successfully')
             if errindex > -1:
                 real_stdout = real_stdout[:errindex]
         if real_stdout != stdout:

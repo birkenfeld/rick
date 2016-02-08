@@ -15,7 +15,7 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
-#![feature(plugin, box_syntax, box_patterns, append, result_expect)]
+#![feature(plugin, box_syntax, box_patterns)]
 #![plugin(rustlex)]
 
 /// Main program for Rick.
@@ -45,6 +45,7 @@ use std::fs::{ File, remove_file };
 use std::process::{ Command, Stdio, exit };
 use std::sync::mpsc;
 use std::thread;
+use std::time::Duration;
 
 use parse::Parser;
 use opt::Optimizer;
@@ -203,7 +204,8 @@ fn run_compiler(outname: &str, opt_flag: bool) -> Result<(), err::RtError> {
         let mut printer = mandel::MandelPrinter::new();
         while let Err(mpsc::TryRecvError::Empty) = rchan.try_recv() {
             printer.print_char(true);
-            thread::sleep_ms((2 as u32).pow((rand::random::<u8>() / 40) as u32));
+            thread::sleep(Duration::from_millis(
+                (2u64).pow((rand::random::<u8>() / 40) as u32)));
         }
         printer.finish_current();
     });

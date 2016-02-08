@@ -42,7 +42,7 @@ const STDOPS_MOD_STR: &'static str = include_str!("stdops.rs");
 const ERR_MOD_STR:    &'static str = include_str!("err.rs");
 
 
-type WRes = Res<()>;  // write result, always unit
+pub type WRes = Res<()>;  // write result, always unit
 
 pub struct Generator {
     program: Rc<Program>,
