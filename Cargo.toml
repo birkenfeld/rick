@@ -7,6 +7,4 @@ authors = ["Georg Brandl <georg@python.org>"]
 getopts = "*"
 rand = "*"
 time = "*"
-
-[dependencies.rustlex]
-git = "http://github.com/birkenfeld/rustlex"
+rustlex = "*"
