@@ -1,7 +1,7 @@
 # -------------------------------------------------------------------------------------------------
 # Rick, a Rust intercal compiler.  Save your souls!
 #
-# Copyright (c) 2015 Georg Brandl
+# Copyright (c) 2015-2016 Georg Brandl
 #
 # This program is free software; you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation; either version 2 of the
@@ -37,10 +37,9 @@ def run_test(testname, testcode, compiled):
         real_stdout, _ = proc.communicate(stdin)
         # remove cargo's "Running" line
         if remove_cargo:
-            real_stdout = real_stdout[real_stdout.index('\n') + 1:]
             errindex = real_stdout.find('An unknown error occurred')
             if errindex == -1:
-                errindex = real_stdout.find('Process didn\'t exit successfully')
+                errindex = real_stdout.find('error: Process didn\'t exit successfully')
             if errindex > -1:
                 real_stdout = real_stdout[:errindex]
         if real_stdout != stdout:
@@ -52,17 +51,17 @@ def run_test(testname, testcode, compiled):
     print('')
     print('>>> Test: ' + testname)
     print('  > Step 1: interpreted')
-    check(Popen(['cargo', 'run', '--', '-Rbi', testcode],
+    check(Popen(['cargo', 'run', '-q', '--', '-Rbi', testcode],
                 stdin=PIPE, stdout=PIPE, stderr=STDOUT), True)
 
     print('  > Step 2: interpreted + optimized')
-    check(Popen(['cargo', 'run', '--', '-Rbio', testcode],
+    check(Popen(['cargo', 'run', '-q', '--', '-Rbio', testcode],
                 stdin=PIPE, stdout=PIPE, stderr=STDOUT), True)
 
     if compiled:
         print('  > Step 3: compiled + optimized')
         if testcode not in already_compiled:
-            if os.system('cargo run -- -RFbo %s > /dev/null' % testcode) != 0:
+            if os.system('cargo run -q -- -RFbo %s > /dev/null' % testcode) != 0:
                 print('*** ERROR: compilation failed')
                 raise RuntimeError
             already_compiled.add(testcode)
