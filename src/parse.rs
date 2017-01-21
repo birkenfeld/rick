@@ -24,17 +24,17 @@
 /// There are quite a few steps to do after parsing, which are done in the method
 /// called `post_process`.  It makes a list of statements into a "real" program.
 
-use std::collections::{ BTreeMap, HashMap };
-use std::io::{ Read, BufRead, BufReader, Cursor };
+use std::collections::{BTreeMap, HashMap};
+use std::io::{Read, BufRead, BufReader, Cursor};
 use std::u16;
 use std::str;
 
-use rand::{ self, Rng };
+use rand::{self, Rng};
 
-use ast::{ self, Program, Stmt, StmtBody, StmtProps, Expr, Abstain, ComeFrom, Var, VType, VarInfo };
-use err::{ Res, RtError, ErrDesc, IE000, IE017, IE079, IE099, IE139, IE182, IE197, IE200,
-           IE444, IE555, IE993 };
-use lex::{ SrcLine, SrcToken, Rule, Lexer, lex };
+use ast::{self, Program, Stmt, StmtBody, StmtProps, Expr, Abstain, ComeFrom, Var, VType, VarInfo};
+use err::{Res, RtError, ErrDesc, IE000, IE017, IE079, IE099, IE139, IE182, IE197, IE200,
+          IE444, IE555, IE993};
+use lex::{SrcLine, SrcToken, Rule, Lexer, lex};
 use syslib;
 
 

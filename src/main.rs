@@ -41,9 +41,9 @@ mod syslib;
 mod mandel;
 
 use std::env::args;
-use std::io::{ Read, Write, stdout, stderr };
-use std::fs::{ File, remove_file };
-use std::process::{ Command, Stdio, exit };
+use std::io::{Read, Write, stdout, stderr};
+use std::fs::{File, remove_file};
+use std::process::{Command, Stdio, exit};
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;

@@ -21,7 +21,7 @@
 
 use std::collections::BTreeMap;
 use std::default::Default;
-use std::fmt::{ Display, Error, Formatter };
+use std::fmt::{Display, Error, Formatter};
 
 use err::RtError;
 use lex::SrcLine;

@@ -30,12 +30,12 @@
 /// of the common code lives in stdops.rs.
 
 use std::fs::File;
-use std::io::{ BufWriter, Write };
+use std::io::{BufWriter, Write};
 use std::rc::Rc;
 use std::u16;
 
-use ast::{ Program, Stmt, StmtBody, Expr, Var, VType, Abstain, ComeFrom };
-use err::{ Res, IE129, IE533, IE994 };
+use ast::{Program, Stmt, StmtBody, Expr, Var, VType, Abstain, ComeFrom};
+use err::{Res, IE129, IE533, IE994};
 use lex::SrcLine;
 
 const STDOPS_MOD_STR: &'static str = include_str!("stdops.rs");

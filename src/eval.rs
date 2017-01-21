@@ -20,14 +20,14 @@
 /// The evaluator is used when rick is called with `-i`, or when the compiler generates
 /// the output while compiling (in the constant-output case).
 
-use std::fmt::{ Debug, Display };
+use std::fmt::{Debug, Display};
 use std::io::Write;
 use std::u16;
 
-use err::{ Res, IE123, IE129, IE252, IE275, IE555, IE633, IE774, IE994 };
-use ast::{ self, Program, Stmt, StmtBody, ComeFrom, Expr, Var, VType };
-use stdops::{ Bind, Array, write_number, read_number, check_chance, check_ovf, pop_jumps,
-              get_random_seed, mingle, select, and_16, and_32, or_16, or_32, xor_16, xor_32 };
+use err::{Res, IE123, IE129, IE252, IE275, IE555, IE633, IE774, IE994};
+use ast::{self, Program, Stmt, StmtBody, ComeFrom, Expr, Var, VType};
+use stdops::{Bind, Array, write_number, read_number, check_chance, check_ovf, pop_jumps,
+             get_random_seed, mingle, select, and_16, and_32, or_16, or_32, xor_16, xor_32};
 
 
 /// Represents a value (either 16-bit or 32-bit) at runtime.
@@ -160,9 +160,7 @@ impl<'a> Eval<'a> {
             // execute statement if not abstained
             if self.abstain[pctr] == 0 {
                 // check execution chance
-                let (passed, rand_st) = check_chance(stmt.props.chance, self.rand_st);
-                self.rand_st = rand_st;
-                if passed {
+                if check_chance(stmt.props.chance, &mut self.rand_st) {
                     // try to eval this statement
                     let res = match self.eval_stmt(stmt) {
                         // on error, set the correct line number and bubble up
@@ -228,10 +226,8 @@ impl<'a> Eval<'a> {
                 // check for abstained COME FROM
                 if self.abstain[next] == 0 {
                     // the COME FROM can also have a % chance
-                    let (passed, rand_st) = check_chance(program.stmts[next].props.chance,
-                                                         self.rand_st);
-                    self.rand_st = rand_st;
-                    if passed {
+                    if check_chance(program.stmts[next].props.chance,
+                                    &mut self.rand_st) {
                         pctr = next;
                         continue;
                     }

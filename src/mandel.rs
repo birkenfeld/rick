@@ -25,9 +25,9 @@
 ///
 /// Credits: most of this code is translated from PyPy's rpython/tool/ansi_mandelbrot.
 
-use std::io::{ Write, stdout };
+use std::io::{Write, stdout};
 use std::cmp::min;
-use std::ops::{ Add, Mul };
+use std::ops::{Add, Mul};
 
 
 #[derive(Clone, Copy, Debug)]

@@ -30,12 +30,12 @@
 /// * Basic read/write of numbers and bytes
 /// * all the INTERCAL operators (mingle, select, unary and, unary or, unary xor)
 
-use std::fmt::{ Debug, Display, Error, Formatter };
+use std::fmt::{Debug, Display, Error, Formatter};
 use std::fs::File;
-use std::io::{ BufRead, Read, Write, stdin };
-use std::{ u16, u32 };
+use std::io::{Read, Write, stdin};
+use std::{u16, u32};
 
-use err::{ Res, IE240, IE241, IE252, IE436, IE533, IE562, IE579, IE621, IE632 };
+use err::{Res, IE240, IE241, IE252, IE436, IE533, IE562, IE579, IE621, IE632};
 
 #[derive(Clone, Debug)]
 pub struct Array<T> {
@@ -151,12 +151,12 @@ impl<T: LikeU16 + Default> Bind<Array<T>> {
         }
         let mut ix = 0;
         let mut prev_dim = 1;
-        for (sub, dim) in subs.iter().zip(&self.val.dims) {
-            if *sub > *dim {
+        for (&sub, &dim) in subs.iter().zip(&self.val.dims) {
+            if sub > dim {
                 return IE241.err_with(None, line);
             }
             ix += (sub - 1) * prev_dim;
-            prev_dim *= *dim;
+            prev_dim *= dim;
         }
         Ok(ix as usize)
     }
@@ -245,15 +245,15 @@ pub fn get_random_seed() -> u32 {
 }
 
 /// Check statement execution chance (false -> skip).
-pub fn check_chance(chance: u8, state: u32) -> (bool, u32) {
+pub fn check_chance(chance: u8, state: &mut u32) -> bool {
     if chance == 100 {
-        (true, state)
+        true
     } else {
         // this is the generator suggested as the default rand() by POSIX,
         // I'm sure it is exceedingly random
-        let new_state = state.wrapping_mul(1103515245).wrapping_add(12345);
-        let random = (new_state / 65536) % 100;
-        (random < (chance as u32), new_state)
+        *state = state.wrapping_mul(1103515245).wrapping_add(12345);
+        let random = (*state / 65536) % 100;
+        random < (chance as u32)
     }
 }
 
@@ -283,18 +283,17 @@ pub fn pop_jumps<T>(jumps: &mut Vec<T>, n: u32, strict: bool, line: usize) -> Re
 /// decimal digit.
 /// These are reversed because the whole digit string is reversed
 /// in the end.
-const ROMAN_TRANS_TBL: [(usize, [usize; 4]); 10] = [
-    // (# of digits, which digits)
-    (0, [0, 0, 0, 0]),
-    (1, [0, 0, 0, 0]),
-    (2, [0, 0, 0, 0]),
-    (3, [0, 0, 0, 0]),
-    (2, [2, 1, 0, 0]),    /* or use (4, [0, 0, 0, 0]) */
-    (1, [2, 0, 0, 0]),
-    (2, [1, 2, 0, 0]),
-    (3, [1, 1, 2, 0]),
-    (4, [1, 1, 1, 2]),
-    (2, [3, 1, 0, 0])];
+const ROMAN_TRANS_TBL: [&'static [usize]; 10] = [
+    &[],           // 0
+    &[0],          // 1
+    &[0, 0],       // 2
+    &[0, 0, 0],    // 3
+    &[2, 1],       // 4   (alternate: &[0, 0, 0, 0])
+    &[2],          // 5
+    &[1, 2],       // 6
+    &[1, 1, 2],    // 7
+    &[1, 1, 1, 2], // 8
+    &[3, 1]];      // 9
 
 /// Which roman digits to use for each 10^n place.
 const ROMAN_DIGIT_TBL: [[(char, char); 4]; 10] = [
@@ -321,8 +320,7 @@ pub fn to_roman(mut val: u32) -> String {
     let mut place = 0;
     while val > 0 {
         let digit = (val % 10) as usize;
-        for j in 0..ROMAN_TRANS_TBL[digit].0 {
-            let idx = ROMAN_TRANS_TBL[digit].1[j];
+        for &idx in ROMAN_TRANS_TBL[digit] {
             l1.push(ROMAN_DIGIT_TBL[place][idx].0);
             l2.push(ROMAN_DIGIT_TBL[place][idx].1);
         }
@@ -334,7 +332,7 @@ pub fn to_roman(mut val: u32) -> String {
             l2.into_iter().rev().collect::<String>())
 }
 
-const ENGLISH_DIGITS: [(&'static str, u8); 12] = [
+const ENGLISH_DIGITS: [(&'static str, u64); 12] = [
     ("ZERO",  0),
     ("OH",    0),
     ("ONE",   1),
@@ -350,23 +348,12 @@ const ENGLISH_DIGITS: [(&'static str, u8); 12] = [
 
 /// Convert a number represented as digits spelled out in English.
 pub fn from_english(v: &str, line: usize) -> Res<u32> {
-    let mut digits = Vec::new();
-    for word in v.split_whitespace() {
-        let mut found = false;
-        for &(w, val) in &ENGLISH_DIGITS {
-            if w == word {
-                digits.push(val);
-                found = true;
-                break;
-            }
-        }
-        if !found {
-            return IE579.err_with(Some(word), line);
-        }
-    }
     let mut res = 0;
-    for (i, digit) in digits.iter().enumerate() {
-        res += (*digit as u64) * (10 as u64).pow(digits.len() as u32 - 1 - i as u32);
+    for word in v.split_whitespace() {
+        match ENGLISH_DIGITS.iter().find(|entry| entry.0 == word) {
+            Some(&(_, digit)) => res = 10*res + digit,
+            None => return IE579.err_with(Some(word), line)
+        }
     }
     if res > (u32::MAX as u64) {
         IE533.err_with(None, line)
@@ -393,10 +380,8 @@ pub fn write_bytes(w: &mut Write, val: Vec<u8>, line: usize) -> Res<()> {
 
 /// Read a number in spelled out English format.
 pub fn read_number(line: usize) -> Res<u32> {
-    let stdin = stdin();
-    let mut slock = stdin.lock();
     let mut buf = String::new();
-    match slock.read_line(&mut buf) {
+    match stdin().read_line(&mut buf) {
         Ok(n) if n > 1 => from_english(&buf, line),
         _              => IE562.err_with(None, line)
     }
@@ -404,10 +389,8 @@ pub fn read_number(line: usize) -> Res<u32> {
 
 /// Read a byte from stdin.
 pub fn read_byte() -> u16 {
-    let stdin = stdin();
-    let mut slock = stdin.lock();
     let mut buf = [0u8; 1];
-    match slock.read(&mut buf) {
+    match stdin().read(&mut buf) {
         Ok(1) => buf[0] as u16,
         _     => 256      // EOF is defined to be 256
     }
