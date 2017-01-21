@@ -60,16 +60,16 @@ fn indentation<'a>(n: usize) -> &'a str {
 
 macro_rules! w {
     ($o:expr, $i:expr; $s:expr, $($args:expr),+) => {
-        try!(write!($o, concat!("{}", $s), indentation($i), $($args),+))
+        write!($o, concat!("{}", $s), indentation($i), $($args),+)?
     };
     ($o:expr, $i:expr; $s:expr) => {
-        try!(write!($o, concat!("{}", $s), indentation($i)))
+        write!($o, concat!("{}", $s), indentation($i))?
     };
     ($o:expr; $s:expr, $($args:expr),+) => {
-        try!(write!($o, $s, $($args),+))
+        write!($o, $s, $($args),+)?
     };
     ($o:expr; $s:expr) => {
-        try!(write!($o, $s))
+        write!($o, $s)?
     };
 }
 
@@ -88,22 +88,22 @@ impl Generator {
     /// The main (and only) public method of the generator.
     pub fn generate(&mut self) -> WRes {
         let program = self.program.clone();
-        try!(self.gen_attrs());
-        try!(self.gen_stdmods());
-        try!(self.gen_header());
-        try!(self.gen_program_vars());
-        try!(self.gen_loop_header());
+        self.gen_attrs()?;
+        self.gen_stdmods()?;
+        self.gen_header()?;
+        self.gen_program_vars()?;
+        self.gen_loop_header()?;
         for (i, stmt) in program.stmts.iter().enumerate() {
-            try!(self.gen_stmt_wrap(i, stmt));
+            self.gen_stmt_wrap(i, stmt)?;
         }
-        try!(self.gen_loop_footer());
-        try!(self.gen_footer());
-        try!(self.o.flush());
+        self.gen_loop_footer()?;
+        self.gen_footer()?;
+        self.o.flush()?;
         Ok(())
     }
 
     fn write(&mut self, s: &str) -> WRes {
-        try!(self.o.write(s.as_bytes()));
+        self.o.write(s.as_bytes())?;
         Ok(())
     }
 
@@ -138,12 +138,11 @@ impl Generator {
         }
         // check chance for statement execution
         if stmt.props.chance < 100 {
-            w!(self.o, 18; "let (passed, new_rand_st) = check_chance({}, rand_st);",
+            w!(self.o, 18; "let passed = check_chance({}, &mut rand_st);",
                stmt.props.chance);
-            w!(self.o, 18; "rand_st = new_rand_st;");
             w!(self.o, 18; "if passed {{");
         }
-        try!(self.gen_stmt(stmt));
+        self.gen_stmt(stmt)?;
         // end of chance check
         if stmt.props.chance < 100 {
             w!(self.o, 18; "}}");
@@ -162,14 +161,12 @@ impl Generator {
                 format!("None")
             };
             let label = format!("{}", stmt.props.label);
-            try!(self.gen_comefrom_check(&cand1, &label));
+            self.gen_comefrom_check(&cand1, &label)?;
         } else if let Some(next) = stmt.comefrom {
             let chance = self.program.stmts[next as usize].props.chance;
             w!(self.o, 16; "if abstain[{}] == 0 {{   // COME FROM", next);
             if chance < 100 {
-                w!(self.o, 18; "let (passed, new_rand_st) = check_chance({}, rand_st);",
-                   chance);
-                w!(self.o, 18; "rand_st = new_rand_st;");
+                w!(self.o, 18; "let passed = check_chance({}, &mut rand_st);", chance);
                 w!(self.o, 18; "if passed {{");
             }
             w!(self.o, 20; "pctr = {};", next);
@@ -215,25 +212,25 @@ impl Generator {
                 // nothing to do here
             }
             StmtBody::Dim(ref var, ref exprs) => {
-                try!(self.gen_eval_subs(exprs));
+                self.gen_eval_subs(exprs)?;
                 match *var {
-                    Var::A16(n, _) => w!(self.o, 20; "try!(a{}.dimension(subs, {}));",
+                    Var::A16(n, _) => w!(self.o, 20; "a{}.dimension(subs, {})?;",
                                          n, self.line),
-                    Var::A32(n, _) => w!(self.o, 20; "try!(b{}.dimension(subs, {}));",
+                    Var::A32(n, _) => w!(self.o, 20; "b{}.dimension(subs, {})?;",
                                          n, self.line),
                     _ => return IE994.err_with(None, self.line),
                 }
             }
             StmtBody::Calc(ref var, ref expr) => {
-                try!(self.gen_eval_expr(expr));
-                try!(self.gen_assign(var));
+                self.gen_eval_expr(expr)?;
+                self.gen_assign(var)?;
             }
             StmtBody::Resume(ref expr) => {
-                try!(self.gen_eval_expr(expr));
+                self.gen_eval_expr(expr)?;
                 w!(self.o, 20; "let (old_pctr, comefrom, label) = \
-                   try!(pop_jumps(&mut jumps, val, true, {})).expect(\"uh oh\");", self.line);
+                   pop_jumps(&mut jumps, val, true, {})?.expect(\"uh oh\");", self.line);
                 if self.program.uses_complex_comefrom {
-                    try!(self.gen_comefrom_check("comefrom", "label"));
+                    self.gen_comefrom_check("comefrom", "label")?;
                 } else {
                     // XXX: chance check missing here
                     w!(self.o, 20; "if let Some(next) = comefrom {{
@@ -247,8 +244,8 @@ impl Generator {
                     continue;");
             }
             StmtBody::Forget(ref expr) => {
-                try!(self.gen_eval_expr(expr));
-                w!(self.o, 20; "try!(pop_jumps(&mut jumps, val, false, {}));", self.line);
+                self.gen_eval_expr(expr)?;
+                w!(self.o, 20; "pop_jumps(&mut jumps, val, false, {})?;", self.line);
             }
             StmtBody::Ignore(ref vars) => {
                 for var in vars {
@@ -267,40 +264,40 @@ impl Generator {
             }
             StmtBody::Retrieve(ref vars) => {
                 for var in vars {
-                    w!(self.o, 20; "try!({}.retrieve({}));",
+                    w!(self.o, 20; "{}.retrieve({})?;",
                        Generator::get_varname(var), self.line);
                 }
             }
             StmtBody::Abstain(ref expr, ref whats) => {
                 let f: Box<Fn(String) -> String> = if let Some(ref e) = *expr {
-                    try!(self.gen_eval_expr(e));
+                    self.gen_eval_expr(e)?;
                     Box::new(|v| format!("{}.saturating_add(val)", v))
                 } else {
                     Box::new(|_| format!("1"))
                 };
                 for what in whats {
-                    try!(self.gen_abstain(what, &*f));
+                    self.gen_abstain(what, &*f)?;
                 }
             }
             StmtBody::Reinstate(ref whats) => {
                 w!(self.o, 20; "let val = 1;");
                 for what in whats {
-                    try!(self.gen_abstain(what, &|v| format!("{}.saturating_sub(1)", v)));
+                    self.gen_abstain(what, &|v| format!("{}.saturating_sub(1)", v))?;
                 }
             }
             StmtBody::ReadOut(ref exprs) => {
                 for expr in exprs {
                     match *expr {
                         Expr::Var(ref var) if var.is_dim() => {
-                            w!(self.o, 20; "try!({}.readout(&mut stdout, &mut last_out, {}));",
+                            w!(self.o, 20; "{}.readout(&mut stdout, &mut last_out, {})?;",
                                Generator::get_varname(var), self.line);
                         }
                         Expr::Var(_) => {
-                            try!(self.gen_eval_expr(expr));
-                            w!(self.o, 20; "try!(write_number(&mut stdout, val, {}));", self.line);
+                            self.gen_eval_expr(expr)?;
+                            w!(self.o, 20; "write_number(&mut stdout, val, {})?;", self.line);
                         }
                         Expr::Num(_, v) => {
-                            w!(self.o, 20; "try!(write_number(&mut stdout, {}, {}));", v, self.line);
+                            w!(self.o, 20; "write_number(&mut stdout, {}, {})?;", v, self.line);
                         }
                         _ => return IE994.err_with(None, self.line),
                     };
@@ -309,12 +306,12 @@ impl Generator {
             StmtBody::WriteIn(ref vars) => {
                 for var in vars {
                     if var.is_dim() {
-                        w!(self.o, 20; "try!({}.writein(&mut last_in, {}));",
+                        w!(self.o, 20; "{}.writein(&mut last_in, {})?;",
                            Generator::get_varname(var), self.line);
                     } else {
-                        w!(self.o, 20; "let val = try!(read_number({}));",
+                        w!(self.o, 20; "let val = read_number({})?;",
                            self.line);
-                        try!(self.gen_assign(var));
+                        self.gen_assign(var)?;
                     }
                 }
             }
@@ -338,7 +335,7 @@ impl Generator {
         let program = self.program.clone();
         for (i, stmt) in program.stmts.iter().enumerate() {
             if let StmtBody::ComeFrom(ComeFrom::Expr(ref e)) = stmt.body {
-                try!(self.gen_eval_expr(e));
+                self.gen_eval_expr(e)?;
                 w!(self.o, 20; "if val == {} && {} > 0 {{ candidates.push({}); }}",
                    label, label, i);
             }
@@ -390,23 +387,23 @@ impl Generator {
                         return err::IE275.err_with(None, {});
                     }}", self.line);
                 if subs.len() == 1 {
-                    w!(self.o, 20; "try!(a{}.set{}(", n, suffix);
-                    try!(self.gen_eval(&subs[0], " as usize"));
-                    w!(self.o; ", val as u16, {}));", self.line);
+                    w!(self.o, 20; "a{}.set{}(", n, suffix);
+                    self.gen_eval(&subs[0], " as usize")?;
+                    w!(self.o; ", val as u16, {})?;", self.line);
                 } else {
-                    try!(self.gen_eval_subs(subs));
-                    w!(self.o, 20; "try!(a{}.set_md{}(subs, val as u16, {}));",
+                    self.gen_eval_subs(subs)?;
+                    w!(self.o, 20; "a{}.set_md{}(subs, val as u16, {})?;",
                        n, suffix, self.line);
                 }
             }
             Var::A32(n, ref subs) => {
                 if subs.len() == 1 {
-                    w!(self.o, 20; "try!(b{}.set{}(", n, suffix);
-                    try!(self.gen_eval(&subs[0], " as usize"));
-                    w!(self.o; ", val, {}));", self.line);
+                    w!(self.o, 20; "b{}.set{}(", n, suffix);
+                    self.gen_eval(&subs[0], " as usize")?;
+                    w!(self.o; ", val, {})?;", self.line);
                 } else {
-                    try!(self.gen_eval_subs(subs));
-                    w!(self.o, 20; "try!(b{}.set_md{}(subs, val, {}));",
+                    self.gen_eval_subs(subs)?;
+                    w!(self.o, 20; "b{}.set_md{}(subs, val, {})?;",
                        n, suffix, self.line);
                 }
             }
@@ -432,7 +429,7 @@ impl Generator {
     /// Evaluate an expression and assign it to "val".
     fn gen_eval_expr(&mut self, expr: &Expr) -> WRes {
         w!(self.o, 20; "let val = ");
-        try!(self.gen_eval(expr, ""));
+        self.gen_eval(expr, "")?;
         w!(self.o; ";");
         Ok(())
     }
@@ -441,7 +438,7 @@ impl Generator {
     fn gen_eval_subs(&mut self, exprs: &Vec<Expr>) -> WRes {
         w!(self.o, 20; "let subs = vec![");
         for (i, expr) in exprs.iter().enumerate() {
-            try!(self.gen_eval(expr, " as usize"));
+            self.gen_eval(expr, " as usize")?;
             if i < exprs.len() - 1 {
                 w!(self.o; ", ");
             }
@@ -458,42 +455,42 @@ impl Generator {
             } else {
                 w!(self.o; "{:#X}", v);
             },
-            Expr::Var(ref var) => try!(self.gen_lookup(var, astype)),
+            Expr::Var(ref var) => self.gen_lookup(var, astype)?,
             Expr::Mingle(ref vx, ref wx) => {
                 w!(self.o; "mingle(");
                 if let Expr::Num(_, n) = **vx {
                     if n > (u16::MAX as u32) {
                         return IE533.err_with(None, self.line);
                     }
-                    try!(self.gen_eval(vx, ""));
+                    self.gen_eval(vx, "")?;
                 } else {
-                    w!(self.o; "try!(check_ovf(");
-                    try!(self.gen_eval(vx, ""));
-                    w!(self.o; ", {}))", self.line);
+                    w!(self.o; "check_ovf(");
+                    self.gen_eval(vx, "")?;
+                    w!(self.o; ", {})?", self.line);
                 }
                 w!(self.o; ", ");
                 if let Expr::Num(_, n) = **wx {
                     if n > (u16::MAX as u32) {
                         return IE533.err_with(None, self.line);
                     }
-                    try!(self.gen_eval(wx, ""));
+                    self.gen_eval(wx, "")?;
                 } else {
-                    w!(self.o; "try!(check_ovf(");
-                    try!(self.gen_eval(wx, ""));
-                    w!(self.o; ", {}))", self.line);
+                    w!(self.o; "check_ovf(");
+                    self.gen_eval(wx, "")?;
+                    w!(self.o; ", {})?", self.line);
                 }
                 w!(self.o; "){}", astype);
             }
             Expr::Select(vtype, ref vx, ref wx) => {
                 w!(self.o; "select(");
-                try!(self.gen_eval(vx, ""));
+                self.gen_eval(vx, "")?;
                 w!(self.o; ", ");
                 if vtype == VType::I16 {
-                    w!(self.o; "try!(check_ovf(");
-                    try!(self.gen_eval(wx, ""));
-                    w!(self.o; ", {}))", self.line);
+                    w!(self.o; "check_ovf(");
+                    self.gen_eval(wx, "")?;
+                    w!(self.o; ", {})?", self.line);
                 } else {
-                    try!(self.gen_eval(wx, ""));
+                    self.gen_eval(wx, "")?;
                 }
                 w!(self.o; "){}", astype);
             }
@@ -502,7 +499,7 @@ impl Generator {
                     VType::I16 => w!(self.o; "and_16("),
                     VType::I32 => w!(self.o; "and_32("),
                 }
-                try!(self.gen_eval(vx, ""));
+                self.gen_eval(vx, "")?;
                 w!(self.o; "){}", astype);
             }
             Expr::Or(vtype, ref vx) => {
@@ -510,7 +507,7 @@ impl Generator {
                     VType::I16 => w!(self.o; "or_16("),
                     VType::I32 => w!(self.o; "or_32("),
                 }
-                try!(self.gen_eval(vx, ""));
+                self.gen_eval(vx, "")?;
                 w!(self.o; "){}", astype);
             }
             Expr::Xor(vtype, ref vx) => {
@@ -518,43 +515,43 @@ impl Generator {
                     VType::I16 => w!(self.o; "xor_16("),
                     VType::I32 => w!(self.o; "xor_32("),
                 }
-                try!(self.gen_eval(vx, ""));
+                self.gen_eval(vx, "")?;
                 w!(self.o; "){}", astype);
             }
             Expr::RsNot(ref vx) => {
                 w!(self.o; "(!");
-                try!(self.gen_eval(vx, ""));
+                self.gen_eval(vx, "")?;
                 w!(self.o; "){}", astype);
             }
-            Expr::RsAnd(ref vx, ref wx) => try!(self.gen_binop(vx, wx, "&", astype)),
-            Expr::RsOr(ref vx, ref wx) => try!(self.gen_binop(vx, wx, "|", astype)),
-            Expr::RsXor(ref vx, ref wx) => try!(self.gen_binop(vx, wx, "^", astype)),
-            Expr::RsRshift(ref vx, ref wx) => try!(self.gen_binop(vx, wx, ">>", astype)),
-            Expr::RsLshift(ref vx, ref wx) => try!(self.gen_binop_extrapar(vx, wx, "<<", astype)),
-            // Expr::RsEqual(ref vx, ref wx) => try!(self.gen_binop(
-            //     vx, wx, "==", if astype == "" { " as u32" } else { astype })),
-            Expr::RsNotEqual(ref vx, ref wx) => try!(self.gen_binop(
-                vx, wx, "!=", if astype == "" { " as u32" } else { astype })),
-            Expr::RsPlus(ref vx, ref wx) => try!(self.gen_binop(vx, wx, "+", astype)),
-            Expr::RsMinus(ref vx, ref wx) => try!(self.gen_binop(vx, wx, "-", astype)),
+            Expr::RsAnd(ref vx, ref wx) => self.gen_binop(vx, wx, "&", astype)?,
+            Expr::RsOr(ref vx, ref wx) => self.gen_binop(vx, wx, "|", astype)?,
+            Expr::RsXor(ref vx, ref wx) => self.gen_binop(vx, wx, "^", astype)?,
+            Expr::RsRshift(ref vx, ref wx) => self.gen_binop(vx, wx, ">>", astype)?,
+            Expr::RsLshift(ref vx, ref wx) => self.gen_binop_extrapar(vx, wx, "<<", astype)?,
+            // Expr::RsEqual(ref vx, ref wx) => self.gen_binop(
+            //     vx, wx, "==", if astype == "" { " as u32" } else { astype })?,
+            Expr::RsNotEqual(ref vx, ref wx) => self.gen_binop(
+                vx, wx, "!=", if astype == "" { " as u32" } else { astype })?,
+            Expr::RsPlus(ref vx, ref wx) => self.gen_binop(vx, wx, "+", astype)?,
+            Expr::RsMinus(ref vx, ref wx) => self.gen_binop(vx, wx, "-", astype)?,
         }
         Ok(())
     }
 
     fn gen_binop(&mut self, vx: &Expr, wx: &Expr, op: &str, astype: &str) -> WRes {
         w!(self.o; "(");
-        try!(self.gen_eval(vx, ""));
+        self.gen_eval(vx, "")?;
         w!(self.o; " {} ", op);
-        try!(self.gen_eval(wx, ""));
+        self.gen_eval(wx, "")?;
         w!(self.o; "){}", astype);
         Ok(())
     }
 
     fn gen_binop_extrapar(&mut self, vx: &Expr, wx: &Expr, op: &str, astype: &str) -> WRes {
         w!(self.o; "((");
-        try!(self.gen_eval(vx, ""));
+        self.gen_eval(vx, "")?;
         w!(self.o; ") {} (", op);
-        try!(self.gen_eval(wx, ""));
+        self.gen_eval(wx, "")?;
         w!(self.o; ")){}", astype);
         Ok(())
     }
@@ -566,38 +563,38 @@ impl Generator {
                               if astype == "" { " as u32" } else { astype }),
             Var::I32(n) => w!(self.o; "w{}.val{}", n, astype),
             Var::A16(n, ref subs) => {
-                w!(self.o; "(try!(a{}.", n);
+                w!(self.o; "(a{}.", n);
                 if subs.len() == 1 {
                     w!(self.o; "get(");
-                    try!(self.gen_eval(&subs[0], " as usize"));
+                    self.gen_eval(&subs[0], " as usize")?;
                 } else {
                     w!(self.o; "get_md(vec![");
                     for (i, expr) in subs.iter().enumerate() {
-                        try!(self.gen_eval(expr, " as usize"));
+                        self.gen_eval(expr, " as usize")?;
                         if i < subs.len() - 1 {
                             w!(self.o; ", ");
                         }
                     }
                     w!(self.o; "]");
                 }
-                w!(self.o; ", {})){})", self.line, if astype == "" { " as u32" } else { astype });
+                w!(self.o; ", {})?{})", self.line, if astype == "" { " as u32" } else { astype });
             }
             Var::A32(n, ref subs) => {
-                w!(self.o; "try!(b{}.", n);
+                w!(self.o; "b{}.", n);
                 if subs.len() == 1 {
                     w!(self.o; "get(");
-                    try!(self.gen_eval(&subs[0], " as usize"));
+                    self.gen_eval(&subs[0], " as usize")?;
                 } else {
                     w!(self.o; "get_md(vec![");
                     for (i, expr) in subs.iter().enumerate() {
-                        try!(self.gen_eval(expr, " as usize"));
+                        self.gen_eval(expr, " as usize")?;
                         if i < subs.len() - 1 {
                             w!(self.o; ", ");
                         }
                     }
                     w!(self.o; "]");
                 }
-                w!(self.o; ", {})){}", self.line, astype);
+                w!(self.o; ", {})?{}", self.line, astype);
             }
         }
         Ok(())

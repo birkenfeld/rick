@@ -85,7 +85,7 @@ impl<'p> Parser<'p> {
     /// Parse the whole file as a program.
     pub fn get_program(&mut self) -> Res<Program> {
         // parse all statements
-        let stmts = try!(self.parse());
+        let stmts = self.parse()?;
         // collect some necessary values and return the Program
         self.post_process(stmts)
     }
@@ -97,7 +97,7 @@ impl<'p> Parser<'p> {
             if self.tokens.peek().is_none() {
                 break;
             }
-            stmts.push(try!(self.parse_stmt()));
+            stmts.push(self.parse_stmt()?);
         }
         Ok(stmts)
     }
@@ -147,7 +147,7 @@ impl<'p> Parser<'p> {
     /// Try to parse a full statement.
     fn parse_stmt_maybe(&mut self, props: &mut StmtProps) -> ParseRes<StmtBody> {
         // parse logical line number label
-        if let Some(label) = try!(self.parse_label_maybe()) {
+        if let Some(label) = self.parse_label_maybe()? {
             props.label = label;
         }
         // parse statement inititiator
@@ -165,55 +165,55 @@ impl<'p> Parser<'p> {
         }
         // parse percentage
         if self.take(Rule::OHOHSEVEN) {
-            let schance = try!(self.req_number(100, &IE017));
+            let schance = self.req_number(100, &IE017)?;
             props.chance = schance as u8;
         }
         // parse statement meat
         // assignment?
-        if let Some(var) = try!(self.parse_var_maybe(true)) {
-            try!(self.req(Rule::GETS));
+        if let Some(var) = self.parse_var_maybe(true)? {
+            self.req(Rule::GETS)?;
             if var.is_dim() {
-                let exprs = try!(self.parse_by_exprs());
+                let exprs = self.parse_by_exprs()?;
                 return Ok(StmtBody::Dim(var, exprs));
             } else {
-                let expr = try!(self.parse_expr());
+                let expr = self.parse_expr()?;
                 return Ok(StmtBody::Calc(var, expr));
             }
         }
         // next jump?
-        if let Some(lbl) = try!(self.parse_label_maybe()) {
-            try!(self.req(Rule::NEXT));
+        if let Some(lbl) = self.parse_label_maybe()? {
+            self.req(Rule::NEXT)?;
             return Ok(StmtBody::DoNext(lbl));
         }
         // other statements headed by keyword
         if self.take(Rule::COMEFROM) {
-            if let Some(lbl) = try!(self.parse_label_maybe()) {
+            if let Some(lbl) = self.parse_label_maybe()? {
                 Ok(StmtBody::ComeFrom(ComeFrom::Label(lbl)))
             } else if let Ok(gerund) = self.parse_gerund() {
                 Ok(StmtBody::ComeFrom(ComeFrom::Gerund(gerund)))
             } else {
-                Ok(StmtBody::ComeFrom(ComeFrom::Expr(try!(self.parse_expr()))))
+                Ok(StmtBody::ComeFrom(ComeFrom::Expr(self.parse_expr()?)))
             }
         } else if self.take(Rule::RESUME) {
-            Ok(StmtBody::Resume(try!(self.parse_expr())))
+            Ok(StmtBody::Resume(self.parse_expr()?))
         } else if self.take(Rule::FORGET) {
-            Ok(StmtBody::Forget(try!(self.parse_expr())))
+            Ok(StmtBody::Forget(self.parse_expr()?))
         } else if self.take(Rule::IGNORE) {
-            Ok(StmtBody::Ignore(try!(self.parse_varlist(false))))
+            Ok(StmtBody::Ignore(self.parse_varlist(false)?))
         } else if self.take(Rule::REMEMBER) {
-            Ok(StmtBody::Remember(try!(self.parse_varlist(false))))
+            Ok(StmtBody::Remember(self.parse_varlist(false)?))
         } else if self.take(Rule::STASH) {
-            Ok(StmtBody::Stash(try!(self.parse_varlist(false))))
+            Ok(StmtBody::Stash(self.parse_varlist(false)?))
         } else if self.take(Rule::RETRIEVE) {
-            Ok(StmtBody::Retrieve(try!(self.parse_varlist(false))))
+            Ok(StmtBody::Retrieve(self.parse_varlist(false)?))
         } else if self.take(Rule::ABSTAIN) {
-            Ok(try!(self.parse_abstain()))
+            Ok(self.parse_abstain()?)
         } else if self.take(Rule::REINSTATE) {
-            Ok(StmtBody::Reinstate(try!(self.parse_abstain_items())))
+            Ok(StmtBody::Reinstate(self.parse_abstain_items()?))
         } else if self.take(Rule::WRITEIN) {
-            Ok(StmtBody::WriteIn(try!(self.parse_varlist(true))))
+            Ok(StmtBody::WriteIn(self.parse_varlist(true)?))
         } else if self.take(Rule::READOUT) {
-            Ok(StmtBody::ReadOut(try!(self.parse_readlist())))
+            Ok(StmtBody::ReadOut(self.parse_readlist()?))
         } else if self.take(Rule::TRYAGAIN) {
             Ok(StmtBody::TryAgain)
         } else if self.take(Rule::GIVEUP) {
@@ -226,8 +226,8 @@ impl<'p> Parser<'p> {
     /// Maybe parse a line label (N).
     fn parse_label_maybe(&mut self) -> ParseRes<Option<ast::Label>> {
         if self.take(Rule::WAX) {
-            let lbl = try!(self.req_number(u16::MAX, &IE197));
-            try!(self.req(Rule::WANE));
+            let lbl = self.req_number(u16::MAX, &IE197)?;
+            self.req(Rule::WANE)?;
             Ok(Some(lbl))
         } else {
             Ok(None)
@@ -237,26 +237,26 @@ impl<'p> Parser<'p> {
     /// Maybe parse a variable reference [.:,;]N {SUB X}.
     fn parse_var_maybe(&mut self, subs_allowed: bool) -> ParseRes<Option<Var>> {
         if self.take(Rule::SPOT) {
-            let val = try!(self.req_number(u16::MAX, &IE200));
+            let val = self.req_number(u16::MAX, &IE200)?;
             return Ok(Some(Var::I16(val as usize)));
         }
         if self.take(Rule::TWOSPOT) {
-            let val = try!(self.req_number(u16::MAX, &IE200));
+            let val = self.req_number(u16::MAX, &IE200)?;
             return Ok(Some(Var::I32(val as usize)));
         }
         if self.take(Rule::TAIL) {
-            let val = try!(self.req_number(u16::MAX, &IE200));
+            let val = self.req_number(u16::MAX, &IE200)?;
             let subs = if subs_allowed {
-                try!(self.parse_subs())
+                self.parse_subs()?
             } else {
                 vec![]
             };
             return Ok(Some(Var::A16(val as usize, subs)));
         }
         if self.take(Rule::HYBRID) {
-            let val = try!(self.req_number(u16::MAX, &IE200));
+            let val = self.req_number(u16::MAX, &IE200)?;
             let subs = if subs_allowed {
-                try!(self.parse_subs())
+                self.parse_subs()?
             } else {
                 vec![]
             };
@@ -267,7 +267,7 @@ impl<'p> Parser<'p> {
 
     /// Require a variable reference.
     fn parse_var(&mut self, subs_allowed: bool) -> ParseRes<Var> {
-        try!(self.parse_var_maybe(subs_allowed)).ok_or_else(|| self.invalid())
+        self.parse_var_maybe(subs_allowed)?.ok_or_else(|| self.invalid())
     }
 
     /// Parse subscripts for a variable reference.
@@ -275,7 +275,7 @@ impl<'p> Parser<'p> {
         let mut res = Vec::new();
         if self.take(Rule::SUB) {
             // we need one expr at least
-            res.push(try!(self.parse_expr()));
+            res.push(self.parse_expr()?);
             // all others are optional; we need backtracking here
             loop {
                 let state = self.stash.len();
@@ -292,9 +292,9 @@ impl<'p> Parser<'p> {
     /// Parse a list of variables separated by + (without subscripts).
     fn parse_varlist(&mut self, subs_allowed: bool) -> ParseRes<Vec<Var>> {
         let mut res = Vec::new();
-        res.push(try!(self.parse_var(subs_allowed)));
+        res.push(self.parse_var(subs_allowed)?);
         while self.take(Rule::INTERSECTION) {
-            res.push(try!(self.parse_var(subs_allowed)));
+            res.push(self.parse_var(subs_allowed)?);
         }
         Ok(res)
     }
@@ -303,17 +303,17 @@ impl<'p> Parser<'p> {
     fn parse_readlist(&mut self) -> ParseRes<Vec<Expr>> {
         let mut res = Vec::new();
         if self.take(Rule::MESH) {
-            let val = try!(self.req_number(u16::MAX, &IE017));
+            let val = self.req_number(u16::MAX, &IE017)?;
             res.push(Expr::Num(VType::I16, val as u32));
         } else {
-            res.push(Expr::Var(try!(self.parse_var(true))));
+            res.push(Expr::Var(self.parse_var(true)?));
         }
         while self.take(Rule::INTERSECTION) {
             if self.take(Rule::MESH) {
-                let val = try!(self.req_number(u16::MAX, &IE017));
+                let val = self.req_number(u16::MAX, &IE017)?;
                 res.push(Expr::Num(VType::I16, val as u32));
             } else {
-                res.push(Expr::Var(try!(self.parse_var(true))));
+                res.push(Expr::Var(self.parse_var(true)?));
             }
         }
         Ok(res)
@@ -334,29 +334,29 @@ impl<'p> Parser<'p> {
         }
         if self.take(Rule::MESH) {
             let constr = parse_constr(self);
-            let val = try!(self.req_number(u16::MAX, &IE017));
+            let val = self.req_number(u16::MAX, &IE017)?;
             return Ok(Some(constr(Expr::Num(VType::I16, val as u32))));
         }
         if self.take(Rule::SPOT) {
             let constr = parse_constr(self);
-            let val = try!(self.req_number(u16::MAX, &IE200));
+            let val = self.req_number(u16::MAX, &IE200)?;
             return Ok(Some(constr(Expr::Var(Var::I16(val as usize)))));
         }
         if self.take(Rule::TWOSPOT) {
             let constr = parse_constr(self);
-            let val = try!(self.req_number(u16::MAX, &IE200));
+            let val = self.req_number(u16::MAX, &IE200)?;
             return Ok(Some(constr(Expr::Var(Var::I32(val as usize)))));
         }
         if self.take(Rule::TAIL) {
             let constr = parse_constr(self);
-            let val = try!(self.req_number(u16::MAX, &IE200));
-            let subs = try!(self.parse_subs());
+            let val = self.req_number(u16::MAX, &IE200)?;
+            let subs = self.parse_subs()?;
             return Ok(Some(constr(Expr::Var(Var::A16(val as usize, subs)))));
         }
         if self.take(Rule::HYBRID) {
             let constr = parse_constr(self);
-            let val = try!(self.req_number(u16::MAX, &IE200));
-            let subs = try!(self.parse_subs());
+            let val = self.req_number(u16::MAX, &IE200)?;
+            let subs = self.parse_subs()?;
             return Ok(Some(constr(Expr::Var(Var::A32(val as usize, subs)))));
         }
         Ok(None)
@@ -366,23 +366,23 @@ impl<'p> Parser<'p> {
     fn parse_abstain(&mut self) -> ParseRes<StmtBody> {
         let mut expr = None;
         if !self.take(Rule::FROM) {
-            expr = Some(try!(self.parse_expr()));
-            try!(self.req(Rule::FROM));
+            expr = Some(self.parse_expr()?);
+            self.req(Rule::FROM)?;
         }
-        Ok(StmtBody::Abstain(expr, try!(self.parse_abstain_items())))
+        Ok(StmtBody::Abstain(expr, self.parse_abstain_items()?))
     }
 
     /// Parse items following ABSTAIN FROM or REINSTATE.
     fn parse_abstain_items(&mut self) -> ParseRes<Vec<Abstain>> {
         // first form: a single line label
-        if let Some(lbl) = try!(self.parse_label_maybe()) {
+        if let Some(lbl) = self.parse_label_maybe()? {
             return Ok(vec![Abstain::Label(lbl)]);
         }
         // second form: one or more gerunds
         let mut res = Vec::new();
-        res.push(try!(self.parse_gerund()));
+        res.push(self.parse_gerund()?);
         while self.take(Rule::INTERSECTION) {
-            res.push(try!(self.parse_gerund()));
+            res.push(self.parse_gerund()?);
         }
         Ok(res)
     }
@@ -425,22 +425,22 @@ impl<'p> Parser<'p> {
     /// Parse a list of exprs separated by BY.
     fn parse_by_exprs(&mut self) -> ParseRes<Vec<Expr>> {
         let mut res = Vec::new();
-        res.push(try!(self.parse_expr()));
+        res.push(self.parse_expr()?);
         while self.take(Rule::BY) {
-            res.push(try!(self.parse_expr()));
+            res.push(self.parse_expr()?);
         }
         Ok(res)
     }
 
     /// Parse a single expression.
     fn parse_expr(&mut self) -> ParseRes<Expr> {
-        let left = try!(self.parse_expr2());
+        let left = self.parse_expr2()?;
         if self.take(Rule::MONEY) {
-            let right = try!(self.parse_expr2());
+            let right = self.parse_expr2()?;
             return Ok(Expr::Mingle(Box::new(left), Box::new(right)));
         }
         if self.take(Rule::SQUIGGLE) {
-            let right = try!(self.parse_expr2());
+            let right = self.parse_expr2()?;
             return Ok(Expr::Select(right.get_vtype(),
                                    Box::new(left), Box::new(right)));
         }
@@ -448,25 +448,25 @@ impl<'p> Parser<'p> {
     }
 
     fn parse_expr2(&mut self) -> ParseRes<Expr> {
-        if let Some(expr) = try!(self.parse_item_with_unop()) {
+        if let Some(expr) = self.parse_item_with_unop()? {
             return Ok(expr);
         }
         if self.take(Rule::RABBITEARS) {
-            let expr = try!(self.parse_expr());
-            try!(self.req(Rule::RABBITEARS));
+            let expr = self.parse_expr()?;
+            self.req(Rule::RABBITEARS)?;
             Ok(expr)
         } else if self.take(Rule::SPARK) {
-            let expr = try!(self.parse_expr());
-            try!(self.req(Rule::SPARK));
+            let expr = self.parse_expr()?;
+            self.req(Rule::SPARK)?;
             Ok(expr)
         } else if self.take(Rule::AMPERSAND) {
-            let expr = try!(self.parse_expr());
+            let expr = self.parse_expr()?;
             Ok(Expr::And(expr.get_vtype(), Box::new(expr)))
         } else if self.take(Rule::BOOK) {
-            let expr = try!(self.parse_expr());
+            let expr = self.parse_expr()?;
             Ok(Expr::Or(expr.get_vtype(), Box::new(expr)))
         } else if self.take(Rule::WHAT) {
-            let expr = try!(self.parse_expr());
+            let expr = self.parse_expr()?;
             Ok(Expr::Xor(expr.get_vtype(), Box::new(expr)))
         } else {
             Err(self.invalid())

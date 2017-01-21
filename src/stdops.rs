@@ -97,7 +97,7 @@ impl<T: Clone> Bind<T> {
 
 impl<T: LikeU16 + Default> Bind<Array<T>> {
     pub fn set_md(&mut self, subs: Vec<usize>, val: T, line: usize) -> Res<()> {
-        let ix = try!(self.get_index(subs, line));
+        let ix = self.get_index(subs, line)?;
         if self.rw {
             self.val.elems[ix] = val;
         }
@@ -117,7 +117,7 @@ impl<T: LikeU16 + Default> Bind<Array<T>> {
 
     #[allow(dead_code)]  // only used in compiled code
     pub fn set_md_unchecked(&mut self, subs: Vec<usize>, val: T, line: usize) -> Res<()> {
-        let ix = try!(self.get_index(subs, line));
+        let ix = self.get_index(subs, line)?;
         self.val.elems[ix] = val;
         Ok(())
     }
@@ -132,7 +132,7 @@ impl<T: LikeU16 + Default> Bind<Array<T>> {
     }
 
     pub fn get_md(&self, subs: Vec<usize>, line: usize) -> Res<T> {
-        let ix = try!(self.get_index(subs, line));
+        let ix = self.get_index(subs, line)?;
         Ok(self.val.elems[ix])
     }
 
@@ -214,12 +214,12 @@ impl<T: LikeU16 + Default> Bind<Array<T>> {
 
 impl<T: Debug + Display> Display for Bind<T> {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        try!(write!(fmt, "{}", self.val));
+        write!(fmt, "{}", self.val)?;
         if !self.rw {
-            try!(write!(fmt, " RO"));
+            write!(fmt, " RO")?;
         }
         if !self.stack.is_empty() {
-            try!(write!(fmt, " STACK={:?}", self.stack));
+            write!(fmt, " STACK={:?}", self.stack)?;
         }
         Ok(())
     }

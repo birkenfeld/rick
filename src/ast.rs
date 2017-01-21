@@ -326,7 +326,7 @@ impl Default for StmtProps {
 impl Display for Program {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         for stmt in &self.stmts {
-            try!(write!(fmt, "{}\n", stmt));
+            write!(fmt, "{}\n", stmt)?;
         }
         Ok(())
     }
@@ -334,24 +334,24 @@ impl Display for Program {
 
 impl Display for Stmt {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        try!(write!(fmt, "#{:03}  ", self.props.srcline));
+        write!(fmt, "#{:03}  ", self.props.srcline)?;
         if self.props.label > 0 {
-            try!(write!(fmt, "({:5}) ", self.props.label));
+            write!(fmt, "({:5}) ", self.props.label)?;
         } else {
-            try!(write!(fmt, "        "));
+            write!(fmt, "        ")?;
         }
         if self.props.polite {
-            try!(write!(fmt, "PLEASE "));
+            write!(fmt, "PLEASE ")?;
         } else {
-            try!(write!(fmt, "DO     "));
+            write!(fmt, "DO     ")?;
         }
         if self.props.disabled {
-            try!(write!(fmt, "NOT "));
+            write!(fmt, "NOT ")?;
         } else {
-            try!(write!(fmt, "    "));
+            write!(fmt, "    ")?;
         }
         if self.props.chance < 100 {
-            try!(write!(fmt, "%{} ", self.props.chance));
+            write!(fmt, "%{} ", self.props.chance)?;
         }
         write!(fmt, "{}", self.body)
     }
@@ -392,16 +392,16 @@ impl Display for Var {
             Var::I16(n) => write!(fmt, ".{}", n),
             Var::I32(n) => write!(fmt, ":{}", n),
             Var::A16(n, ref subs) => {
-                try!(write!(fmt, ",{}", n));
+                write!(fmt, ",{}", n)?;
                 for sub in subs {
-                    try!(write!(fmt, " SUB {}", sub));
+                    write!(fmt, " SUB {}", sub)?;
                 }
                 Ok(())
             }
             Var::A32(n, ref subs) => {
-                try!(write!(fmt, ";{}", n));
+                write!(fmt, ";{}", n)?;
                 for sub in subs {
-                    try!(write!(fmt, " SUB {}", sub));
+                    write!(fmt, " SUB {}", sub)?;
                 }
                 Ok(())
             }

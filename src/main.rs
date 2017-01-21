@@ -158,11 +158,11 @@ fn main_inner() -> Result<i32, err::RtError> {
             Ok(f)  => f,
         };
         // generate Rust code
-        try!(Generator::new(program, output, debug_flag, rand_flag).generate());
+        Generator::new(program, output, debug_flag, rand_flag).generate()?;
         let t3 = time::get_time();
         // if wanted, compile to binary
         if rustc_flag {
-            try!(run_compiler(&outname, rustc_opt_flag));
+            run_compiler(&outname, rustc_opt_flag)?;
         }
         let t4 = time::get_time();
         if timing_flag {
@@ -177,7 +177,7 @@ fn main_inner() -> Result<i32, err::RtError> {
             println!("Running:");
         }
         let mut eval = Eval::new(&program, &mut stdout, debug_flag, rand_flag);
-        let num = try!(eval.eval());
+        let num = eval.eval()?;
         let t3 = time::get_time();
         if timing_flag {
             println!("#stmts:     {}", num);
