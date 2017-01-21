@@ -1,7 +1,7 @@
 // -------------------------------------------------------------------------------------------------
 // Rick, a Rust intercal compiler.  Save your souls!
 //
-// Copyright (c) 2015 Georg Brandl
+// Copyright (c) 2015-2017 Georg Brandl
 //
 // This program is free software; you can redistribute it and/or modify it under the terms of the
 // GNU General Public License as published by the Free Software Foundation; either version 2 of the
@@ -274,9 +274,9 @@ impl Generator {
             StmtBody::Abstain(ref expr, ref whats) => {
                 let f: Box<Fn(String) -> String> = if let Some(ref e) = *expr {
                     try!(self.gen_eval_expr(e));
-                    box |v| format!("{}.saturating_add(val)", v)
+                    Box::new(|v| format!("{}.saturating_add(val)", v))
                 } else {
-                    box |_| format!("1")
+                    Box::new(|_| format!("1"))
                 };
                 for what in whats {
                     try!(self.gen_abstain(what, &*f));
@@ -461,7 +461,7 @@ impl Generator {
             Expr::Var(ref var) => try!(self.gen_lookup(var, astype)),
             Expr::Mingle(ref vx, ref wx) => {
                 w!(self.o; "mingle(");
-                if let box Expr::Num(_, n) = *vx {
+                if let Expr::Num(_, n) = **vx {
                     if n > (u16::MAX as u32) {
                         return IE533.err_with(None, self.line);
                     }
@@ -472,7 +472,7 @@ impl Generator {
                     w!(self.o; ", {}))", self.line);
                 }
                 w!(self.o; ", ");
-                if let box Expr::Num(_, n) = *wx {
+                if let Expr::Num(_, n) = **wx {
                     if n > (u16::MAX as u32) {
                         return IE533.err_with(None, self.line);
                     }

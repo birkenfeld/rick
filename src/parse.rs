@@ -1,7 +1,7 @@
 // -------------------------------------------------------------------------------------------------
 // Rick, a Rust intercal compiler.  Save your souls!
 //
-// Copyright (c) 2015 Georg Brandl
+// Copyright (c) 2015-2017 Georg Brandl
 //
 // This program is free software; you can redistribute it and/or modify it under the terms of the
 // GNU General Public License as published by the Free Software Foundation; either version 2 of the
@@ -27,16 +27,18 @@
 use std::collections::{ BTreeMap, HashMap };
 use std::io::{ Read, BufRead, BufReader, Cursor };
 use std::u16;
+use std::str;
 
 use rand::{ self, Rng };
 
 use ast::{ self, Program, Stmt, StmtBody, StmtProps, Expr, Abstain, ComeFrom, Var, VType, VarInfo };
 use err::{ Res, RtError, ErrDesc, IE000, IE017, IE079, IE099, IE139, IE182, IE197, IE200,
            IE444, IE555, IE993 };
-use lex::{ lex, Lexer, SrcLine, TT };
+use lex::{ SrcLine, SrcToken, Rule, Lexer, lex };
 use syslib;
 
 
+#[derive(Debug)]
 enum DecodeError {
     Hard(RtError),
     Soft(SrcLine),
@@ -46,8 +48,8 @@ type ParseRes<T> = Result<T, DecodeError>;
 
 pub struct Parser<'p> {
     lines:  Vec<String>,
-    tokens: Lexer<Cursor<&'p [u8]>>,
-    stash:  Vec<TT>,  // used for backtracking
+    tokens: Lexer<'p>,
+    stash:  Vec<SrcToken>,  // used for backtracking
     startline: usize,
     allow_bug: bool,
 }
@@ -55,13 +57,13 @@ pub struct Parser<'p> {
 
 impl<'p> Parser<'p> {
     pub fn new(code: &Vec<u8>, startline: usize, allow_bug: bool) -> Parser {
+        let code = str::from_utf8(&code).unwrap();
         let cursor1 = Cursor::new(&code[..]);
         // we have to keep a list of all physical source lines to generate
         // E000 error messages, so duplicate the input stream
         let lines = Parser::get_lines(BufReader::new(cursor1));
-        let cursor2 = Cursor::new(&code[..]);
         Parser { lines: lines,
-                 tokens: lex(cursor2, startline),
+                 tokens: lex(code, startline),
                  stash: Vec::new(),
                  startline: startline,
                  allow_bug: allow_bug }
@@ -106,7 +108,9 @@ impl<'p> Parser<'p> {
         let mut props = StmtProps::default();
         // try to decode a statement
         self.stash.clear();
-        match self.parse_stmt_maybe(&mut props) {
+        let stmt = self.parse_stmt_maybe(&mut props);
+        // println!("{:?}", stmt);
+        match stmt {
             // a hard error while parsing (rare)
             Err(DecodeError::Hard(err)) => Err(err),
             // a "soft" error: thrown at runtime as E000
@@ -117,11 +121,11 @@ impl<'p> Parser<'p> {
                 loop {
                     match self.tokens.peek() {
                         None |
-                        Some(&TT::DO) |
-                        Some(&TT::PLEASEDO) => break,
-                        Some(&TT::WAX) => {
+                        Some(&Rule::DO) |
+                        Some(&Rule::PLEASEDO) => break,
+                        Some(&Rule::WAX) => {
                             let wax = self.tokens.next().expect("THERE WAX A TOKEN I SWEAR");
-                            if let Some(&TT::NUMBER(_)) = self.tokens.peek() {
+                            if let Some(&Rule::NUMBER) = self.tokens.peek() {
                                 self.tokens.push(wax);
                                 break;
                             } else {
@@ -150,27 +154,27 @@ impl<'p> Parser<'p> {
             props.label = label;
         }
         // parse statement inititiator
-        if self.take(TT::DO) {
+        if self.take(Rule::DO) {
             props.srcline = self.tokens.lineno();
-        } else if self.take(TT::PLEASEDO) {
+        } else if self.take(Rule::PLEASEDO) {
             props.srcline = self.tokens.lineno();
             props.polite = true;
         } else {
             return Err(self.invalid());
         }
         // parse initial disable
-        if self.take(TT::NOT) {
+        if self.take(Rule::NOT) {
             props.disabled = true;
         }
         // parse percentage
-        if self.take(TT::OHOHSEVEN) {
+        if self.take(Rule::OHOHSEVEN) {
             let schance = try!(self.req_number(100, &IE017));
             props.chance = schance as u8;
         }
         // parse statement meat
         // assignment?
         if let Some(var) = try!(self.parse_var_maybe(true)) {
-            try!(self.req(TT::GETS));
+            try!(self.req(Rule::GETS));
             if var.is_dim() {
                 let exprs = try!(self.parse_by_exprs());
                 return Ok(StmtBody::Dim(var, exprs));
@@ -181,11 +185,11 @@ impl<'p> Parser<'p> {
         }
         // next jump?
         if let Some(lbl) = try!(self.parse_label_maybe()) {
-            try!(self.req(TT::NEXT));
+            try!(self.req(Rule::NEXT));
             return Ok(StmtBody::DoNext(lbl));
         }
         // other statements headed by keyword
-        if self.take(TT::COMEFROM) {
+        if self.take(Rule::COMEFROM) {
             if let Some(lbl) = try!(self.parse_label_maybe()) {
                 Ok(StmtBody::ComeFrom(ComeFrom::Label(lbl)))
             } else if let Ok(gerund) = self.parse_gerund() {
@@ -193,29 +197,29 @@ impl<'p> Parser<'p> {
             } else {
                 Ok(StmtBody::ComeFrom(ComeFrom::Expr(try!(self.parse_expr()))))
             }
-        } else if self.take(TT::RESUME) {
+        } else if self.take(Rule::RESUME) {
             Ok(StmtBody::Resume(try!(self.parse_expr())))
-        } else if self.take(TT::FORGET) {
+        } else if self.take(Rule::FORGET) {
             Ok(StmtBody::Forget(try!(self.parse_expr())))
-        } else if self.take(TT::IGNORE) {
+        } else if self.take(Rule::IGNORE) {
             Ok(StmtBody::Ignore(try!(self.parse_varlist(false))))
-        } else if self.take(TT::REMEMBER) {
+        } else if self.take(Rule::REMEMBER) {
             Ok(StmtBody::Remember(try!(self.parse_varlist(false))))
-        } else if self.take(TT::STASH) {
+        } else if self.take(Rule::STASH) {
             Ok(StmtBody::Stash(try!(self.parse_varlist(false))))
-        } else if self.take(TT::RETRIEVE) {
+        } else if self.take(Rule::RETRIEVE) {
             Ok(StmtBody::Retrieve(try!(self.parse_varlist(false))))
-        } else if self.take(TT::ABSTAIN) {
+        } else if self.take(Rule::ABSTAIN) {
             Ok(try!(self.parse_abstain()))
-        } else if self.take(TT::REINSTATE) {
+        } else if self.take(Rule::REINSTATE) {
             Ok(StmtBody::Reinstate(try!(self.parse_abstain_items())))
-        } else if self.take(TT::WRITEIN) {
+        } else if self.take(Rule::WRITEIN) {
             Ok(StmtBody::WriteIn(try!(self.parse_varlist(true))))
-        } else if self.take(TT::READOUT) {
+        } else if self.take(Rule::READOUT) {
             Ok(StmtBody::ReadOut(try!(self.parse_readlist())))
-        } else if self.take(TT::TRYAGAIN) {
+        } else if self.take(Rule::TRYAGAIN) {
             Ok(StmtBody::TryAgain)
-        } else if self.take(TT::GIVEUP) {
+        } else if self.take(Rule::GIVEUP) {
             Ok(StmtBody::GiveUp)
         } else {
             Err(self.invalid())
@@ -224,9 +228,9 @@ impl<'p> Parser<'p> {
 
     /// Maybe parse a line label (N).
     fn parse_label_maybe(&mut self) -> ParseRes<Option<ast::Label>> {
-        if self.take(TT::WAX) {
+        if self.take(Rule::WAX) {
             let lbl = try!(self.req_number(u16::MAX, &IE197));
-            try!(self.req(TT::WANE));
+            try!(self.req(Rule::WANE));
             Ok(Some(lbl))
         } else {
             Ok(None)
@@ -235,15 +239,15 @@ impl<'p> Parser<'p> {
 
     /// Maybe parse a variable reference [.:,;]N {SUB X}.
     fn parse_var_maybe(&mut self, subs_allowed: bool) -> ParseRes<Option<Var>> {
-        if self.take(TT::SPOT) {
+        if self.take(Rule::SPOT) {
             let val = try!(self.req_number(u16::MAX, &IE200));
             return Ok(Some(Var::I16(val as usize)));
         }
-        if self.take(TT::TWOSPOT) {
+        if self.take(Rule::TWOSPOT) {
             let val = try!(self.req_number(u16::MAX, &IE200));
             return Ok(Some(Var::I32(val as usize)));
         }
-        if self.take(TT::TAIL) {
+        if self.take(Rule::TAIL) {
             let val = try!(self.req_number(u16::MAX, &IE200));
             let subs = if subs_allowed {
                 try!(self.parse_subs())
@@ -252,7 +256,7 @@ impl<'p> Parser<'p> {
             };
             return Ok(Some(Var::A16(val as usize, subs)));
         }
-        if self.take(TT::HYBRID) {
+        if self.take(Rule::HYBRID) {
             let val = try!(self.req_number(u16::MAX, &IE200));
             let subs = if subs_allowed {
                 try!(self.parse_subs())
@@ -272,7 +276,7 @@ impl<'p> Parser<'p> {
     /// Parse subscripts for a variable reference.
     fn parse_subs(&mut self) -> ParseRes<Vec<Expr>> {
         let mut res = Vec::new();
-        if self.take(TT::SUB) {
+        if self.take(Rule::SUB) {
             // we need one expr at least
             res.push(try!(self.parse_expr()));
             // all others are optional; we need backtracking here
@@ -292,7 +296,7 @@ impl<'p> Parser<'p> {
     fn parse_varlist(&mut self, subs_allowed: bool) -> ParseRes<Vec<Var>> {
         let mut res = Vec::new();
         res.push(try!(self.parse_var(subs_allowed)));
-        while self.take(TT::INTERSECTION) {
+        while self.take(Rule::INTERSECTION) {
             res.push(try!(self.parse_var(subs_allowed)));
         }
         Ok(res)
@@ -301,14 +305,14 @@ impl<'p> Parser<'p> {
     /// Parse a list of variables (with subscripts) or consts separated by +.
     fn parse_readlist(&mut self) -> ParseRes<Vec<Expr>> {
         let mut res = Vec::new();
-        if self.take(TT::MESH) {
+        if self.take(Rule::MESH) {
             let val = try!(self.req_number(u16::MAX, &IE017));
             res.push(Expr::Num(VType::I16, val as u32));
         } else {
             res.push(Expr::Var(try!(self.parse_var(true))));
         }
-        while self.take(TT::INTERSECTION) {
-            if self.take(TT::MESH) {
+        while self.take(Rule::INTERSECTION) {
+            if self.take(Rule::MESH) {
                 let val = try!(self.req_number(u16::MAX, &IE017));
                 res.push(Expr::Num(VType::I16, val as u32));
             } else {
@@ -321,38 +325,38 @@ impl<'p> Parser<'p> {
     /// Maybe parse a variable reference with maybe inline unary op [.:,;] OP N {SUB X}.
     fn parse_item_with_unop(&mut self) -> ParseRes<Option<Expr>> {
         fn parse_constr(self_: &mut Parser) -> Box<Fn(Expr) -> Expr> {
-            if self_.take(TT::AMPERSAND) {
-                box |e| Expr::And(VType::I16, box e)
-            } else if self_.take(TT::BOOK) {
-                box |e| Expr::Or(VType::I16, box e)
-            } else if self_.take(TT::WHAT) {
-                box |e| Expr::Xor(VType::I16, box e)
+            if self_.take(Rule::AMPERSAND) {
+                Box::new(|e| Expr::And(VType::I16, Box::new(e)))
+            } else if self_.take(Rule::BOOK) {
+                Box::new(|e| Expr::Or(VType::I16, Box::new(e)))
+            } else if self_.take(Rule::WHAT) {
+                Box::new(|e| Expr::Xor(VType::I16, Box::new(e)))
             } else {
-                box |e| e
+                Box::new(|e| e)
             }
         }
-        if self.take(TT::MESH) {
+        if self.take(Rule::MESH) {
             let constr = parse_constr(self);
             let val = try!(self.req_number(u16::MAX, &IE017));
             return Ok(Some(constr(Expr::Num(VType::I16, val as u32))));
         }
-        if self.take(TT::SPOT) {
+        if self.take(Rule::SPOT) {
             let constr = parse_constr(self);
             let val = try!(self.req_number(u16::MAX, &IE200));
             return Ok(Some(constr(Expr::Var(Var::I16(val as usize)))));
         }
-        if self.take(TT::TWOSPOT) {
+        if self.take(Rule::TWOSPOT) {
             let constr = parse_constr(self);
             let val = try!(self.req_number(u16::MAX, &IE200));
             return Ok(Some(constr(Expr::Var(Var::I32(val as usize)))));
         }
-        if self.take(TT::TAIL) {
+        if self.take(Rule::TAIL) {
             let constr = parse_constr(self);
             let val = try!(self.req_number(u16::MAX, &IE200));
             let subs = try!(self.parse_subs());
             return Ok(Some(constr(Expr::Var(Var::A16(val as usize, subs)))));
         }
-        if self.take(TT::HYBRID) {
+        if self.take(Rule::HYBRID) {
             let constr = parse_constr(self);
             let val = try!(self.req_number(u16::MAX, &IE200));
             let subs = try!(self.parse_subs());
@@ -364,9 +368,9 @@ impl<'p> Parser<'p> {
     /// Parse an ABSTAIN statement.
     fn parse_abstain(&mut self) -> ParseRes<StmtBody> {
         let mut expr = None;
-        if !self.take(TT::FROM) {
+        if !self.take(Rule::FROM) {
             expr = Some(try!(self.parse_expr()));
-            try!(self.req(TT::FROM));
+            try!(self.req(Rule::FROM));
         }
         Ok(StmtBody::Abstain(expr, try!(self.parse_abstain_items())))
     }
@@ -380,7 +384,7 @@ impl<'p> Parser<'p> {
         // second form: one or more gerunds
         let mut res = Vec::new();
         res.push(try!(self.parse_gerund()));
-        while self.take(TT::INTERSECTION) {
+        while self.take(Rule::INTERSECTION) {
             res.push(try!(self.parse_gerund()));
         }
         Ok(res)
@@ -388,33 +392,33 @@ impl<'p> Parser<'p> {
 
     /// Parse a single gerund after ABSTAIN or REINSTATE.
     fn parse_gerund(&mut self) -> ParseRes<Abstain> {
-        if self.take(TT::CALCULATING) {
+        if self.take(Rule::CALCULATING) {
             Ok(Abstain::Calc)
-        } else if self.take(TT::NEXTING) {
+        } else if self.take(Rule::NEXTING) {
             Ok(Abstain::Next)
-        } else if self.take(TT::RESUMING) {
+        } else if self.take(Rule::RESUMING) {
             Ok(Abstain::Resume)
-        } else if self.take(TT::FORGETTING) {
+        } else if self.take(Rule::FORGETTING) {
             Ok(Abstain::Forget)
-        } else if self.take(TT::IGNORING) {
+        } else if self.take(Rule::IGNORING) {
             Ok(Abstain::Ignore)
-        } else if self.take(TT::REMEMBERING) {
+        } else if self.take(Rule::REMEMBERING) {
             Ok(Abstain::Remember)
-        } else if self.take(TT::STASHING) {
+        } else if self.take(Rule::STASHING) {
             Ok(Abstain::Stash)
-        } else if self.take(TT::RETRIEVING) {
+        } else if self.take(Rule::RETRIEVING) {
             Ok(Abstain::Retrieve)
-        } else if self.take(TT::ABSTAINING) {
+        } else if self.take(Rule::ABSTAINING) {
             Ok(Abstain::Abstain)
-        } else if self.take(TT::REINSTATING) {
+        } else if self.take(Rule::REINSTATING) {
             Ok(Abstain::Reinstate)
-        } else if self.take(TT::COMINGFROM) {
+        } else if self.take(Rule::COMINGFROM) {
             Ok(Abstain::ComeFrom)
-        } else if self.take(TT::READINGOUT) {
+        } else if self.take(Rule::READINGOUT) {
             Ok(Abstain::ReadOut)
-        } else if self.take(TT::WRITINGIN) {
+        } else if self.take(Rule::WRITINGIN) {
             Ok(Abstain::WriteIn)
-        } else if self.take(TT::TRYINGAGAIN) {
+        } else if self.take(Rule::TRYINGAGAIN) {
             Ok(Abstain::TryAgain)
         } else {
             Err(self.invalid())
@@ -425,7 +429,7 @@ impl<'p> Parser<'p> {
     fn parse_by_exprs(&mut self) -> ParseRes<Vec<Expr>> {
         let mut res = Vec::new();
         res.push(try!(self.parse_expr()));
-        while self.take(TT::BY) {
+        while self.take(Rule::BY) {
             res.push(try!(self.parse_expr()));
         }
         Ok(res)
@@ -434,13 +438,14 @@ impl<'p> Parser<'p> {
     /// Parse a single expression.
     fn parse_expr(&mut self) -> ParseRes<Expr> {
         let left = try!(self.parse_expr2());
-        if self.take(TT::MONEY) {
+        if self.take(Rule::MONEY) {
             let right = try!(self.parse_expr2());
-            return Ok(Expr::Mingle(box left, box right));
+            return Ok(Expr::Mingle(Box::new(left), Box::new(right)));
         }
-        if self.take(TT::SQUIGGLE) {
+        if self.take(Rule::SQUIGGLE) {
             let right = try!(self.parse_expr2());
-            return Ok(Expr::Select(right.get_vtype(), box left, box right));
+            return Ok(Expr::Select(right.get_vtype(),
+                                   Box::new(left), Box::new(right)));
         }
         Ok(left)
     }
@@ -449,23 +454,23 @@ impl<'p> Parser<'p> {
         if let Some(expr) = try!(self.parse_item_with_unop()) {
             return Ok(expr);
         }
-        if self.take(TT::RABBITEARS) {
+        if self.take(Rule::RABBITEARS) {
             let expr = try!(self.parse_expr());
-            try!(self.req(TT::RABBITEARS));
+            try!(self.req(Rule::RABBITEARS));
             Ok(expr)
-        } else if self.take(TT::SPARK) {
+        } else if self.take(Rule::SPARK) {
             let expr = try!(self.parse_expr());
-            try!(self.req(TT::SPARK));
+            try!(self.req(Rule::SPARK));
             Ok(expr)
-        } else if self.take(TT::AMPERSAND) {
+        } else if self.take(Rule::AMPERSAND) {
             let expr = try!(self.parse_expr());
-            Ok(Expr::And(expr.get_vtype(), box expr))
-        } else if self.take(TT::BOOK) {
+            Ok(Expr::And(expr.get_vtype(), Box::new(expr)))
+        } else if self.take(Rule::BOOK) {
             let expr = try!(self.parse_expr());
-            Ok(Expr::Or(expr.get_vtype(), box expr))
-        } else if self.take(TT::WHAT) {
+            Ok(Expr::Or(expr.get_vtype(), Box::new(expr)))
+        } else if self.take(Rule::WHAT) {
             let expr = try!(self.parse_expr());
-            Ok(Expr::Xor(expr.get_vtype(), box expr))
+            Ok(Expr::Xor(expr.get_vtype(), Box::new(expr)))
         } else {
             Err(self.invalid())
         }
@@ -473,7 +478,7 @@ impl<'p> Parser<'p> {
 
     /// If the next token is `t`, consume it and return true.
     #[inline]
-    fn take(&mut self, t: TT) -> bool {
+    fn take(&mut self, t: Rule) -> bool {
         match self.tokens.peek() {
             Some(ref v) if **v == t => { }
             _ => return false,
@@ -492,33 +497,36 @@ impl<'p> Parser<'p> {
     /// Require a number as next token, with bounds checking.
     fn req_number(&mut self, max: u16, err: &'static ErrDesc) -> ParseRes<u16> {
         match self.tokens.next() {
-            Some(TT::NUMBER(x)) => {
-                if x > max as u32 {
-                    Err(DecodeError::Hard(err.new(None, self.tokens.lineno())))
+            Some(t) => {
+                if t.rule() == Rule::NUMBER {
+                    let x = t.value();
+                    if x > max as u32 {
+                        Err(DecodeError::Hard(err.new(None, self.tokens.lineno())))
+                    } else {
+                        self.stash.push(t);
+                        Ok(x as u16)
+                    }
                 } else {
-                    self.stash.push(TT::NUMBER(x));
-                    Ok(x as u16)
+                    self.tokens.push(t);
+                    Err(self.invalid())
                 }
             }
-            Some(t)  => {
-                self.tokens.push(t);
-                Err(self.invalid())
-            }
-            None     => Err(self.invalid()),
+            None => Err(self.invalid()),
         }
     }
 
-    /// Require a token `t` next.
-    fn req(&mut self, t: TT) -> ParseRes<()> {
+    /// Require a token `r` next.
+    fn req(&mut self, r: Rule) -> ParseRes<()> {
         match self.tokens.next() {
-            None                    => Err(self.invalid()),
-            Some(ref x) if *x == t  => {
-                self.stash.push(t);
-                Ok(())
-            }
-            Some(t)                 => {
-                self.tokens.push(t);
-                Err(self.invalid())
+            None => Err(self.invalid()),
+            Some(t) => {
+                if t.rule() == r {
+                    self.stash.push(t);
+                    Ok(())
+                } else {
+                    self.tokens.push(t);
+                    Err(self.invalid())
+                }
             }
         }
     }

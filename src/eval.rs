@@ -1,7 +1,7 @@
 // -------------------------------------------------------------------------------------------------
 // Rick, a Rust intercal compiler.  Save your souls!
 //
-// Copyright (c) 2015 Georg Brandl
+// Copyright (c) 2015-2017 Georg Brandl
 //
 // This program is free software; you can redistribute it and/or modify it under the terms of the
 // GNU General Public License as published by the Free Software Foundation; either version 2 of the
@@ -312,9 +312,9 @@ impl<'a> Eval<'a> {
             StmtBody::Abstain(ref expr, ref whats) => {
                 let f: Box<Fn(u32) -> u32> = if let Some(ref e) = *expr {
                     let n = try!(self.eval_expr(e)).as_u32();
-                    box move |v: u32| v.saturating_add(n)
+                    Box::new(move |v: u32| v.saturating_add(n))
                 } else {
-                    box |_| 1
+                    Box::new(|_| 1)
                 };
                 for what in whats {
                     self.abstain(what, &*f);

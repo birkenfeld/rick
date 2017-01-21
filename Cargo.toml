@@ -7,4 +7,4 @@ authors = ["Georg Brandl <georg@python.org>"]
 getopts = "*"
 rand = "*"
 time = "*"
-rustlex = "*"
+pest = "*"

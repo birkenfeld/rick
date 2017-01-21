@@ -1,7 +1,7 @@
 // -------------------------------------------------------------------------------------------------
 // Rick, a Rust intercal compiler.  Save your souls!
 //
-// Copyright (c) 2015 Georg Brandl
+// Copyright (c) 2015-2017 Georg Brandl
 //
 // This program is free software; you can redistribute it and/or modify it under the terms of the
 // GNU General Public License as published by the Free Software Foundation; either version 2 of the
@@ -15,269 +15,200 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
+#![allow(non_snake_case)]
+
 /// A lexer for INTERCAL generated with RustLex.
 ///
 /// The raw RustLex lexer is wrapped by a buffer iterator that adds a few
 /// special methods, such as the pretty standard "peek" and "push back" features.
 
-use std::io::Read;
-use std::u32;
+use pest::prelude::*;
 
 
 pub type SrcLine = usize;
 
-#[derive(PartialEq, Eq, Clone, Debug)]
-pub struct Token(pub TT, pub SrcLine);
 
-#[derive(PartialEq, Eq, Clone, Debug)]
-pub enum TT {
-    // any unknown non-whitespace character
-    UNKNOWN,
+impl_rdp! {
+    grammar! {
+        whitespace   =  { ([" "] | ["\n"] | ["\t"])+ }
 
-    // an integer literal
-    NUMBER(u32),
+        token        = _{ NUMBER | syntax | gerund | verb | designator | operator |
+                          whitespace | UNKNOWN }
 
-    // statement initiators
-    WAX,
-    WANE,
-    DO,
-    PLEASEDO,
-    NOT,
+        NUMBER       =  { ['0'..'9']+ }
+        UNKNOWN      =  { any }
 
-    // sigils
-    SPOT,
-    TWOSPOT,
-    TAIL,
-    HYBRID,
-    WOW,
-    MESH,
+        syntax       = _{ WAX | WANE | PLEASEDO | DO | NOT | GETS | SUB | BY |
+                          OHOHSEVEN | INTERSECTION | WOW | MESH }
+        WAX          =  { ["("] }
+        WANE         =  { [")"] }
+        PLEASEDO     =  { ["PLEASE"] ~ ["DO"]? }
+        DO           =  { ["DO"] }
+        NOT          =  { ["NOT"] | ["N'T"] }
+        GETS         =  { ["<-"] }
+        SUB          =  { ["SUB"] }
+        BY           =  { ["BY"] }
+        OHOHSEVEN    =  { ["%"] }
+        INTERSECTION =  { ["+"] }
+        WOW          =  { ["!"] }
+        MESH         =  { ["#"] }
 
-    // grouping operators
-    SPARK,
-    RABBITEARS,
+        verb         = _{ NEXT | RESUME | FORGET | IGNORE | REMEMBER | STASH |
+                          RETRIEVE | ABSTAIN | FROM | REINSTATE | COMEFROM |
+                          READOUT | WRITEIN | TRYAGAIN | GIVEUP }
+        NEXT         =  { ["NEXT"] }
+        RESUME       =  { ["RESUME"] }
+        FORGET       =  { ["FORGET"] }
+        IGNORE       =  { ["IGNORE"] }
+        REMEMBER     =  { ["REMEMBER"] }
+        STASH        =  { ["STASH"] }
+        RETRIEVE     =  { ["RETRIEVE"] }
+        ABSTAIN      =  { ["ABSTAIN"] }
+        FROM         =  { ["FROM"] }
+        REINSTATE    =  { ["REINSTATE"] }
+        COMEFROM     =  { ["COME"] ~ ["FROM"] }
+        READOUT      =  { ["READ"] ~ ["OUT"] }
+        WRITEIN      =  { ["WRITE"] ~ ["IN"] }
+        TRYAGAIN     =  { ["TRY"] ~ ["AGAIN"] }
+        GIVEUP       =  { ["GIVE"] ~ ["UP"] }
 
-    // number operators
-    MONEY,
-    SQUIGGLE,
-    AMPERSAND,
-    BOOK,
-    WHAT,
+        gerund       = _{ CALCULATING | NEXTING | RESUMING | FORGETTING |
+                          IGNORING | REMEMBERING | STASHING | RETRIEVING |
+                          ABSTAINING | REINSTATING | COMINGFROM | READINGOUT |
+                          WRITINGIN | TRYINGAGAIN }
+        CALCULATING  =  { ["CALCULATING"] }
+        NEXTING      =  { ["NEXTING"] }
+        RESUMING     =  { ["RESUMING"] }
+        FORGETTING   =  { ["FORGETTING"] }
+        IGNORING     =  { ["IGNORING"] }
+        REMEMBERING  =  { ["REMEMBERING"] }
+        STASHING     =  { ["STASHING"] }
+        RETRIEVING   =  { ["RETRIEVING"] }
+        ABSTAINING   =  { ["ABSTAINING"] }
+        REINSTATING  =  { ["REINSTATING"] }
+        COMINGFROM   =  { ["COMING"] ~ ["FROM"] }
+        READINGOUT   =  { ["READING"] ~ ["OUT"] }
+        WRITINGIN    =  { ["WRITING"] ~ ["IN"] }
+        TRYINGAGAIN  =  { ["TRYING"] ~ ["AGAIN"] }
 
-    // misc. symbols
-    GETS,
-    SUB,
-    BY,
-    OHOHSEVEN,
-    INTERSECTION,
-    FROM,
+        designator   = _{ SPOT | TWOSPOT | TAIL | HYBRID }
+        SPOT         =  { ["."] }
+        TWOSPOT      =  { [":"] }
+        TAIL         =  { [","] }
+        HYBRID       =  { [";"] }
 
-    // word stmt types
-    NEXT,
-    RESUME,
-    FORGET,
-    IGNORE,
-    REMEMBER,
-    STASH,
-    RETRIEVE,
-    ABSTAIN,
-    REINSTATE,
-    COMEFROM,
-    READOUT,
-    WRITEIN,
-    TRYAGAIN,
-    GIVEUP,
-
-    // gerunds for abstain/reinstate
-    CALCULATING,
-    NEXTING,
-    RESUMING,
-    IGNORING,
-    FORGETTING,
-    REMEMBERING,
-    STASHING,
-    RETRIEVING,
-    ABSTAINING,
-    REINSTATING,
-    COMINGFROM,
-    READINGOUT,
-    WRITINGIN,
-    TRYINGAGAIN,
-}
-
-
-type Lx<'a, R> = &'a mut RawLexer<R>;
-
-rustlex! RawLexer {
-    property line: SrcLine = 1;
-
-    let ANY = .;
-    let NUM = ['0'-'9']+;
-    let WS  = [' ' '\t']+;
-    let NL  = '\n';
-
-    let PLEASEDO    = "PLEASE"  [' ' '\t' '\n']* "DO";
-    let COMEFROM    = "COME"    [' ' '\t' '\n']* "FROM";
-    let READOUT     = "READ"    [' ' '\t' '\n']* "OUT";
-    let WRITEIN     = "WRITE"   [' ' '\t' '\n']* "IN";
-    let TRYAGAIN    = "TRY"     [' ' '\t' '\n']* "AGAIN";
-    let GIVEUP      = "GIVE"    [' ' '\t' '\n']* "UP";
-    let COMINGFROM  = "COMING"  [' ' '\t' '\n']* "FROM";
-    let READINGOUT  = "READING" [' ' '\t' '\n']* "OUT";
-    let WRITINGIN   = "WRITING" [' ' '\t' '\n']* "IN";
-    let TRYINGAGAIN = "TRYING"  [' ' '\t' '\n']* "AGAIN";
-
-    ANY            => |l: Lx<R>| l.tok(TT::UNKNOWN)
-    NUM            => |l: Lx<R>| { let s = l.yystr();
-                                   l.tok(s.parse().map(TT::NUMBER)
-                                         .unwrap_or(TT::NUMBER(u32::MAX))) }
-    WS             => |_: Lx<R>| -> Option<Token> { None }
-    NL             => |l: Lx<R>| -> Option<Token> { l.line += 1; None }
-
-    '('            => |l: Lx<R>| l.tok(TT::WAX)
-    ')'            => |l: Lx<R>| l.tok(TT::WANE)
-    "PLEASE"       => |l: Lx<R>| l.tok(TT::PLEASEDO)
-    PLEASEDO       => |l: Lx<R>| l.tok_with_nl(TT::PLEASEDO)
-    "DO"           => |l: Lx<R>| l.tok(TT::DO)
-    "NOT"          => |l: Lx<R>| l.tok(TT::NOT)
-    "N'T"          => |l: Lx<R>| l.tok(TT::NOT)
-
-    "NEXT"         => |l: Lx<R>| l.tok(TT::NEXT)
-    "RESUME"       => |l: Lx<R>| l.tok(TT::RESUME)
-    "FORGET"       => |l: Lx<R>| l.tok(TT::FORGET)
-    "IGNORE"       => |l: Lx<R>| l.tok(TT::IGNORE)
-    "REMEMBER"     => |l: Lx<R>| l.tok(TT::REMEMBER)
-    "STASH"        => |l: Lx<R>| l.tok(TT::STASH)
-    "RETRIEVE"     => |l: Lx<R>| l.tok(TT::RETRIEVE)
-    "ABSTAIN"      => |l: Lx<R>| l.tok(TT::ABSTAIN)
-    "FROM"         => |l: Lx<R>| l.tok(TT::FROM)
-    "REINSTATE"    => |l: Lx<R>| l.tok(TT::REINSTATE)
-    COMEFROM       => |l: Lx<R>| l.tok_with_nl(TT::COMEFROM)
-    READOUT        => |l: Lx<R>| l.tok_with_nl(TT::READOUT)
-    WRITEIN        => |l: Lx<R>| l.tok_with_nl(TT::WRITEIN)
-    TRYAGAIN       => |l: Lx<R>| l.tok_with_nl(TT::TRYAGAIN)
-    GIVEUP         => |l: Lx<R>| l.tok_with_nl(TT::GIVEUP)
-
-    "CALCULATING"  => |l: Lx<R>| l.tok(TT::CALCULATING)
-    "NEXTING"      => |l: Lx<R>| l.tok(TT::NEXTING)
-    "RESUMING"     => |l: Lx<R>| l.tok(TT::RESUMING)
-    "FORGETTING"   => |l: Lx<R>| l.tok(TT::FORGETTING)
-    "IGNORING"     => |l: Lx<R>| l.tok(TT::IGNORING)
-    "REMEMBERING"  => |l: Lx<R>| l.tok(TT::REMEMBERING)
-    "STASHING"     => |l: Lx<R>| l.tok(TT::STASHING)
-    "RETRIEVING"   => |l: Lx<R>| l.tok(TT::RETRIEVING)
-    "ABSTAINING"   => |l: Lx<R>| l.tok(TT::ABSTAINING)
-    "REINSTATING"  => |l: Lx<R>| l.tok(TT::REINSTATING)
-    COMINGFROM     => |l: Lx<R>| l.tok_with_nl(TT::COMINGFROM)
-    READINGOUT     => |l: Lx<R>| l.tok_with_nl(TT::READINGOUT)
-    WRITINGIN      => |l: Lx<R>| l.tok_with_nl(TT::WRITINGIN)
-    TRYINGAGAIN    => |l: Lx<R>| l.tok_with_nl(TT::TRYINGAGAIN)
-
-    '.'            => |l: Lx<R>| l.tok(TT::SPOT)
-    ':'            => |l: Lx<R>| l.tok(TT::TWOSPOT)
-    ','            => |l: Lx<R>| l.tok(TT::TAIL)
-    ';'            => |l: Lx<R>| l.tok(TT::HYBRID)
-    '!'            => |l: Lx<R>| l.tok(TT::WOW)
-    '#'            => |l: Lx<R>| l.tok(TT::MESH)
-
-    "<-"           => |l: Lx<R>| l.tok(TT::GETS)
-    "SUB"          => |l: Lx<R>| l.tok(TT::SUB)
-    "BY"           => |l: Lx<R>| l.tok(TT::BY)
-    '%'            => |l: Lx<R>| l.tok(TT::OHOHSEVEN)
-    '+'            => |l: Lx<R>| l.tok(TT::INTERSECTION)
-
-    '"'            => |l: Lx<R>| l.tok(TT::RABBITEARS)
-    '\''           => |l: Lx<R>| l.tok(TT::SPARK)
-
-    '$'            => |l: Lx<R>| l.tok(TT::MONEY)
-    '¢'            => |l: Lx<R>| l.tok(TT::MONEY)
-    '£'            => |l: Lx<R>| l.tok(TT::MONEY)
-    '¤'            => |l: Lx<R>| l.tok(TT::MONEY)
-    '€'            => |l: Lx<R>| l.tok(TT::MONEY)
-    '~'            => |l: Lx<R>| l.tok(TT::SQUIGGLE)
-    '&'            => |l: Lx<R>| l.tok(TT::AMPERSAND)
-    'V'            => |l: Lx<R>| l.tok(TT::BOOK)
-    '?'            => |l: Lx<R>| l.tok(TT::WHAT)
-    '∀'            => |l: Lx<R>| l.tok(TT::WHAT)
-}
-
-impl<R: Read> RawLexer<R> {
-    #[inline]
-    fn tok(&self, t: TT) -> Option<Token> {
-        Some(Token(t, self.line))
-    }
-
-    #[inline]
-    fn tok_with_nl(&mut self, t: TT) -> Option<Token> {
-        let ret = Token(t, self.line);
-        let newlines = self.yystr().chars().filter(|c| *c == '\n').count();
-        self.line += newlines;
-        Some(ret)
+        operator     = _{ RABBITEARS | SPARK | MONEY | SQUIGGLE |
+                          AMPERSAND | BOOK | WHAT }
+        RABBITEARS   =  { ["\""] }
+        SPARK        =  { ["'"] }
+        MONEY        =  { ["$"] | ["¢"] | ["¤"] | ["£"] | ["€"] }
+        SQUIGGLE     =  { ["~"] }
+        AMPERSAND    =  { ["&"] }
+        BOOK         =  { ["V"] }
+        WHAT         =  { ["?"] | ["∀"] }
     }
 }
 
+// impl<R: Read> RawLexer<R> {
+//     #[inline]
+//     fn tok(&self, t: TT) -> Option<Token> {
+//         Some(Token(t, self.line))
+//     }
 
-pub struct Lexer<R: Read> {
-    inner: RawLexer<R>,
-    stash: Vec<Token>,
-    line:  SrcLine,
+//     #[inline]
+//     fn tok_with_nl(&mut self, t: TT) -> Option<Token> {
+//         let ret = Token(t, self.line);
+//         let newlines = self.yystr().chars().filter(|c| *c == '\n').count();
+//         self.line += newlines;
+//         Some(ret)
+//     }
+// }
+
+
+pub struct SrcToken(Rule, u32);
+
+impl SrcToken {
+    pub fn rule(&self) -> Rule { self.0 }
+    pub fn value(&self) -> u32 { self.1 }
 }
 
-impl<R: Read> Iterator for Lexer<R> {
-    type Item = TT;
+pub struct Lexer<'a> {
+    rdp:      Rdp<StringInput<'a>>,
+    rdpline:  SrcLine,
+    stash:    Vec<(SrcToken, SrcLine)>,
+    lastline: SrcLine,
+}
+
+impl<'a> Iterator for Lexer<'a> {
+    type Item = SrcToken;
 
     fn next(&mut self) -> Option<Self::Item> {
         let ret = self.inner_next();
         if let Some(tok) = ret {
-            self.line = tok.1;
+            self.lastline = tok.1;
             return Some(tok.0);
         }
         None
+
     }
 }
 
-impl<R: Read> Lexer<R> {
-    fn inner_next(&mut self) -> Option<Token> {
+impl<'a> Lexer<'a> {
+    fn inner_next(&mut self) -> Option<(SrcToken, SrcLine)> {
         // if we have some tokens stashed, just emit them
         if !self.stash.is_empty() {
             return self.stash.pop();
         }
         // else, request a new token from the lexer
-        if let Some(mut tok) = self.inner.next() {
-            // handle ! = '. combination right now
-            if let Token(TT::WOW, lno) = tok {
-                self.stash.push(Token(TT::SPOT, lno));
-                tok = Token(TT::SPARK, lno);
+        while self.rdp.token() {
+            let line = self.rdpline;
+            while let Some(tok) = self.rdp.queue_mut().pop() {
+                if tok.rule == Rule::whitespace {
+                    self.rdpline += self.rdp.input().slice(tok.start, tok.end)
+                                                    .chars().filter(|&ch| ch == '\n').count();
+                    continue;
+                }
+                // println!("l{} - {:?}", line, tok);
+                let srctoken = if tok.rule == Rule::NUMBER {
+                    SrcToken(Rule::NUMBER, self.rdp.input().slice(tok.start, tok.end)
+                             .parse().unwrap())
+                } else if tok.rule == Rule::WOW {
+                    // handle ! = '. combination
+                    self.stash.push((SrcToken(Rule::SPOT, 0), line));
+                    SrcToken(Rule::SPARK, 0)
+                } else {
+                    SrcToken(tok.rule, 0)
+                };
+                return Some((srctoken, line));
             }
-            Some(tok)
-        } else {
-            None
         }
+        None
     }
 
-    pub fn peek(&mut self) -> Option<&TT> {
+    pub fn peek(&mut self) -> Option<&Rule> {
         if !self.stash.is_empty() {
-            return self.stash.last().map(|v| &v.0);
+            return self.stash.last().map(|v| &(v.0).0);
         }
         match self.inner_next() {
             None => None,
             Some(tok) => {
                 self.stash.push(tok);
-                self.stash.last().map(|v| &v.0)
+                self.stash.last().map(|v| &(v.0).0)
             }
         }
     }
 
-    pub fn push(&mut self, t: TT) {
-        self.stash.push(Token(t, self.line));
+    pub fn push(&mut self, t: SrcToken) {
+        self.stash.push((t, self.lastline));
     }
 
     pub fn lineno(&self) -> SrcLine {
-        self.line
+        self.lastline
     }
 }
 
-pub fn lex<R: Read>(reader: R, startline: usize) -> Lexer<R> {
-    let mut raw = RawLexer::new(reader);
-    raw.line = startline;
-    Lexer { inner: raw, stash: vec![], line: 1 }
+pub fn lex<'a>(s: &'a str, startline: usize) -> Lexer<'a> {
+    let input = StringInput::new(s);
+    Lexer { rdp: Rdp::new(input), rdpline: startline,
+            stash: vec![], lastline: startline }
 }

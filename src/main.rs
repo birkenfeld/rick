@@ -1,7 +1,7 @@
 // -------------------------------------------------------------------------------------------------
 // Rick, a Rust intercal compiler.  Save your souls!
 //
-// Copyright (c) 2015 Georg Brandl
+// Copyright (c) 2015-2017 Georg Brandl
 //
 // This program is free software; you can redistribute it and/or modify it under the terms of the
 // GNU General Public License as published by the Free Software Foundation; either version 2 of the
@@ -15,15 +15,15 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
-#![feature(plugin, box_syntax, box_patterns)]
-#![plugin(rustlex)]
+#![feature(box_patterns)]
+#![recursion_limit="500"]
 
 /// Main program for Rick.
 ///
 /// Parses arguments, calls parser, optimizer, interpreter or code generator.
 
-#[allow(plugin_as_library)]
-extern crate rustlex;
+#[macro_use]
+extern crate pest;
 extern crate getopts;
 extern crate rand;
 extern crate time;
