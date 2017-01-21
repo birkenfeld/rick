@@ -109,33 +109,16 @@ impl_rdp! {
     }
 }
 
-// impl<R: Read> RawLexer<R> {
-//     #[inline]
-//     fn tok(&self, t: TT) -> Option<Token> {
-//         Some(Token(t, self.line))
-//     }
-
-//     #[inline]
-//     fn tok_with_nl(&mut self, t: TT) -> Option<Token> {
-//         let ret = Token(t, self.line);
-//         let newlines = self.yystr().chars().filter(|c| *c == '\n').count();
-//         self.line += newlines;
-//         Some(ret)
-//     }
-// }
-
-
-pub struct SrcToken(Rule, u32);
-
-impl SrcToken {
-    pub fn rule(&self) -> Rule { self.0 }
-    pub fn value(&self) -> u32 { self.1 }
+pub struct SrcToken {
+    pub line: SrcLine,
+    pub rule: Rule,
+    pub value: u32  // for NUMBER tokens
 }
 
 pub struct Lexer<'a> {
     rdp:      Rdp<StringInput<'a>>,
     rdpline:  SrcLine,
-    stash:    Vec<(SrcToken, SrcLine)>,
+    stash:    Vec<SrcToken>,
     lastline: SrcLine,
 }
 
@@ -145,8 +128,8 @@ impl<'a> Iterator for Lexer<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         let ret = self.inner_next();
         if let Some(tok) = ret {
-            self.lastline = tok.1;
-            return Some(tok.0);
+            self.lastline = tok.line;
+            return Some(tok);
         }
         None
 
@@ -154,7 +137,7 @@ impl<'a> Iterator for Lexer<'a> {
 }
 
 impl<'a> Lexer<'a> {
-    fn inner_next(&mut self) -> Option<(SrcToken, SrcLine)> {
+    fn inner_next(&mut self) -> Option<SrcToken> {
         // if we have some tokens stashed, just emit them
         if !self.stash.is_empty() {
             return self.stash.pop();
@@ -162,44 +145,48 @@ impl<'a> Lexer<'a> {
         // else, request a new token from the lexer
         while self.rdp.token() {
             let line = self.rdpline;
+            // the queue can only ever consist of either a single token,
+            // or a token and an "inner" whitespace token
             while let Some(tok) = self.rdp.queue_mut().pop() {
+                // jump over whitespace, but count up the line breaks
                 if tok.rule == Rule::whitespace {
                     self.rdpline += self.rdp.input().slice(tok.start, tok.end)
                                                     .chars().filter(|&ch| ch == '\n').count();
                     continue;
                 }
-                // println!("l{} - {:?}", line, tok);
+                // convert from pest's Token to SrcToken
                 let srctoken = if tok.rule == Rule::NUMBER {
-                    SrcToken(Rule::NUMBER, self.rdp.input().slice(tok.start, tok.end)
-                             .parse().unwrap())
+                    let text = self.rdp.input().slice(tok.start, tok.end);
+                    SrcToken { line: line, rule: Rule::NUMBER,
+                               value: text.parse().unwrap() }
                 } else if tok.rule == Rule::WOW {
                     // handle ! = '. combination
-                    self.stash.push((SrcToken(Rule::SPOT, 0), line));
-                    SrcToken(Rule::SPARK, 0)
+                    self.stash.push(SrcToken { line: line, rule: Rule::SPOT, value: 0 });
+                    SrcToken { line: line, rule: Rule::SPARK, value: 0 }
                 } else {
-                    SrcToken(tok.rule, 0)
+                    SrcToken { line: line, rule: tok.rule, value: 0 }
                 };
-                return Some((srctoken, line));
+                return Some(srctoken);
             }
         }
         None
     }
 
-    pub fn peek(&mut self) -> Option<&Rule> {
+    pub fn peek(&mut self) -> Option<Rule> {
         if !self.stash.is_empty() {
-            return self.stash.last().map(|v| &(v.0).0);
+            return self.stash.last().map(|v| v.rule);
         }
         match self.inner_next() {
             None => None,
             Some(tok) => {
                 self.stash.push(tok);
-                self.stash.last().map(|v| &(v.0).0)
+                self.stash.last().map(|v| v.rule)
             }
         }
     }
 
     pub fn push(&mut self, t: SrcToken) {
-        self.stash.push((t, self.lastline));
+        self.stash.push(t);
     }
 
     pub fn lineno(&self) -> SrcLine {

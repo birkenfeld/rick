@@ -58,10 +58,10 @@ pub struct Parser<'p> {
 impl<'p> Parser<'p> {
     pub fn new(code: &Vec<u8>, startline: usize, allow_bug: bool) -> Parser {
         let code = str::from_utf8(&code).unwrap();
-        let cursor1 = Cursor::new(&code[..]);
         // we have to keep a list of all physical source lines to generate
-        // E000 error messages, so duplicate the input stream
-        let lines = Parser::get_lines(BufReader::new(cursor1));
+        // E000 error messages
+        let cursor = Cursor::new(&code[..]);
+        let lines = Parser::get_lines(BufReader::new(cursor));
         Parser { lines: lines,
                  tokens: lex(code, startline),
                  stash: Vec::new(),
@@ -108,9 +108,7 @@ impl<'p> Parser<'p> {
         let mut props = StmtProps::default();
         // try to decode a statement
         self.stash.clear();
-        let stmt = self.parse_stmt_maybe(&mut props);
-        // println!("{:?}", stmt);
-        match stmt {
+        match self.parse_stmt_maybe(&mut props) {
             // a hard error while parsing (rare)
             Err(DecodeError::Hard(err)) => Err(err),
             // a "soft" error: thrown at runtime as E000
@@ -121,11 +119,11 @@ impl<'p> Parser<'p> {
                 loop {
                     match self.tokens.peek() {
                         None |
-                        Some(&Rule::DO) |
-                        Some(&Rule::PLEASEDO) => break,
-                        Some(&Rule::WAX) => {
+                        Some(Rule::DO) |
+                        Some(Rule::PLEASEDO) => break,
+                        Some(Rule::WAX) => {
                             let wax = self.tokens.next().expect("THERE WAX A TOKEN I SWEAR");
-                            if let Some(&Rule::NUMBER) = self.tokens.peek() {
+                            if let Some(Rule::NUMBER) = self.tokens.peek() {
                                 self.tokens.push(wax);
                                 break;
                             } else {
@@ -480,7 +478,7 @@ impl<'p> Parser<'p> {
     #[inline]
     fn take(&mut self, t: Rule) -> bool {
         match self.tokens.peek() {
-            Some(ref v) if **v == t => { }
+            Some(v) if v == t => { }
             _ => return false,
         }
         self.stash.push(self.tokens.next().expect("there just was a token?!"));
@@ -498,8 +496,8 @@ impl<'p> Parser<'p> {
     fn req_number(&mut self, max: u16, err: &'static ErrDesc) -> ParseRes<u16> {
         match self.tokens.next() {
             Some(t) => {
-                if t.rule() == Rule::NUMBER {
-                    let x = t.value();
+                if t.rule == Rule::NUMBER {
+                    let x = t.value;
                     if x > max as u32 {
                         Err(DecodeError::Hard(err.new(None, self.tokens.lineno())))
                     } else {
@@ -520,7 +518,7 @@ impl<'p> Parser<'p> {
         match self.tokens.next() {
             None => Err(self.invalid()),
             Some(t) => {
-                if t.rule() == r {
+                if t.rule == r {
                     self.stash.push(t);
                     Ok(())
                 } else {
