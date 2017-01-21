@@ -177,7 +177,6 @@ impl Generator {
             w!(self.o, 16; "}}");
         }
         // end of match arm
-        w!(self.o, 16; "pctr += 1;");  // different from i + 1 after Resume
         w!(self.o, 12; "}}");
         Ok(())
     }
@@ -212,7 +211,7 @@ impl Generator {
                 // nothing to do here
             }
             StmtBody::Dim(ref var, ref exprs) => {
-                self.gen_eval_subs(exprs)?;
+                self.gen_eval_subs(exprs, true)?;
                 match *var {
                     Var::A16(n, _) => w!(self.o, 20; "a{}.dimension(subs, {})?;",
                                          n, self.line),
@@ -391,7 +390,7 @@ impl Generator {
                     self.gen_eval(&subs[0], " as usize")?;
                     w!(self.o; ", val as u16, {})?;", self.line);
                 } else {
-                    self.gen_eval_subs(subs)?;
+                    self.gen_eval_subs(subs, false)?;
                     w!(self.o, 20; "a{}.set_md{}(subs, val as u16, {})?;",
                        n, suffix, self.line);
                 }
@@ -402,7 +401,7 @@ impl Generator {
                     self.gen_eval(&subs[0], " as usize")?;
                     w!(self.o; ", val, {})?;", self.line);
                 } else {
-                    self.gen_eval_subs(subs)?;
+                    self.gen_eval_subs(subs, false)?;
                     w!(self.o, 20; "b{}.set_md{}(subs, val, {})?;",
                        n, suffix, self.line);
                 }
@@ -435,8 +434,8 @@ impl Generator {
     }
 
     /// Evaluate a list of expressions and assign it to "subs".  Used for array subscriptions.
-    fn gen_eval_subs(&mut self, exprs: &Vec<Expr>) -> WRes {
-        w!(self.o, 20; "let subs = vec![");
+    fn gen_eval_subs(&mut self, exprs: &[Expr], as_vec: bool) -> WRes {
+        w!(self.o, 20; "let subs = {}[", if as_vec { "vec!" } else { "&" });
         for (i, expr) in exprs.iter().enumerate() {
             self.gen_eval(expr, " as usize")?;
             if i < exprs.len() - 1 {
@@ -568,7 +567,7 @@ impl Generator {
                     w!(self.o; "get(");
                     self.gen_eval(&subs[0], " as usize")?;
                 } else {
-                    w!(self.o; "get_md(vec![");
+                    w!(self.o; "get_md(&[");
                     for (i, expr) in subs.iter().enumerate() {
                         self.gen_eval(expr, " as usize")?;
                         if i < subs.len() - 1 {
@@ -585,7 +584,7 @@ impl Generator {
                     w!(self.o; "get(");
                     self.gen_eval(&subs[0], " as usize")?;
                 } else {
-                    w!(self.o; "get_md(vec![");
+                    w!(self.o; "get_md(&[");
                     for (i, expr) in subs.iter().enumerate() {
                         self.gen_eval(expr, " as usize")?;
                         if i < subs.len() - 1 {
@@ -660,6 +659,7 @@ impl Generator {
         self.write("
             }
         }
+        pctr += 1;
     }
     Ok(())")
     }

@@ -467,12 +467,12 @@ impl<'a> Eval<'a> {
     }
 
     #[inline]
-    fn eval_subs(&self, subs: &Vec<Expr>) -> Res<Vec<usize>> {
+    fn eval_subs(&self, subs: &[Expr]) -> Res<Vec<usize>> {
         subs.iter().map(|v| self.eval_expr(v).map(|w| w.as_usize())).collect()
     }
 
     /// Dimension an array.
-    fn array_dim(&mut self, var: &Var, dims: &Vec<Expr>) -> Res<()> {
+    fn array_dim(&mut self, var: &Var, dims: &[Expr]) -> Res<()> {
         let dims = self.eval_subs(dims)?;
         match *var {
             Var::A16(n, _) => self.tail[n].dimension(dims, 0),
@@ -488,11 +488,11 @@ impl<'a> Eval<'a> {
             Var::I32(n) => Ok(self.twospot[n].assign(val.as_u32())),
             Var::A16(n, ref subs) => {
                 let subs = self.eval_subs(subs)?;
-                self.tail[n].set_md(subs, val.as_u16()?, 0)
+                self.tail[n].set_md(&subs, val.as_u16()?, 0)
             }
             Var::A32(n, ref subs) => {
                 let subs = self.eval_subs(subs)?;
-                self.hybrid[n].set_md(subs, val.as_u32(), 0)
+                self.hybrid[n].set_md(&subs, val.as_u32(), 0)
             }
         }
     }
@@ -504,11 +504,11 @@ impl<'a> Eval<'a> {
             Var::I32(n) => Ok(Val::I32(self.twospot[n].val)),
             Var::A16(n, ref subs) => {
                 let subs = self.eval_subs(subs)?;
-                self.tail[n].get_md(subs, 0).map(Val::I16)
+                self.tail[n].get_md(&subs, 0).map(Val::I16)
             }
             Var::A32(n, ref subs) => {
                 let subs = self.eval_subs(subs)?;
-                self.hybrid[n].get_md(subs, 0).map(Val::I32)
+                self.hybrid[n].get_md(&subs, 0).map(Val::I32)
             }
         }
     }

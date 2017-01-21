@@ -96,7 +96,7 @@ impl<T: Clone> Bind<T> {
 }
 
 impl<T: LikeU16 + Default> Bind<Array<T>> {
-    pub fn set_md(&mut self, subs: Vec<usize>, val: T, line: usize) -> Res<()> {
+    pub fn set_md(&mut self, subs: &[usize], val: T, line: usize) -> Res<()> {
         let ix = self.get_index(subs, line)?;
         if self.rw {
             self.val.elems[ix] = val;
@@ -116,7 +116,7 @@ impl<T: LikeU16 + Default> Bind<Array<T>> {
     }
 
     #[allow(dead_code)]  // only used in compiled code
-    pub fn set_md_unchecked(&mut self, subs: Vec<usize>, val: T, line: usize) -> Res<()> {
+    pub fn set_md_unchecked(&mut self, subs: &[usize], val: T, line: usize) -> Res<()> {
         let ix = self.get_index(subs, line)?;
         self.val.elems[ix] = val;
         Ok(())
@@ -131,7 +131,7 @@ impl<T: LikeU16 + Default> Bind<Array<T>> {
         Ok(())
     }
 
-    pub fn get_md(&self, subs: Vec<usize>, line: usize) -> Res<T> {
+    pub fn get_md(&self, subs: &[usize], line: usize) -> Res<T> {
         let ix = self.get_index(subs, line)?;
         Ok(self.val.elems[ix])
     }
@@ -145,7 +145,7 @@ impl<T: LikeU16 + Default> Bind<Array<T>> {
     }
 
     /// Helper to calculate an array index.
-    fn get_index(&self, subs: Vec<usize>, line: usize) -> Res<usize> {
+    fn get_index(&self, subs: &[usize], line: usize) -> Res<usize> {
         if subs.len() != self.val.dims.len() {
             return IE241.err_with(None, line);
         }
