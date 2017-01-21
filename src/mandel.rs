@@ -56,10 +56,10 @@ impl Mul for Complex {
 
 fn generate_mandel(xpos: f64, ypos: f64, dist: f64) -> Vec<u16> {
     let width = 100;
-    let height = 28;
+    let height = 56;
     let factor = dist / width as f64;
     let xscale = factor * (1./3.);
-    let yscale = factor;
+    let yscale = factor * (1./2.);  // half blocks
     let xmin = xpos - xscale * width as f64 / 2.;
     let ymin = ypos - yscale * height as f64 / 2.;
 
@@ -82,7 +82,9 @@ fn generate_mandel(xpos: f64, ypos: f64, dist: f64) -> Vec<u16> {
                 }
             }
 
-            res[iy * width + ix] = color;
+            // the order in the array is: (y,x) (y+1,x) (y,x+1) (y+1,x+1) ...
+            // because we print two pixels along y with every character
+            res[(iy/2) * (width*2) + iy%2 + ix*2] = color;
         }
     }
     res
@@ -126,19 +128,18 @@ impl MandelPrinter {
             self.location = (self.location + 1) % LOCATIONS.len();
             println!("KEEP CALM AND STAND BY");
         }
-        let color = self.cur_vector[self.next_index];
-        if color > self.max_color {
-            println!("{} {}", color, self.max_color);
-        }
-        let idx = idxmax - (color + 1) * idxmax / self.max_color;
-        print!("\x1b[48;5;{}m\x1b[38;5;{}m.\x1b[0m",
-               COLORS[idx as usize], COLORS[idx as usize]);
+        let upper = min(self.cur_vector[self.next_index],     self.max_color);
+        let lower = min(self.cur_vector[self.next_index + 1], self.max_color);
+        let idxupper = idxmax - (upper + 1) * idxmax / self.max_color;
+        let idxlower = idxmax - (lower + 1) * idxmax / self.max_color;
+        print!("\x1b[48;5;{}m\x1b[38;5;{}m\u{2584}\x1b[0m",
+               COLORS[idxupper as usize], COLORS[idxlower as usize]);
         if flush {
             let _ = stdout.flush();
         }
-        self.next_index += 1;
-        if self.next_index % 100 == 0 {
-            let _ = stdout.write(&['\n' as u8]);
+        self.next_index += 2;
+        if self.next_index % 200 == 0 {
+            let _ = stdout.write(b"\n");
         }
     }
 
