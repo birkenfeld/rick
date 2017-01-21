@@ -56,8 +56,7 @@ pub struct Parser<'p> {
 
 
 impl<'p> Parser<'p> {
-    pub fn new(code: &Vec<u8>, startline: usize, allow_bug: bool) -> Parser {
-        let code = str::from_utf8(&code).unwrap();
+    pub fn new(code: &str, startline: usize, allow_bug: bool) -> Parser {
         // we have to keep a list of all physical source lines to generate
         // E000 error messages
         let cursor = Cursor::new(&code[..]);
@@ -560,16 +559,14 @@ impl<'p> Parser<'p> {
         }
         let mut last_lineno = self.tokens.lineno();
         if need_syslib == 1 {
-            let code = syslib::SYSLIB_CODE.to_vec();
-            let mut p = Parser::new(&code, last_lineno, false);
+            let mut p = Parser::new(syslib::SYSLIB_CODE, last_lineno, false);
             let mut syslib_stmts = p.parse().expect("E-42 SYSLIB BROKEN");
             stmts.append(&mut syslib_stmts);
             *added_syslib = true;
             last_lineno = p.tokens.lineno();
         }
         if need_floatlib == 1 {
-            let code = syslib::FLOATLIB_CODE.to_vec();
-            let mut p = Parser::new(&code, last_lineno, false);
+            let mut p = Parser::new(syslib::FLOATLIB_CODE, last_lineno, false);
             let mut floatlib_stmts = p.parse().expect("E2.0000000001 FLOATLIB BROKEN");
             stmts.append(&mut floatlib_stmts);
             *added_floatlib = true;

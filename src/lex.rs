@@ -158,7 +158,7 @@ impl<'a> Lexer<'a> {
                 let srctoken = if tok.rule == Rule::NUMBER {
                     let text = self.rdp.input().slice(tok.start, tok.end);
                     SrcToken { line: line, rule: Rule::NUMBER,
-                               value: text.parse().unwrap() }
+                               value: text.parse().unwrap_or(u32::max_value()) }
                 } else if tok.rule == Rule::WOW {
                     // handle ! = '. combination
                     self.stash.push(SrcToken { line: line, rule: Rule::SPOT, value: 0 });

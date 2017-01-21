@@ -27,6 +27,7 @@ extern crate pest;
 extern crate getopts;
 extern crate rand;
 extern crate time;
+extern crate encoding;
 
 mod err;
 mod lex;
@@ -121,6 +122,8 @@ fn main_inner() -> Result<i32, err::RtError> {
     if let Err(_) = f.read_to_end(&mut code) {
         return err::IE777.err();
     }
+    let code = encoding::decode(&code, encoding::DecoderTrap::Ignore,
+                                encoding::all::ISO_8859_1).0.unwrap();
 
     // parse source
     let t0 = time::get_time();
