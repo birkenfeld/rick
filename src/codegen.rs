@@ -108,13 +108,13 @@ impl Generator {
     }
 
     fn gen_attrs(&mut self) -> WRes {
-        w!(self.o; "#![allow(unused_imports)]");
+        w!(self.o; "#![allow(unused_imports)]\n");
         Ok(())
     }
 
     fn gen_stdmods(&mut self) -> WRes {
-        w!(self.o; "#[allow(dead_code)]\nmod err{{\n{}\n}}\n\n", ERR_MOD_STR);
-        w!(self.o; "#[allow(dead_code)]\nmod stdops{{\n{}\n}}\n\n", STDOPS_MOD_STR);
+        w!(self.o; "#[allow(dead_code)]\nmod err {{\n{}\n}}\n\n", ERR_MOD_STR);
+        w!(self.o; "#[allow(dead_code)]\nmod stdops {{\n{}\n}}\n\n", STDOPS_MOD_STR);
         Ok(())
     }
 
@@ -443,7 +443,7 @@ impl Generator {
                 w!(self.o; ", ");
             }
         }
-        w!(self.o; "]; ");
+        w!(self.o; "];");
         Ok(())
     }
 
