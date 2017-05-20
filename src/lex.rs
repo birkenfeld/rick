@@ -17,9 +17,9 @@
 
 #![allow(non_snake_case)]
 
-/// A lexer for INTERCAL generated with RustLex.
+/// A lexer for INTERCAL generated with Pest.
 ///
-/// The raw RustLex lexer is wrapped by a buffer iterator that adds a few
+/// The raw Pest lexer is wrapped by a buffer iterator that adds a few
 /// special methods, such as the pretty standard "peek" and "push back" features.
 
 use pest::prelude::*;
@@ -194,7 +194,7 @@ impl<'a> Lexer<'a> {
     }
 }
 
-pub fn lex<'a>(s: &'a str, startline: usize) -> Lexer<'a> {
+pub fn lex(s: &str, startline: usize) -> Lexer {
     let input = StringInput::new(s);
     Lexer { rdp: Rdp::new(input), rdpline: startline,
             stash: vec![], lastline: startline }

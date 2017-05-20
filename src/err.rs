@@ -58,7 +58,7 @@ impl RtError {
     pub fn to_string(&self) -> String {
         let mut msg = String::from(self.error.msg);
         if let Some(ref s) = self.addstr {
-            msg = msg.replace("{}", &s);
+            msg = msg.replace("{}", s);
         }
         let lineinfo = match self.error.way {
             Some(s) => String::from(s),
@@ -90,19 +90,19 @@ impl From<io::Error> for RtError {
 
 impl ErrDesc {
     pub fn new(&'static self, addstr: Option<String>, line: usize) -> RtError {
-        RtError { error: &self,
+        RtError { error: self,
                   addstr: addstr,
                   lineno: line }
     }
 
     pub fn err<T>(&'static self) -> Result<T, RtError> {
-        Err(RtError { error: &self,
+        Err(RtError { error: self,
                       addstr: None,
                       lineno: 0 })
     }
 
     pub fn err_with<T>(&'static self, addstr: Option<&str>, line: usize) -> Result<T, RtError> {
-        Err(RtError { error: &self,
+        Err(RtError { error: self,
                       addstr: addstr.map(|v| v.into()),
                       lineno: line })
     }

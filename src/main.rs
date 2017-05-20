@@ -119,7 +119,7 @@ fn main_inner() -> Result<i32, err::RtError> {
 
     // read code from input file
     let mut code = Vec::new();
-    if let Err(_) = f.read_to_end(&mut code) {
+    if f.read_to_end(&mut code).is_err() {
         return err::IE777.err();
     }
     let code = encoding::decode(&code, encoding::DecoderTrap::Ignore,

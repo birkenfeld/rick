@@ -103,7 +103,7 @@ impl Generator {
     }
 
     fn write(&mut self, s: &str) -> WRes {
-        self.o.write(s.as_bytes())?;
+        self.o.write_all(s.as_bytes())?;
         Ok(())
     }
 
@@ -129,12 +129,10 @@ impl Generator {
         // check abstention
         if stmt.can_abstain {
             w!(self.o, 16; "if abstain[{}] == 0 {{", i);
+        } else if stmt.props.disabled {
+            w!(self.o, 16; "if false {{");
         } else {
-            if stmt.props.disabled {
-                w!(self.o, 16; "if false {{");
-            } else {
-                w!(self.o, 16; "{{");
-            }
+            w!(self.o, 16; "{{");
         }
         // check chance for statement execution
         if stmt.props.chance < 100 {
@@ -412,7 +410,7 @@ impl Generator {
 
     /// Helper for ABSTAIN.
     fn gen_abstain(&mut self, what: &Abstain, gen: &Fn(String) -> String) -> WRes {
-        if let &Abstain::Label(lbl) = what {
+        if let Abstain::Label(lbl) = *what {
             let idx = self.program.labels[&lbl];
             w!(self.o, 20; "abstain[{}] = {};", idx, gen(format!("(abstain[{}] as u32)", idx)));
         } else {

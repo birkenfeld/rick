@@ -186,7 +186,7 @@ impl<T: LikeU16 + Default> Bind<Array<T>> {
             c = (c & 0x55) << 1 | (c & 0xaa) >> 1;
             res.push(c);
         }
-        write_bytes(w, res, line)
+        write_bytes(w, &res, line)
     }
 
     pub fn writein(&mut self, state: &mut u8, line: usize) -> Res<()> {
@@ -279,7 +279,7 @@ pub fn pop_jumps<T>(jumps: &mut Vec<T>, n: u32, strict: bool, line: usize) -> Re
     Ok(jumps.pop())
 }
 
-/// Which roman digits from the digit_tbl to put together for each
+/// Which roman digits from the `digit_tbl` to put together for each
 /// decimal digit.
 /// These are reversed because the whole digit string is reversed
 /// in the end.
@@ -364,15 +364,15 @@ pub fn from_english(v: &str, line: usize) -> Res<u32> {
 
 /// Output a number in Roman format.
 pub fn write_number(w: &mut Write, val: u32, line: usize) -> Res<()> {
-    if let Err(_) = write!(w, "{}", to_roman(val)) {
+    if write!(w, "{}", to_roman(val)).is_err() {
         return IE252.err_with(None, line);
     }
     Ok(())
 }
 
 /// Output a byte.
-pub fn write_bytes(w: &mut Write, val: Vec<u8>, line: usize) -> Res<()> {
-    if let Err(_) = w.write(&val) {
+pub fn write_bytes(w: &mut Write, val: &[u8], line: usize) -> Res<()> {
+    if w.write_all(val).is_err() {
         return IE252.err_with(None, line);
     }
     Ok(())

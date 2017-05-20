@@ -204,9 +204,7 @@ impl Stmt {
     /// escape value.
     pub fn stype(&self) -> Abstain {
         match self.body {
-            StmtBody::Error(_) => Abstain::Label(0),
-            StmtBody::Calc(..) => Abstain::Calc,
-            StmtBody::Dim(..) => Abstain::Calc,
+            StmtBody::Calc(..) | StmtBody::Dim(..) => Abstain::Calc,
             StmtBody::DoNext(_) => Abstain::Next,
             StmtBody::ComeFrom(_) => Abstain::ComeFrom,
             StmtBody::Resume(_) => Abstain::Resume,
@@ -220,8 +218,7 @@ impl Stmt {
             StmtBody::WriteIn(_) => Abstain::WriteIn,
             StmtBody::ReadOut(_) => Abstain::ReadOut,
             StmtBody::TryAgain => Abstain::TryAgain,
-            StmtBody::GiveUp => Abstain::Label(0),
-            StmtBody::Print(_) => Abstain::Label(0),
+            StmtBody::Error(_) | StmtBody::GiveUp | StmtBody::Print(_) => Abstain::Label(0),
         }
     }
 
@@ -234,11 +231,11 @@ impl Stmt {
 
 impl StmtBody {
     // helpers for Display
-    fn fmt_pluslist<T: Display>(&self, vars: &Vec<T>) -> String {
+    fn fmt_pluslist<T: Display>(&self, vars: &[T]) -> String {
         vars.iter().map(|v| format!("{}", v)).collect::<Vec<_>>().join(" + ")
     }
 
-    fn fmt_bylist(&self, vars: &Vec<Expr>) -> String {
+    fn fmt_bylist(&self, vars: &[Expr]) -> String {
         vars.iter().map(|v| format!("{}", v)).collect::<Vec<_>>().join(" BY ")
     }
 }
@@ -248,10 +245,9 @@ impl Expr {
     /// type of expression has no information about the width.
     pub fn get_vtype(&self) -> VType {
         match *self {
-            Expr::Num(vtype, _) => vtype,
-            Expr::And(vtype, _) | Expr::Or(vtype, _) | Expr::Xor(vtype, _) => vtype,
-            Expr::Select(vtype, _, _) => vtype,
-            Expr::Mingle(..) => VType::I32,
+            Expr::Num(vtype, _) | Expr::And(vtype, _) | Expr::Or(vtype, _) |
+            Expr::Xor(vtype, _) | Expr::Select(vtype, _, _) => vtype,
+            Expr::Mingle(..) |
             Expr::RsAnd(..) | Expr::RsOr(..) | Expr::RsXor(..) |
             Expr::RsNot(..) | Expr::RsRshift(..) | Expr::RsLshift(..) |
             Expr::RsNotEqual(..) | Expr::RsMinus(..) |

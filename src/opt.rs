@@ -78,9 +78,9 @@ impl Optimizer {
     pub fn opt_constant_fold(mut program: Program) -> Program {
         for stmt in &mut program.stmts {
             match stmt.body {
-                StmtBody::Calc(_, ref mut expr) => Optimizer::fold(expr),
-                StmtBody::Resume(ref mut expr)  => Optimizer::fold(expr),
-                StmtBody::Forget(ref mut expr)  => Optimizer::fold(expr),
+                StmtBody::Calc(_, ref mut expr) |
+                StmtBody::Resume(ref mut expr) |
+                StmtBody::Forget(ref mut expr) => Optimizer::fold(expr),
                 _ => { }
             }
         }
@@ -152,9 +152,9 @@ impl Optimizer {
         for stmt in &mut program.stmts {
             //println!("\n\n{}", stmt.props.srcline);
             match stmt.body {
-                StmtBody::Calc(_, ref mut expr) => Optimizer::opt_expr(expr),
-                StmtBody::Resume(ref mut expr)  => Optimizer::opt_expr(expr),
-                StmtBody::Forget(ref mut expr)  => Optimizer::opt_expr(expr),
+                StmtBody::Calc(_, ref mut expr) |
+                StmtBody::Resume(ref mut expr) |
+                StmtBody::Forget(ref mut expr) => Optimizer::opt_expr(expr),
                 _ => { }
             }
         }
@@ -275,9 +275,7 @@ impl Optimizer {
                     }
                 }
             }
-            Expr::And(_, ref mut vx) | Expr::Or(_, ref mut vx) | Expr::Xor(_, ref mut vx) => {
-                Optimizer::opt_expr(vx);
-            }
+            Expr::And(_, ref mut vx) | Expr::Or(_, ref mut vx) | Expr::Xor(_, ref mut vx) |
             Expr::RsNot(ref mut vx) => {
                 Optimizer::opt_expr(vx);
             }
@@ -409,7 +407,7 @@ impl Optimizer {
         // we can do it! evaluate the program and replace all statements
         let out = Vec::new();
         let mut cursor = Cursor::new(out);
-        if let Err(_) = eval::Eval::new(&program, &mut cursor, false, false).eval() {
+        if eval::Eval::new(&program, &mut cursor, false, false).eval().is_err() {
             // if eval fails, don't pretend to do anything.
             return program;
         }
@@ -434,7 +432,7 @@ impl Optimizer {
                 StmtBody::Abstain(_, ref whats) |
                 StmtBody::Reinstate(ref whats) => {
                     for what in whats {
-                        if let &Abstain::Label(lbl) = what {
+                        if let Abstain::Label(lbl) = *what {
                             let idx = program.labels[&lbl];
                             can_abstain[idx as usize] = true;
                         } else {

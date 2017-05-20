@@ -71,11 +71,11 @@ impl<'p> Parser<'p> {
     fn get_lines<T: Read>(mut reader: BufReader<T>) -> Vec<String> {
         let mut buf = Vec::new();
         let mut res = Vec::new();
-        while let Ok(n) = reader.read_until('\n' as u8, &mut buf) {
+        while let Ok(n) = reader.read_until(b'\n', &mut buf) {
             if n == 0 {
                 break;
             }
-            let end = if buf[n - 1] == '\n' as u8 { n - 1 } else { n };
+            let end = if buf[n - 1] == b'\n' { n - 1 } else { n };
             res.push(String::from_utf8_lossy(&buf[..end]).into_owned());
             buf.clear();
         }
