@@ -7,5 +7,6 @@ authors = ["Georg Brandl <georg@python.org>"]
 getopts = "*"
 rand = "*"
 time = "*"
-pest = "*"
 encoding = "*"
+pest = "*"
+pest_derive = "*"

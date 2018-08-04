@@ -1,0 +1,77 @@
+whitespace   = _{ (" " | "\n" | "\t")+ }
+
+tokens       = _{ token+ }
+
+token        = _{ NUMBER | syntax | gerund | verb | designator | operator | whitespace | UNKNOWN }
+
+NUMBER       =  { '0'..'9'+ }
+UNKNOWN      =  { any }
+
+syntax       = _{ WAX | WANE | PLEASEDO | DO | NOT | GETS | SUB | BY |
+                  OHOHSEVEN | INTERSECTION | WOW | MESH }
+WAX          =  { "(" }
+WANE         =  { ")" }
+PLEASEDO     =  { "PLEASE" ~ "DO"? }
+DO           =  { "DO" }
+NOT          =  { "NOT" | "N'T" }
+GETS         =  { "<-" }
+SUB          =  { "SUB" }
+BY           =  { "BY" }
+OHOHSEVEN    =  { "%" }
+INTERSECTION =  { "+" }
+WOW          =  { "!" }
+MESH         =  { "#" }
+
+verb         = _{ NEXT | RESUME | FORGET | IGNORE | REMEMBER | STASH |
+                  RETRIEVE | ABSTAIN | FROM | REINSTATE | COMEFROM |
+                  READOUT | WRITEIN | TRYAGAIN | GIVEUP }
+NEXT         =  { "NEXT" }
+RESUME       =  { "RESUME" }
+FORGET       =  { "FORGET" }
+IGNORE       =  { "IGNORE" }
+REMEMBER     =  { "REMEMBER" }
+STASH        =  { "STASH" }
+RETRIEVE     =  { "RETRIEVE" }
+ABSTAIN      =  { "ABSTAIN" }
+FROM         =  { "FROM" }
+REINSTATE    =  { "REINSTATE" }
+COMEFROM     =  { "COME" ~ "FROM" }
+READOUT      =  { "READ" ~ "OUT" }
+WRITEIN      =  { "WRITE" ~ "IN" }
+TRYAGAIN     =  { "TRY" ~ "AGAIN" }
+GIVEUP       =  { "GIVE" ~ "UP" }
+
+gerund       = _{ CALCULATING | NEXTING | RESUMING | FORGETTING |
+                  IGNORING | REMEMBERING | STASHING | RETRIEVING |
+                  ABSTAINING | REINSTATING | COMINGFROM | READINGOUT |
+                  WRITINGIN | TRYINGAGAIN }
+CALCULATING  =  { "CALCULATING" }
+NEXTING      =  { "NEXTING" }
+RESUMING     =  { "RESUMING" }
+FORGETTING   =  { "FORGETTING" }
+IGNORING     =  { "IGNORING" }
+REMEMBERING  =  { "REMEMBERING" }
+STASHING     =  { "STASHING" }
+RETRIEVING   =  { "RETRIEVING" }
+ABSTAINING   =  { "ABSTAINING" }
+REINSTATING  =  { "REINSTATING" }
+COMINGFROM   =  { "COMING" ~ "FROM" }
+READINGOUT   =  { "READING" ~ "OUT" }
+WRITINGIN    =  { "WRITING" ~ "IN" }
+TRYINGAGAIN  =  { "TRYING" ~ "AGAIN" }
+
+designator   = _{ SPOT | TWOSPOT | TAIL | HYBRID }
+SPOT         =  { "." }
+TWOSPOT      =  { ":" }
+TAIL         =  { "," }
+HYBRID       =  { ";" }
+
+operator     = _{ RABBITEARS | SPARK | MONEY | SQUIGGLE |
+                  AMPERSAND | BOOK | WHAT }
+RABBITEARS   =  { "\"" }
+SPARK        =  { "'" }
+MONEY        =  { "$" | "¢" | "¤" | "£" | "€" }
+SQUIGGLE     =  { "~" }
+AMPERSAND    =  { "&" }
+BOOK         =  { "V" }
+WHAT         =  { "?" | "∀" }
