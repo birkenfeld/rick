@@ -23,7 +23,7 @@
 
 // This is the syslib.i from C-INTERCAL 0.30.
 
-pub const SYSLIB_CODE: &'static str = r##"
+pub const SYSLIB_CODE: &str = r##"
 		PLEASE KNOCK BEFORE ENTERING
 
 	(1000)	PLEASE IGNORE .4
@@ -317,7 +317,7 @@ pub const SYSLIB_CODE: &'static str = r##"
 
 // This is the floatlib.i from C-INTERCAL 0.30.
 
-pub const FLOATLIB_CODE: &'static str = r##"
+pub const FLOATLIB_CODE: &str = r##"
 	PLEASE USE A DESIGNATED ENTRY POINT
 
 (5000)	PLEASE ABSTAIN FROM (5005)

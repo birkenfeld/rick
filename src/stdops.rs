@@ -47,7 +47,7 @@ impl<T: Clone + Default> Array<T> {
     pub fn new(dims: Vec<usize>) -> Array<T> {
         let total = dims.iter().product();
         let value = Default::default();
-        Array { dims: dims, elems: vec![value; total] }
+        Array { dims, elems: vec![value; total] }
     }
 
     pub fn empty() -> Array<T> {
@@ -283,7 +283,7 @@ pub fn pop_jumps<T>(jumps: &mut Vec<T>, n: u32, strict: bool, line: usize) -> Re
 /// decimal digit.
 /// These are reversed because the whole digit string is reversed
 /// in the end.
-const ROMAN_TRANS_TBL: [&'static [usize]; 10] = [
+const ROMAN_TRANS_TBL: [&[usize]; 10] = [
     &[],           // 0
     &[0],          // 1
     &[0, 0],       // 2
@@ -332,7 +332,7 @@ pub fn to_roman(mut val: u32) -> String {
             l2.into_iter().rev().collect::<String>())
 }
 
-const ENGLISH_DIGITS: [(&'static str, u64); 12] = [
+const ENGLISH_DIGITS: [(&str, u64); 12] = [
     ("ZERO",  0),
     ("OH",    0),
     ("ONE",   1),
@@ -407,14 +407,14 @@ pub fn check_ovf(v: u32, line: usize) -> Res<u32> {
 
 /// Implements the Mingle operator.
 pub fn mingle(mut v: u32, mut w: u32) -> u32 {
-    v = ((v & 0x0000ff00) << 8) | (v & 0x000000ff);
-    v = ((v & 0x00f000f0) << 4) | (v & 0x000f000f);
-    v = ((v & 0x0c0c0c0c) << 2) | (v & 0x03030303);
-    v = ((v & 0x22222222) << 1) | (v & 0x11111111);
-    w = ((w & 0x0000ff00) << 8) | (w & 0x000000ff);
-    w = ((w & 0x00f000f0) << 4) | (w & 0x000f000f);
-    w = ((w & 0x0c0c0c0c) << 2) | (w & 0x03030303);
-    w = ((w & 0x22222222) << 1) | (w & 0x11111111);
+    v = ((v & 0x0000_ff00) << 8) | (v & 0x0000_00ff);
+    v = ((v & 0x00f0_00f0) << 4) | (v & 0x000f_000f);
+    v = ((v & 0x0c0c_0c0c) << 2) | (v & 0x0303_0303);
+    v = ((v & 0x2222_2222) << 1) | (v & 0x1111_1111);
+    w = ((w & 0x0000_ff00) << 8) | (w & 0x0000_00ff);
+    w = ((w & 0x00f0_00f0) << 4) | (w & 0x000f_000f);
+    w = ((w & 0x0c0c_0c0c) << 2) | (w & 0x0303_0303);
+    w = ((w & 0x2222_2222) << 1) | (w & 0x1111_1111);
     (v << 1) | w
 }
 
@@ -446,7 +446,7 @@ pub fn and_16(v: u32) -> u32 {
 pub fn and_32(v: u32) -> u32 {
     let mut w = v >> 1;
     if v & 1 > 0 {
-        w |= 0x80000000;
+        w |= 0x8000_0000;
     }
     w & v
 }
@@ -462,7 +462,7 @@ pub fn or_16(v: u32) -> u32 {
 pub fn or_32(v: u32) -> u32 {
     let mut w = v >> 1;
     if v & 1 > 0 {
-        w |= 0x80000000;
+        w |= 0x8000_0000;
     }
     w | v
 }
@@ -478,7 +478,7 @@ pub fn xor_16(v: u32) -> u32 {
 pub fn xor_32(v: u32) -> u32 {
     let mut w = v >> 1;
     if v & 1 > 0 {
-        w |= 0x80000000;
+        w |= 0x8000_0000;
     }
     w ^ v
 }

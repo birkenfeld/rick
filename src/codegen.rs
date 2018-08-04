@@ -38,8 +38,8 @@ use ast::{Program, Stmt, StmtBody, Expr, Var, VType, Abstain, ComeFrom};
 use err::{Res, IE129, IE533, IE994};
 use lex::SrcLine;
 
-const STDOPS_MOD_STR: &'static str = include_str!("stdops.rs");
-const ERR_MOD_STR:    &'static str = include_str!("err.rs");
+const STDOPS_MOD_STR: &str = include_str!("stdops.rs");
+const ERR_MOD_STR:    &str = include_str!("err.rs");
 
 
 pub type WRes = Res<()>;  // write result, always unit
@@ -78,8 +78,8 @@ impl Generator {
     pub fn new(program: Program, outfile: File, debug: bool, random: bool) -> Generator {
         Generator {
             program: Rc::new(program),
-            debug: debug,
-            random: random,
+            debug,
+            random,
             o: BufWriter::new(outfile),
             line: 0,
         }
@@ -156,7 +156,7 @@ impl Generator {
             let cand1 = if let Some(next) = stmt.comefrom {
                 format!("Some({})", next)
             } else {
-                format!("None")
+                "None".into()
             };
             let label = format!("{}", stmt.props.label);
             self.gen_comefrom_check(&cand1, &label)?;
@@ -270,7 +270,7 @@ impl Generator {
                     self.gen_eval_expr(e)?;
                     Box::new(|v| format!("{}.saturating_add(val)", v))
                 } else {
-                    Box::new(|_| format!("1"))
+                    Box::new(|_| "1".into())
                 };
                 for what in whats {
                     self.gen_abstain(what, &*f)?;

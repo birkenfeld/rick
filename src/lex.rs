@@ -70,7 +70,7 @@ impl<'a> Lexer<'a> {
                     SrcToken { line, rule, value: text.trim().parse().unwrap_or(u32::max_value()) }
                 } else if rule == Rule::WOW {
                     // handle ! = '. combination
-                    self.stash.push(SrcToken { line: line, rule: Rule::SPOT, value: 0 });
+                    self.stash.push(SrcToken { line, rule: Rule::SPOT, value: 0 });
                     SrcToken { line, rule: Rule::SPARK, value: 0 }
                 } else {
                     SrcToken { line, rule, value: 0 }

@@ -124,9 +124,9 @@ impl<'a> Eval<'a> {
                      program.var_info.2.len(),
                      program.var_info.3.len());
         Eval {
-            program:  program,
-            stdout:   stdout,
-            debug:    debug,
+            program,
+            stdout,
+            debug,
             spot:     vec![Bind::new(0); nvars.0],
             twospot:  vec![Bind::new(0); nvars.1],
             tail:     vec![Bind::new(Array::empty()); nvars.2],
@@ -596,7 +596,7 @@ impl<'a> Eval<'a> {
             for (i, v) in vec.iter().enumerate() {
                 print!("{}{} = {}, ", sigil, i, v);
             }
-            println!("");
+            println!();
         }
     }
 }

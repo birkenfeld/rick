@@ -89,22 +89,16 @@ impl From<io::Error> for RtError {
 }
 
 impl ErrDesc {
-    pub fn new(&'static self, addstr: Option<String>, line: usize) -> RtError {
-        RtError { error: self,
-                  addstr: addstr,
-                  lineno: line }
+    pub fn new(&'static self, addstr: Option<String>, lineno: usize) -> RtError {
+        RtError { error: self, addstr, lineno }
     }
 
     pub fn err<T>(&'static self) -> Result<T, RtError> {
-        Err(RtError { error: self,
-                      addstr: None,
-                      lineno: 0 })
+        Err(RtError { error: self, addstr: None, lineno: 0 })
     }
 
-    pub fn err_with<T>(&'static self, addstr: Option<&str>, line: usize) -> Result<T, RtError> {
-        Err(RtError { error: self,
-                      addstr: addstr.map(|v| v.into()),
-                      lineno: line })
+    pub fn err_with<T>(&'static self, addstr: Option<&str>, lineno: usize) -> Result<T, RtError> {
+        Err(RtError { error: self, addstr: addstr.map(|v| v.into()), lineno })
     }
 }
 

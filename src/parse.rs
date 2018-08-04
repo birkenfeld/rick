@@ -24,7 +24,7 @@
 /// There are quite a few steps to do after parsing, which are done in the method
 /// called `post_process`.  It makes a list of statements into a "real" program.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, hash_map::Entry as HEntry};
 use std::io::{Read, BufRead, BufReader, Cursor};
 use std::u16;
 use std::str;
@@ -61,11 +61,11 @@ impl<'p> Parser<'p> {
         // E000 error messages
         let cursor = Cursor::new(&code[..]);
         let lines = Parser::get_lines(BufReader::new(cursor));
-        Parser { lines: lines,
+        Parser { lines,
                  tokens: lex(code, startline),
                  stash: Vec::new(),
-                 startline: startline,
-                 allow_bug: allow_bug }
+                 startline,
+                 allow_bug }
     }
 
     fn get_lines<T: Read>(mut reader: BufReader<T>) -> Vec<String> {
@@ -133,13 +133,12 @@ impl<'p> Parser<'p> {
                     }
                 }
                 // return the botched statement
-                Ok(Stmt { body: body, props: props, comefrom: None, can_abstain: true })
+                Ok(Stmt { body, props, comefrom: None, can_abstain: true })
             }
             // a full statement!
             Ok(body) => {
                 let can_abstain = body != StmtBody::GiveUp;
-                Ok(Stmt { body: body, props: props, comefrom: None,
-                          can_abstain: can_abstain })
+                Ok(Stmt { body, props, comefrom: None, can_abstain })
             }
         }
     }
@@ -670,9 +669,9 @@ impl<'p> Parser<'p> {
     fn collect_vars(&self, vars: &mut Vars, stmt: &mut Stmt) {
         self.walk_vars(stmt, |var| {
             let key = var.unique();
-            if !vars.map.contains_key(&key) {
+            if let HEntry::Vacant(v) = vars.map.entry(key) {
                 let idx = key.0 as usize;
-                vars.map.insert(key, vars.counts[idx]);
+                v.insert(vars.counts[idx]);
                 vars.counts[idx] += 1;
             }
         });
@@ -701,12 +700,12 @@ impl<'p> Parser<'p> {
         // - set the correct "on the way to" line for error statements
         // - collect variables for renaming
         let mut npolite = 0;
-        let mut types = Vec::new();
+        let mut stmt_types = Vec::new();
         let mut labels = BTreeMap::new();
         let mut comefroms: HashMap<usize, u16> = HashMap::new();
         let mut vars = Vars { counts: vec![0, 0, 0, 0], map: HashMap::new() };
         for (i, mut stmt) in stmts.iter_mut().enumerate() {
-            types.push(stmt.stype());
+            stmt_types.push(stmt.stype());
             stmt.props.onthewayto =
                 if i < nstmts - 1 { srclines[i + 1] } else { srclines[i] };
             if stmt.props.label > 0 {
@@ -752,7 +751,7 @@ impl<'p> Parser<'p> {
                         }
                     }
                     ComeFrom::Gerund(ref g) => {
-                        for (j, stype) in types.iter().enumerate() {
+                        for (j, stype) in stmt_types.iter().enumerate() {
                             if *g == *stype {
                                 if comefroms.contains_key(&j) {
                                     return Err(IE555.new(None, stmt.props.onthewayto));
@@ -798,14 +797,14 @@ impl<'p> Parser<'p> {
                         vec![VarInfo::new(); vars.counts[1]],
                         vec![VarInfo::new(); vars.counts[2]],
                         vec![VarInfo::new(); vars.counts[3]]);
-        Ok(Program { stmts: stmts,
-                     labels: labels,
-                     stmt_types: types,
-                     var_info: var_info,
-                     uses_complex_comefrom: uses_complex_comefrom,
-                     added_syslib: added_syslib,
-                     added_floatlib: added_floatlib,
-                     bugline: bugline })
+        Ok(Program { stmts,
+                     labels,
+                     stmt_types,
+                     var_info,
+                     uses_complex_comefrom,
+                     added_syslib,
+                     added_floatlib,
+                     bugline })
     }
 }
 

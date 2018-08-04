@@ -224,7 +224,7 @@ impl Stmt {
 
     /// Synthesize a statement with default metadata.
     pub fn new_with(body: StmtBody) -> Stmt {
-        Stmt { body: body, props: StmtProps::default(),
+        Stmt { body, props: StmtProps::default(),
                comefrom: None, can_abstain: true }
     }
 }
@@ -322,7 +322,7 @@ impl Default for StmtProps {
 impl Display for Program {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         for stmt in &self.stmts {
-            write!(fmt, "{}\n", stmt)?;
+            writeln!(fmt, "{}", stmt)?;
         }
         Ok(())
     }
