@@ -22,14 +22,6 @@
 ///
 /// Parses arguments, calls parser, optimizer, interpreter or code generator.
 
-extern crate pest;
-#[macro_use]
-extern crate pest_derive;
-extern crate getopts;
-extern crate rand;
-extern crate time;
-extern crate encoding;
-
 mod err;
 mod lex;
 mod parse;
@@ -47,7 +39,7 @@ use std::fs::{File, remove_file};
 use std::process::{Command, Stdio, exit};
 use std::sync::mpsc;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use parse::Parser;
 use opt::Optimizer;
@@ -127,7 +119,7 @@ fn main_inner() -> Result<i32, err::RtError> {
                                 encoding::all::ISO_8859_1).0.unwrap();
 
     // parse source
-    let t0 = time::get_time();
+    let t0 = Instant::now();
     let mut program = match Parser::new(&code, 1, bug_flag).get_program() {
         Ok(program) => {
             if debug_flag {
@@ -139,7 +131,7 @@ fn main_inner() -> Result<i32, err::RtError> {
     };
 
     // optimize if wanted
-    let t1 = time::get_time();
+    let t1 = Instant::now();
     if opt_flag {
         program = Optimizer::new(program, const_out_flag).optimize();
         if debug_flag {
@@ -148,7 +140,7 @@ fn main_inner() -> Result<i32, err::RtError> {
     }
 
     // compile or run
-    let t2 = time::get_time();
+    let t2 = Instant::now();
     if compile_flag {
         // PLEASE NOTE the selection of errors generated on different conditions
         // is a bit random
@@ -160,17 +152,17 @@ fn main_inner() -> Result<i32, err::RtError> {
         };
         // generate Rust code
         Generator::new(program, output, debug_flag, rand_flag).generate()?;
-        let t3 = time::get_time();
+        let t3 = Instant::now();
         // if wanted, compile to binary
         if rustc_flag {
             run_compiler(&outname, rustc_opt_flag)?;
         }
-        let t4 = time::get_time();
+        let t4 = Instant::now();
         if timing_flag {
-            println!("parsing:    {}", (t1 - t0));
-            println!("optimizing: {}", (t2 - t1));
-            println!("code gen:   {}", (t3 - t2));
-            println!("rustc:      {}", (t4 - t3));
+            println!("parsing:    {:?}", (t1 - t0));
+            println!("optimizing: {:?}", (t2 - t1));
+            println!("code gen:   {:?}", (t3 - t2));
+            println!("rustc:      {:?}", (t4 - t3));
         }
     } else {
         let mut stdout = stdout();
@@ -179,12 +171,12 @@ fn main_inner() -> Result<i32, err::RtError> {
         }
         let mut eval = Eval::new(&program, &mut stdout, debug_flag, rand_flag);
         let num = eval.eval()?;
-        let t3 = time::get_time();
+        let t3 = Instant::now();
         if timing_flag {
-            println!("#stmts:     {}", num);
-            println!("parsing:    {}", (t1 - t0));
-            println!("optimizing: {}", (t2 - t1));
-            println!("execute:    {}", (t3 - t2));
+            println!("#stmts:     {:?}", num);
+            println!("parsing:    {:?}", (t1 - t0));
+            println!("optimizing: {:?}", (t2 - t1));
+            println!("execute:    {:?}", (t3 - t2));
         }
     }
     Ok(0)

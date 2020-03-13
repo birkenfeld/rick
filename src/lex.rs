@@ -17,6 +17,7 @@
 
 #![allow(non_snake_case)]
 
+use pest_derive::Parser;
 use pest::Parser;
 use pest::iterators::Pairs;
 

@@ -34,9 +34,9 @@ use std::io::{BufWriter, Write};
 use std::rc::Rc;
 use std::u16;
 
-use ast::{Program, Stmt, StmtBody, Expr, Var, VType, Abstain, ComeFrom};
-use err::{Res, IE129, IE533, IE994};
-use lex::SrcLine;
+use crate::ast::{Program, Stmt, StmtBody, Expr, Var, VType, Abstain, ComeFrom};
+use crate::err::{Res, IE129, IE533, IE994};
+use crate::lex::SrcLine;
 
 const STDOPS_MOD_STR: &str = include_str!("stdops.rs");
 const ERR_MOD_STR:    &str = include_str!("err.rs");

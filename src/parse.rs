@@ -31,11 +31,11 @@ use std::str;
 
 use rand::{self, Rng};
 
-use ast::{self, Program, Stmt, StmtBody, StmtProps, Expr, Abstain, ComeFrom, Var, VType, VarInfo};
-use err::{Res, RtError, ErrDesc, IE000, IE017, IE079, IE099, IE139, IE182, IE197, IE200,
-          IE444, IE555, IE993};
-use lex::{SrcLine, SrcToken, Rule, Lexer, lex};
-use syslib;
+use crate::ast::{self, Program, Stmt, StmtBody, StmtProps, Expr, Abstain, ComeFrom, Var, VType, VarInfo};
+use crate::err::{Res, RtError, ErrDesc, IE000, IE017, IE079, IE099, IE139, IE182, IE197, IE200,
+                 IE444, IE555, IE993};
+use crate::lex::{SrcLine, SrcToken, Rule, Lexer, lex};
+use crate::syslib;
 
 
 #[derive(Debug)]

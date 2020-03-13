@@ -1,12 +1,12 @@
 [package]
 name = "rick"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Georg Brandl <georg@python.org>"]
+edition = "2018"
 
 [dependencies]
 getopts = "0.2"
 rand = "0.7"
 encoding = "0.2"
-time = "0.1"
 pest = "1.0"
 pest_derive = "1.0"

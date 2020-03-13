@@ -35,7 +35,7 @@ use std::fs::File;
 use std::io::{Read, Write, stdin};
 use std::{u16, u32};
 
-use err::{Res, IE240, IE241, IE252, IE436, IE533, IE562, IE579, IE621, IE632};
+use crate::err::{Res, IE240, IE241, IE252, IE436, IE533, IE562, IE579, IE621, IE632};
 
 #[derive(Clone, Debug)]
 pub struct Array<T> {
@@ -484,7 +484,7 @@ pub fn xor_32(v: u32) -> u32 {
 }
 
 pub trait LikeU16: Copy {
-    fn from_u16(u16) -> Self;
+    fn from_u16(x: u16) -> Self;
     fn to_u16(self) -> u16;
 }
 

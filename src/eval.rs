@@ -24,10 +24,10 @@ use std::fmt::{Debug, Display};
 use std::io::Write;
 use std::u16;
 
-use err::{Res, IE123, IE129, IE252, IE275, IE555, IE633, IE774, IE994};
-use ast::{self, Program, Stmt, StmtBody, ComeFrom, Expr, Var, VType};
-use stdops::{Bind, Array, write_number, read_number, check_chance, check_ovf, pop_jumps,
-             get_random_seed, mingle, select, and_16, and_32, or_16, or_32, xor_16, xor_32};
+use crate::err::{Res, IE123, IE129, IE252, IE275, IE555, IE633, IE774, IE994};
+use crate::ast::{self, Program, Stmt, StmtBody, ComeFrom, Expr, Var, VType};
+use crate::stdops::{Bind, Array, write_number, read_number, check_chance, check_ovf, pop_jumps,
+                    get_random_seed, mingle, select, and_16, and_32, or_16, or_32, xor_16, xor_32};
 
 
 /// Represents a value (either 16-bit or 32-bit) at runtime.

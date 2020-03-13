@@ -41,9 +41,9 @@ use std::collections::BTreeMap;
 use std::io::Cursor;
 use std::u16;
 
-use ast::{Program, Stmt, StmtBody, Expr, Var, VarInfo, VType, Abstain};
-use eval;
-use stdops::{mingle, select, and_16, and_32, or_16, or_32, xor_16, xor_32};
+use crate::ast::{Program, Stmt, StmtBody, Expr, Var, VarInfo, VType, Abstain};
+use crate::eval;
+use crate::stdops::{mingle, select, and_16, and_32, or_16, or_32, xor_16, xor_32};
 
 
 pub struct Optimizer {
