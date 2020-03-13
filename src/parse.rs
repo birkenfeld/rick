@@ -320,7 +320,7 @@ impl<'p> Parser<'p> {
 
     /// Maybe parse a variable reference with maybe inline unary op [.:,;] OP N {SUB X}.
     fn parse_item_with_unop(&mut self) -> ParseRes<Option<Expr>> {
-        fn parse_constr(self_: &mut Parser) -> Box<Fn(Expr) -> Expr> {
+        fn parse_constr(self_: &mut Parser) -> Box<dyn Fn(Expr) -> Expr> {
             if self_.take(Rule::AMPERSAND) {
                 Box::new(|e| Expr::And(VType::I16, Box::new(e)))
             } else if self_.take(Rule::BOOK) {

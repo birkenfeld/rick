@@ -4,9 +4,9 @@ version = "0.1.0"
 authors = ["Georg Brandl <georg@python.org>"]
 
 [dependencies]
-getopts = "*"
-rand = "*"
-time = "*"
-encoding = "*"
-pest = "*"
-pest_derive = "*"
+getopts = "0.2"
+rand = "0.7"
+encoding = "0.2"
+time = "0.1"
+pest = "1.0"
+pest_derive = "1.0"

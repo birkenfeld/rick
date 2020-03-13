@@ -79,7 +79,7 @@ pub struct Eval<'a> {
     /// Program to execute.
     program: &'a Program,
     /// Stream to use for printing output.
-    stdout: &'a mut Write,
+    stdout: &'a mut dyn Write,
     /// Whether to print debugging output during execution.
     debug: bool,
     /// Variable bindings for the four types of variables.
@@ -116,7 +116,7 @@ enum Flow {
 
 impl<'a> Eval<'a> {
     /// Construct a new evaluator.
-    pub fn new(program: &'a Program, stdout: &'a mut Write, debug: bool,
+    pub fn new(program: &'a Program, stdout: &'a mut dyn Write, debug: bool,
                random: bool) -> Eval<'a> {
         let abs = program.stmts.iter().map(|stmt| stmt.props.disabled as u32).collect();
         let nvars = (program.var_info.0.len(),
@@ -306,7 +306,7 @@ impl<'a> Eval<'a> {
                 Ok(Flow::Next)
             }
             StmtBody::Abstain(ref expr, ref whats) => {
-                let f: Box<Fn(u32) -> u32> = if let Some(ref e) = *expr {
+                let f: Box<dyn Fn(u32) -> u32> = if let Some(ref e) = *expr {
                     let n = self.eval_expr(e)?.as_u32();
                     Box::new(move |v: u32| v.saturating_add(n))
                 } else {
@@ -544,7 +544,7 @@ impl<'a> Eval<'a> {
     }
 
     /// P()rocess an ABSTAIN or REINSTATE statement.  Cannot fail.
-    fn abstain(&mut self, what: &ast::Abstain, f: &Fn(u32) -> u32) {
+    fn abstain(&mut self, what: &ast::Abstain, f: &dyn Fn(u32) -> u32) {
         if let ast::Abstain::Label(lbl) = *what {
             let idx = self.program.labels[&lbl] as usize;
             if self.program.stmts[idx].body != StmtBody::GiveUp {

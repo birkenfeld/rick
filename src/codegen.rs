@@ -266,7 +266,7 @@ impl Generator {
                 }
             }
             StmtBody::Abstain(ref expr, ref whats) => {
-                let f: Box<Fn(String) -> String> = if let Some(ref e) = *expr {
+                let f: Box<dyn Fn(String) -> String> = if let Some(ref e) = *expr {
                     self.gen_eval_expr(e)?;
                     Box::new(|v| format!("{}.saturating_add(val)", v))
                 } else {
@@ -409,7 +409,7 @@ impl Generator {
     }
 
     /// Helper for ABSTAIN.
-    fn gen_abstain(&mut self, what: &Abstain, gen: &Fn(String) -> String) -> WRes {
+    fn gen_abstain(&mut self, what: &Abstain, gen: &dyn Fn(String) -> String) -> WRes {
         if let Abstain::Label(lbl) = *what {
             let idx = self.program.labels[&lbl];
             w!(self.o, 20; "abstain[{}] = {};", idx, gen(format!("(abstain[{}] as u32)", idx)));

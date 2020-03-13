@@ -171,7 +171,7 @@ impl<T: LikeU16 + Default> Bind<Array<T>> {
         Ok(())
     }
 
-    pub fn readout(&self, w: &mut Write, state: &mut u8, line: usize) -> Res<()> {
+    pub fn readout(&self, w: &mut dyn Write, state: &mut u8, line: usize) -> Res<()> {
         if self.val.dims.len() != 1 {
             // only dimension-1 arrays can be output
             return IE241.err_with(None, line);
@@ -363,7 +363,7 @@ pub fn from_english(v: &str, line: usize) -> Res<u32> {
 }
 
 /// Output a number in Roman format.
-pub fn write_number(w: &mut Write, val: u32, line: usize) -> Res<()> {
+pub fn write_number(w: &mut dyn Write, val: u32, line: usize) -> Res<()> {
     if write!(w, "{}", to_roman(val)).is_err() {
         return IE252.err_with(None, line);
     }
@@ -371,7 +371,7 @@ pub fn write_number(w: &mut Write, val: u32, line: usize) -> Res<()> {
 }
 
 /// Output a byte.
-pub fn write_bytes(w: &mut Write, val: &[u8], line: usize) -> Res<()> {
+pub fn write_bytes(w: &mut dyn Write, val: &[u8], line: usize) -> Res<()> {
     if w.write_all(val).is_err() {
         return IE252.err_with(None, line);
     }
