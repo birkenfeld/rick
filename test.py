@@ -52,17 +52,17 @@ def run_test(testname, testcode, compiled):
     print('')
     print('>>> Test: ' + testname)
     print('  > Step 1: interpreted')
-    check(Popen(['cargo', 'run', '-q', '--', '-Rbi', testcode],
+    check(Popen(['cargo', 'run', '--release', '-q', '--', '-Rbi', testcode],
                 stdin=PIPE, stdout=PIPE, stderr=STDOUT), True)
 
     print('  > Step 2: interpreted + optimized')
-    check(Popen(['cargo', 'run', '-q', '--', '-Rbio', testcode],
+    check(Popen(['cargo', 'run', '--release', '-q', '--', '-Rbio', testcode],
                 stdin=PIPE, stdout=PIPE, stderr=STDOUT), True)
 
     if compiled:
         print('  > Step 3: compiled + optimized')
         if testcode not in already_compiled:
-            if os.system('cargo run -q -- -RFbo %s > /dev/null' % testcode) != 0:
+            if os.system('cargo run --release -q -- -RFbo %s > /dev/null' % testcode) != 0:
                 print('*** ERROR: compilation failed')
                 raise RuntimeError
             already_compiled.add(testcode)
@@ -77,7 +77,7 @@ def main():
     tests = [path.splitext(test.replace('/', os.sep))[0]
              for test in sys.argv[1:] if not test.startswith('-')]
     print('Building...')
-    if os.system('cargo build') != 0:
+    if os.system('cargo build --release') != 0:
         return 2
     print('Running tests, please wait...')
     passed = 0
