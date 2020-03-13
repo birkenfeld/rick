@@ -30,11 +30,12 @@ def run_test(testname, testcode, compiled):
     if path.isfile(testname + '.tst'):
         with open(testname + '.tst', 'rb') as stdinfile:
             stdin = stdinfile.read()
-    with open(testname + '.chk', 'rb') as stdoutfile:
+    with open(testname + '.chk', 'r') as stdoutfile:
         stdout = stdoutfile.read()
 
     def check(proc, remove_cargo):
         real_stdout, _ = proc.communicate(stdin)
+        real_stdout = real_stdout.decode()
         # remove cargo's "Running" line
         if remove_cargo:
             errindex = real_stdout.find('An unknown error occurred')
