@@ -65,7 +65,7 @@ impl<'a> Lexer<'a> {
             self.inner.next().map(|pair| {
                 let rule = pair.as_rule();
                 let text = pair.as_str();
-                let line = pair.into_span().end_pos().line_col().0 - 1 + self.startline;
+                let line = pair.as_span().end_pos().line_col().0 - 1 + self.startline;
                 // convert into SrcToken
                 if rule == Rule::NUMBER {
                     SrcToken { line, rule, value: text.trim().parse().unwrap_or(u32::max_value()) }

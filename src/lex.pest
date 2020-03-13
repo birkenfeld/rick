@@ -1,11 +1,12 @@
-whitespace   = _{ (" " | "\n" | "\t")+ }
+// auto-matched between tokens
+WHITESPACE   = _{ (" " | "\n" | "\t")+ }
 
-tokens       = _{ token+ }
+tokens       = _{ WHITESPACE? ~ token+ }
 
-token        = _{ NUMBER | syntax | gerund | verb | designator | operator | whitespace | UNKNOWN }
+token        = _{ NUMBER | syntax | gerund | verb | designator | operator | UNKNOWN }
 
 NUMBER       =  { '0'..'9'+ }
-UNKNOWN      =  { any }
+UNKNOWN      =  { ANY }
 
 syntax       = _{ WAX | WANE | PLEASEDO | DO | NOT | GETS | SUB | BY |
                   OHOHSEVEN | INTERSECTION | WOW | MESH }
