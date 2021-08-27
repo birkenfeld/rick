@@ -1,7 +1,7 @@
 // -------------------------------------------------------------------------------------------------
 // Rick, a Rust intercal compiler.  Save your souls!
 //
-// Copyright (c) 2015-2017 Georg Brandl
+// Copyright (c) 2015-2021 Georg Brandl
 //
 // This program is free software; you can redistribute it and/or modify it under the terms of the
 // GNU General Public License as published by the Free Software Foundation; either version 2 of the
@@ -59,7 +59,7 @@ impl<'p> Parser<'p> {
     pub fn new(code: &str, startline: usize, allow_bug: bool) -> Parser {
         // we have to keep a list of all physical source lines to generate
         // E000 error messages
-        let cursor = Cursor::new(&code[..]);
+        let cursor = Cursor::new(code);
         let lines = Parser::get_lines(BufReader::new(cursor));
         Parser { lines,
                  tokens: lex(code, startline),
@@ -113,7 +113,7 @@ impl<'p> Parser<'p> {
             // a "soft" error: thrown at runtime as E000
             Err(DecodeError::Soft(srcline)) => {
                 let body = StmtBody::Error(
-                    IE000.new(Some(self.lines[srcline - self.startline].clone()), 0));
+                    IE000.mk(Some(self.lines[srcline - self.startline].clone()), 0));
                 // jump over tokens until the next statement beginning
                 loop {
                     match self.tokens.peek() {
@@ -290,8 +290,7 @@ impl<'p> Parser<'p> {
 
     /// Parse a list of variables separated by + (without subscripts).
     fn parse_varlist(&mut self, subs_allowed: bool) -> ParseRes<Vec<Var>> {
-        let mut res = Vec::new();
-        res.push(self.parse_var(subs_allowed)?);
+        let mut res = vec![self.parse_var(subs_allowed)?];
         while self.take(Rule::INTERSECTION) {
             res.push(self.parse_var(subs_allowed)?);
         }
@@ -378,8 +377,7 @@ impl<'p> Parser<'p> {
             return Ok(vec![Abstain::Label(lbl)]);
         }
         // second form: one or more gerunds
-        let mut res = Vec::new();
-        res.push(self.parse_gerund()?);
+        let mut res = vec![self.parse_gerund()?];
         while self.take(Rule::INTERSECTION) {
             res.push(self.parse_gerund()?);
         }
@@ -423,8 +421,7 @@ impl<'p> Parser<'p> {
 
     /// Parse a list of exprs separated by BY.
     fn parse_by_exprs(&mut self) -> ParseRes<Vec<Expr>> {
-        let mut res = Vec::new();
-        res.push(self.parse_expr()?);
+        let mut res = vec![self.parse_expr()?];
         while self.take(Rule::BY) {
             res.push(self.parse_expr()?);
         }
@@ -497,7 +494,7 @@ impl<'p> Parser<'p> {
                 if t.rule == Rule::NUMBER {
                     let x = t.value;
                     if x > max as u32 {
-                        Err(DecodeError::Hard(err.new(None, self.tokens.lineno())))
+                        Err(DecodeError::Hard(err.mk(None, self.tokens.lineno())))
                     } else {
                         self.stash.push(t);
                         Ok(x as u16)
@@ -548,10 +545,10 @@ impl<'p> Parser<'p> {
             }
             if let StmtBody::DoNext(n) = stmt.body {
                 // jumping to a syslib label? we might need it then
-                if n >= 1000 && n < 1999 && need_syslib > -1 {
+                if (1000..1999).contains(&n) && need_syslib > -1 {
                     need_syslib = 1;
                 }
-                if n >= 5000 && n < 5999 && need_floatlib > -1 {
+                if (5000..5999).contains(&n) && need_floatlib > -1 {
                     need_floatlib = 1;
                 }
             }
@@ -575,12 +572,12 @@ impl<'p> Parser<'p> {
 
     /// Walk all references to variables, and call a visitor function for each.
     fn walk_vars<F>(&self, stmt: &mut Stmt, mut visitor: F)
-        where F: FnMut(&mut Var) -> ()
+        where F: FnMut(&mut Var)
     {
         let visitor = &mut visitor;
 
         fn walk_var<F>(var: &mut Var, visitor: &mut F)
-            where F: FnMut(&mut Var) -> ()
+            where F: FnMut(&mut Var)
         {
             visitor(var);
             match *var {
@@ -596,7 +593,7 @@ impl<'p> Parser<'p> {
         }
 
         fn walk_expr<F>(expr: &mut Expr, visitor: &mut F)
-            where F: FnMut(&mut Var) -> ()
+            where F: FnMut(&mut Var)
         {
             match *expr {
                 Expr::Var(ref mut v) => walk_var(v, visitor),
@@ -710,7 +707,7 @@ impl<'p> Parser<'p> {
                 if i < nstmts - 1 { srclines[i + 1] } else { srclines[i] };
             if stmt.props.label > 0 {
                 if labels.contains_key(&stmt.props.label) {
-                    return Err(IE182.new(None, stmt.props.onthewayto));
+                    return Err(IE182.mk(None, stmt.props.onthewayto));
                 }
                 labels.insert(stmt.props.label, i as u16);
             }
@@ -741,10 +738,10 @@ impl<'p> Parser<'p> {
                 match *spec {
                     ComeFrom::Label(n) => {
                         match labels.get(&n) {
-                            None => return Err(IE444.new(None, stmt.props.onthewayto)),
+                            None => return Err(IE444.mk(None, stmt.props.onthewayto)),
                             Some(j) => {
                                 if comefroms.contains_key(&(*j as usize)) {
-                                    return Err(IE555.new(None, stmt.props.onthewayto));
+                                    return Err(IE555.mk(None, stmt.props.onthewayto));
                                 }
                                 comefroms.insert(*j as usize, i as u16);
                             }
@@ -754,7 +751,7 @@ impl<'p> Parser<'p> {
                         for (j, stype) in stmt_types.iter().enumerate() {
                             if *g == *stype {
                                 if comefroms.contains_key(&j) {
-                                    return Err(IE555.new(None, stmt.props.onthewayto));
+                                    return Err(IE555.mk(None, stmt.props.onthewayto));
                                 }
                                 comefroms.insert(j, i as u16);
                             }
@@ -769,14 +766,14 @@ impl<'p> Parser<'p> {
             if let StmtBody::Abstain(_, ref v) = stmt.body {
                 if let Abstain::Label(n) = v[0] {
                     if !labels.contains_key(&n) {
-                        return Err(IE139.new(None, stmt.props.onthewayto));
+                        return Err(IE139.mk(None, stmt.props.onthewayto));
                     }
                 }
             }
             if let StmtBody::TryAgain = stmt.body {
                 // TRY AGAIN must be the last statement in the file
                 if i != nstmts - 1 {
-                    return Err(IE993.new(None, stmt.props.onthewayto));
+                    return Err(IE993.mk(None, stmt.props.onthewayto));
                 }
             }
         }
@@ -787,8 +784,8 @@ impl<'p> Parser<'p> {
         }
         // select a line for the compiler bug
         let mut rng = rand::thread_rng();
-        let bugline = if self.allow_bug && rng.gen_range(0, 10) == 0 {
-            rng.gen_range(0, stmts.len())
+        let bugline = if self.allow_bug && rng.gen_range(0..10) == 0 {
+            rng.gen_range(0..stmts.len())
         } else {
             stmts.len()  // can never be reached
         } as u16;

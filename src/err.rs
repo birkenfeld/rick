@@ -1,7 +1,7 @@
 // -------------------------------------------------------------------------------------------------
 // Rick, a Rust intercal compiler.  Save your souls!
 //
-// Copyright (c) 2015-2017 Georg Brandl
+// Copyright (c) 2015-2021 Georg Brandl
 //
 // This program is free software; you can redistribute it and/or modify it under the terms of the
 // GNU General Public License as published by the Free Software Foundation; either version 2 of the
@@ -31,7 +31,7 @@
 /// caller.  In compiled code, no such adjustment is done, so errors have to get the
 /// correct line numbers when created.
 
-use std::io;
+use std::{fmt, io};
 
 /// Result of a statement.
 pub type Res<T> = Result<T, RtError>;
@@ -55,20 +55,6 @@ impl RtError {
         self.lineno = lineno;
     }
 
-    pub fn to_string(&self) -> String {
-        let mut msg = String::from(self.error.msg);
-        if let Some(ref s) = self.addstr {
-            msg = msg.replace("{}", s);
-        }
-        let lineinfo = match self.error.way {
-            Some(s) => String::from(s),
-            None => format!("ON THE WAY TO {}", self.lineno),
-        };
-        format!("ICL{:03}I\t{}\n\t{}\
-                 \n        CORRECT SOURCE AND RESUBNIT\n",
-                self.error.num, msg, lineinfo)
-    }
-
     pub fn short_string(&self) -> &str {
         match self.addstr {
             Some(ref s) => s,
@@ -82,14 +68,30 @@ impl RtError {
     }
 }
 
+impl fmt::Display for RtError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut msg = String::from(self.error.msg);
+        if let Some(ref s) = self.addstr {
+            msg = msg.replace("{}", s);
+        }
+        let lineinfo = match self.error.way {
+            Some(s) => String::from(s),
+            None => format!("ON THE WAY TO {}", self.lineno),
+        };
+        write!(f, "ICL{:03}I\t{}\n\t{}\
+                   \n        CORRECT SOURCE AND RESUBNIT\n",
+               self.error.num, msg, lineinfo)
+    }
+}
+
 impl From<io::Error> for RtError {
     fn from(_: io::Error) -> RtError {
-        IE888.new(None, 0)
+        IE888.mk(None, 0)
     }
 }
 
 impl ErrDesc {
-    pub fn new(&'static self, addstr: Option<String>, lineno: usize) -> RtError {
+    pub fn mk(&'static self, addstr: Option<String>, lineno: usize) -> RtError {
         RtError { error: self, addstr, lineno }
     }
 

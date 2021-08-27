@@ -1,7 +1,7 @@
 // -------------------------------------------------------------------------------------------------
 // Rick, a Rust intercal compiler.  Save your souls!
 //
-// Copyright (c) 2015-2017 Georg Brandl
+// Copyright (c) 2015-2021 Georg Brandl
 //
 // This program is free software; you can redistribute it and/or modify it under the terms of the
 // GNU General Public License as published by the Free Software Foundation; either version 2 of the
@@ -528,7 +528,7 @@ impl Generator {
             // Expr::RsEqual(ref vx, ref wx) => self.gen_binop(
             //     vx, wx, "==", if astype == "" { " as u32" } else { astype })?,
             Expr::RsNotEqual(ref vx, ref wx) => self.gen_binop(
-                vx, wx, "!=", if astype == "" { " as u32" } else { astype })?,
+                vx, wx, "!=", if astype.is_empty() { " as u32" } else { astype })?,
             Expr::RsPlus(ref vx, ref wx) => self.gen_binop(vx, wx, "+", astype)?,
             Expr::RsMinus(ref vx, ref wx) => self.gen_binop(vx, wx, "-", astype)?,
         }
@@ -557,7 +557,7 @@ impl Generator {
     fn gen_lookup(&mut self, var: &Var, astype: &str) -> WRes {
         match *var {
             Var::I16(n) => w!(self.o; "(v{}.val{})", n,
-                              if astype == "" { " as u32" } else { astype }),
+                              if astype.is_empty() { " as u32" } else { astype }),
             Var::I32(n) => w!(self.o; "w{}.val{}", n, astype),
             Var::A16(n, ref subs) => {
                 w!(self.o; "(a{}.", n);
@@ -574,7 +574,7 @@ impl Generator {
                     }
                     w!(self.o; "]");
                 }
-                w!(self.o; ", {})?{})", self.line, if astype == "" { " as u32" } else { astype });
+                w!(self.o; ", {})?{})", self.line, if astype.is_empty() { " as u32" } else { astype });
             }
             Var::A32(n, ref subs) => {
                 w!(self.o; "b{}.", n);

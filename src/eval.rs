@@ -1,7 +1,7 @@
 // -------------------------------------------------------------------------------------------------
 // Rick, a Rust intercal compiler.  Save your souls!
 //
-// Copyright (c) 2015-2017 Georg Brandl
+// Copyright (c) 2015-2021 Georg Brandl
 //
 // This program is free software; you can redistribute it and/or modify it under the terms of the
 // GNU General Public License as published by the Free Software Foundation; either version 2 of the
@@ -484,17 +484,18 @@ impl<'a> Eval<'a> {
     /// Assign to a variable.
     fn assign(&mut self, var: &Var, val: Val) -> Res<()> {
         match *var {
-            Var::I16(n) => Ok(self.spot[n].assign(val.as_u16()?)),
-            Var::I32(n) => Ok(self.twospot[n].assign(val.as_u32())),
+            Var::I16(n) => self.spot[n].assign(val.as_u16()?),
+            Var::I32(n) => self.twospot[n].assign(val.as_u32()),
             Var::A16(n, ref subs) => {
                 let subs = self.eval_subs(subs)?;
-                self.tail[n].set_md(&subs, val.as_u16()?, 0)
+                return self.tail[n].set_md(&subs, val.as_u16()?, 0);
             }
             Var::A32(n, ref subs) => {
                 let subs = self.eval_subs(subs)?;
-                self.hybrid[n].set_md(&subs, val.as_u32(), 0)
+                return self.hybrid[n].set_md(&subs, val.as_u32(), 0);
             }
         }
+        Ok(())
     }
 
     /// Look up the value of a variable.

@@ -1,7 +1,7 @@
 // -------------------------------------------------------------------------------------------------
 // Rick, a Rust intercal compiler.  Save your souls!
 //
-// Copyright (c) 2015-2017 Georg Brandl
+// Copyright (c) 2015-21 Georg Brandl
 //
 // This program is free software; you can redistribute it and/or modify it under the terms of the
 // GNU General Public License as published by the Free Software Foundation; either version 2 of the
@@ -376,12 +376,10 @@ impl Optimizer {
             // if we have a statement with %, no chance
             if stmt.props.chance < 100 {
                 // except if it is one of the stdlibs itself
-                if !(program.added_syslib && prev_lbl == 1901) {
-                    if !(program.added_floatlib &&
-                         (prev_lbl == 5401 || prev_lbl == 5402)) {
+                if !(program.added_syslib && prev_lbl == 1901) &&
+                    !(program.added_floatlib && (prev_lbl == 5401 || prev_lbl == 5402)) {
                         possible = false;
                         break;
-                    }
                 }
             }
             match stmt.body {

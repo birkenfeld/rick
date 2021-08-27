@@ -1,7 +1,7 @@
 // -------------------------------------------------------------------------------------------------
 // Rick, a Rust intercal compiler.  Save your souls!
 //
-// Copyright (c) 2015-2017 Georg Brandl
+// Copyright (c) 2015-2021 Georg Brandl
 //
 // This program is free software; you can redistribute it and/or modify it under the terms of the
 // GNU General Public License as published by the Free Software Foundation; either version 2 of the
@@ -16,7 +16,6 @@
 // -------------------------------------------------------------------------------------------------
 
 #![feature(box_patterns)]
-#![recursion_limit="500"]
 
 /// Main program for Rick.
 ///
