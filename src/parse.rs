@@ -580,38 +580,36 @@ impl<'p> Parser<'p> {
             where F: FnMut(&mut Var)
         {
             visitor(var);
-            match *var {
-                Var::A16(_, ref mut es) |
-                Var::A32(_, ref mut es) => {
+            match var {
+                Var::A16(_, es) | Var::A32(_, es) => {
                     for e in es {
                         walk_expr(e, visitor);
                     }
                 }
-                Var::I16(_) |
-                Var::I32(_) => { }
+                Var::I16(_) | Var::I32(_) => { }
             }
         }
 
         fn walk_expr<F>(expr: &mut Expr, visitor: &mut F)
             where F: FnMut(&mut Var)
         {
-            match *expr {
-                Expr::Var(ref mut v) => walk_var(v, visitor),
-                Expr::And(_, ref mut e) |
-                Expr::Or(_, ref mut e) |
-                Expr::Xor(_, ref mut e) |
-                Expr::RsNot(ref mut e) => walk_expr(e, visitor),
-                Expr::Mingle(ref mut e, ref mut e2) |
-                Expr::Select(_, ref mut e, ref mut e2) |
-                Expr::RsAnd(ref mut e, ref mut e2) |
-                Expr::RsOr(ref mut e, ref mut e2) |
-                Expr::RsXor(ref mut e, ref mut e2) |
-                Expr::RsRshift(ref mut e, ref mut e2) |
-                Expr::RsLshift(ref mut e, ref mut e2) |
-                // Expr::RsEqual(ref mut e, ref mut e2) |
-                Expr::RsNotEqual(ref mut e, ref mut e2) |
-                Expr::RsPlus(ref mut e, ref mut e2) |
-                Expr::RsMinus(ref mut e, ref mut e2) => {
+            match expr {
+                Expr::Var(v) => walk_var(v, visitor),
+                Expr::And(_, e) |
+                Expr::Or(_, e) |
+                Expr::Xor(_, e) |
+                Expr::RsNot(e) => walk_expr(e, visitor),
+                Expr::Mingle(e, e2) |
+                Expr::Select(_, e, e2) |
+                Expr::RsAnd(e, e2) |
+                Expr::RsOr(e, e2) |
+                Expr::RsXor(e, e2) |
+                Expr::RsRshift(e, e2) |
+                Expr::RsLshift(e, e2) |
+                // Expr::RsEqual(e, e2) |
+                Expr::RsNotEqual(e, e2) |
+                Expr::RsPlus(e, e2) |
+                Expr::RsMinus(e, e2) => {
                     walk_expr(e, visitor);
                     walk_expr(e2, visitor);
                 }
@@ -619,41 +617,41 @@ impl<'p> Parser<'p> {
             }
         }
 
-        match stmt.body {
-            StmtBody::Calc(ref mut v, ref mut e) => {
+        match &mut stmt.body {
+            StmtBody::Calc(v, e) => {
                 walk_var(v, visitor);
                 walk_expr(e, visitor);
             }
-            StmtBody::Dim(ref mut v, ref mut es) => {
+            StmtBody::Dim(v, es) => {
                 walk_var(v, visitor);
                 for e in es {
                     walk_expr(e, visitor);
                 }
             }
-            StmtBody::Resume(ref mut e) |
-            StmtBody::Forget(ref mut e) => {
+            StmtBody::Resume(e) |
+            StmtBody::Forget(e) => {
                 walk_expr(e, visitor);
             }
-            StmtBody::Abstain(ref mut maybe_e, _) => {
+            StmtBody::Abstain(maybe_e, _) => {
                 for e in maybe_e.iter_mut() {
                     walk_expr(e, visitor);
                 }
             }
-            StmtBody::ComeFrom(ref mut spec) => {
-                if let ComeFrom::Expr(ref mut e) = *spec {
+            StmtBody::ComeFrom(spec) => {
+                if let ComeFrom::Expr(e) = spec {
                     walk_expr(e, visitor);
                 }
             }
-            StmtBody::Ignore(ref mut vs) |
-            StmtBody::Remember(ref mut vs) |
-            StmtBody::Stash(ref mut vs) |
-            StmtBody::Retrieve(ref mut vs) |
-            StmtBody::WriteIn(ref mut vs) => {
+            StmtBody::Ignore(vs) |
+            StmtBody::Remember(vs) |
+            StmtBody::Stash(vs) |
+            StmtBody::Retrieve(vs) |
+            StmtBody::WriteIn(vs) => {
                 for v in vs {
                     walk_var(v, visitor);
                 }
             }
-            StmtBody::ReadOut(ref mut es) => {
+            StmtBody::ReadOut(es) => {
                 for e in es {
                     walk_expr(e, visitor);
                 }
@@ -714,7 +712,7 @@ impl<'p> Parser<'p> {
             if stmt.props.polite {
                 npolite += 1;
             }
-            if let StmtBody::Error(ref mut e) = stmt.body {
+            if let StmtBody::Error(e) = &mut stmt.body {
                 e.set_line(stmt.props.onthewayto);
             }
             self.collect_vars(&mut vars, &mut stmt);
@@ -734,10 +732,10 @@ impl<'p> Parser<'p> {
         // - make sure TRY AGAIN is last in the file
         let mut uses_complex_comefrom = false;
         for (i, mut stmt) in stmts.iter_mut().enumerate() {
-            if let StmtBody::ComeFrom(ref spec) = stmt.body {
-                match *spec {
+            if let StmtBody::ComeFrom(spec) = &stmt.body {
+                match spec {
                     ComeFrom::Label(n) => {
-                        match labels.get(&n) {
+                        match labels.get(n) {
                             None => return Err(IE444.mk(None, stmt.props.onthewayto)),
                             Some(j) => {
                                 if comefroms.contains_key(&(*j as usize)) {
@@ -747,7 +745,7 @@ impl<'p> Parser<'p> {
                             }
                         }
                     }
-                    ComeFrom::Gerund(ref g) => {
+                    ComeFrom::Gerund(g) => {
                         for (j, stype) in stmt_types.iter().enumerate() {
                             if *g == *stype {
                                 if comefroms.contains_key(&j) {
@@ -763,7 +761,7 @@ impl<'p> Parser<'p> {
                 }
             }
             self.rename_vars(&vars, &mut stmt);
-            if let StmtBody::Abstain(_, ref v) = stmt.body {
+            if let StmtBody::Abstain(_, v) = &stmt.body {
                 if let Abstain::Label(n) = v[0] {
                     if !labels.contains_key(&n) {
                         return Err(IE139.mk(None, stmt.props.onthewayto));

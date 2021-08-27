@@ -208,7 +208,7 @@ impl<'a> Eval<'a> {
             let my_label = program.stmts[pctr].props.label;
             if program.uses_complex_comefrom && my_label > 0 {
                 for (i, stmt) in program.stmts.iter().enumerate() {
-                    if let StmtBody::ComeFrom(ComeFrom::Expr(ref e)) = stmt.body {
+                    if let StmtBody::ComeFrom(ComeFrom::Expr(e)) = &stmt.body {
                         let v = self.eval_expr(e)?.as_u16()?;
                         if v == my_label {
                             // as soon as we have multiple candidates, we can bail out
@@ -246,18 +246,18 @@ impl<'a> Eval<'a> {
             self.dump_state();
             println!("{}", stmt);
         }
-        match stmt.body {
-            StmtBody::Calc(ref var, ref expr) => {
+        match &stmt.body {
+            StmtBody::Calc(var, expr) => {
                 let val = self.eval_expr(expr)?;
                 self.assign(var, val)?;
                 Ok(Flow::Next)
             }
-            StmtBody::Dim(ref var, ref exprs) => {
+            StmtBody::Dim(var, exprs) => {
                 self.array_dim(var, exprs)?;
                 Ok(Flow::Next)
             }
             StmtBody::DoNext(n) => {
-                match self.program.labels.get(&n) {
+                match self.program.labels.get(n) {
                     // too many jumps on stack already?
                     Some(_) if self.jumps.len() >= 80 => IE123.err(),
                     Some(i)                           => Ok(Flow::Jump(*i as usize)),
@@ -268,7 +268,7 @@ impl<'a> Eval<'a> {
                 // nothing to do here at runtime
                 Ok(Flow::Next)
             }
-            StmtBody::Resume(ref expr) => {
+            StmtBody::Resume(expr) => {
                 let n = self.eval_expr(expr)?.as_u32();
                 // this expect() is safe: if the third arg is true, there will
                 // be no Ok(None) returns
@@ -276,37 +276,37 @@ impl<'a> Eval<'a> {
                     .expect("https://xkcd.com/378/ ?!");
                 Ok(Flow::Back(next as usize))
             }
-            StmtBody::Forget(ref expr) => {
+            StmtBody::Forget(expr) => {
                 let n = self.eval_expr(expr)?.as_u32();
                 pop_jumps(&mut self.jumps, n, false, 0)?;
                 Ok(Flow::Next)
             }
-            StmtBody::Ignore(ref vars) => {
+            StmtBody::Ignore(vars) => {
                 for var in vars {
                     self.set_rw(var, false);
                 }
                 Ok(Flow::Next)
             }
-            StmtBody::Remember(ref vars) => {
+            StmtBody::Remember(vars) => {
                 for var in vars {
                     self.set_rw(var, true);
                 }
                 Ok(Flow::Next)
             }
-            StmtBody::Stash(ref vars) => {
+            StmtBody::Stash(vars) => {
                 for var in vars {
                     self.stash(var);
                 }
                 Ok(Flow::Next)
             }
-            StmtBody::Retrieve(ref vars) => {
+            StmtBody::Retrieve(vars) => {
                 for var in vars {
                     self.retrieve(var)?;
                 }
                 Ok(Flow::Next)
             }
-            StmtBody::Abstain(ref expr, ref whats) => {
-                let f: Box<dyn Fn(u32) -> u32> = if let Some(ref e) = *expr {
+            StmtBody::Abstain(expr, whats) => {
+                let f: Box<dyn Fn(u32) -> u32> = if let Some(e) = expr {
                     let n = self.eval_expr(e)?.as_u32();
                     Box::new(move |v: u32| v.saturating_add(n))
                 } else {
@@ -317,33 +317,33 @@ impl<'a> Eval<'a> {
                 }
                 Ok(Flow::Next)
             }
-            StmtBody::Reinstate(ref whats) => {
+            StmtBody::Reinstate(whats) => {
                 for what in whats {
                     self.abstain(what, &|v: u32| v.saturating_sub(1));
                 }
                 Ok(Flow::Next)
             }
-            StmtBody::ReadOut(ref vars) => {
+            StmtBody::ReadOut(vars) => {
                 for var in vars {
-                    match *var {
+                    match var {
                         // read out whole array
-                        Expr::Var(ref var) if var.is_dim() => {
+                        Expr::Var(var) if var.is_dim() => {
                             self.array_readout(var)?;
                         }
                         // read out single var or array element
-                        Expr::Var(ref var) => {
+                        Expr::Var(var) => {
                             let varval = self.lookup(var)?;
                             write_number(self.stdout, varval.as_u32(), 0)?;
                         }
                         // read out constant
-                        Expr::Num(_, v) => write_number(self.stdout, v, 0)?,
+                        Expr::Num(_, v) => write_number(self.stdout, *v, 0)?,
                         // others will not be generated
                         _ => return IE994.err(),
                     };
                 }
                 Ok(Flow::Next)
             }
-            StmtBody::WriteIn(ref vars) => {
+            StmtBody::WriteIn(vars) => {
                 for var in vars {
                     if var.is_dim() {
                         // write in whole array
@@ -357,7 +357,7 @@ impl<'a> Eval<'a> {
                 Ok(Flow::Next)
             }
             // this one is only generated by the constant-program optimizer
-            StmtBody::Print(ref s) => {
+            StmtBody::Print(s) => {
                 if self.stdout.write_all(s).is_err() {
                     return IE252.err();
                 }
@@ -365,100 +365,100 @@ impl<'a> Eval<'a> {
             }
             StmtBody::TryAgain => Ok(Flow::FromTop),
             StmtBody::GiveUp => Ok(Flow::End),
-            StmtBody::Error(ref e) => Err((*e).clone()),
+            StmtBody::Error(e) => Err((*e).clone()),
         }
     }
 
     /// Evaluate an expression to a value.
     fn eval_expr(&self, expr: &Expr) -> Res<Val> {
-        match *expr {
+        match expr {
             Expr::Num(vtype, v) => match vtype {
-                VType::I16 => Ok(Val::I16(v as u16)),
-                VType::I32 => Ok(Val::I32(v)),
+                VType::I16 => Ok(Val::I16(*v as u16)),
+                VType::I32 => Ok(Val::I32(*v)),
             },
-            Expr::Var(ref var) => self.lookup(var),
-            Expr::Mingle(ref vx, ref wx) => {
+            Expr::Var(var) => self.lookup(var),
+            Expr::Mingle(vx, wx) => {
                 let v = self.eval_expr(vx)?.as_u32();
                 let w = self.eval_expr(wx)?.as_u32();
                 let v = check_ovf(v, 0)?;
                 let w = check_ovf(w, 0)?;
                 Ok(Val::I32(mingle(v, w)))
             }
-            Expr::Select(vtype, ref vx, ref wx) => {
+            Expr::Select(vtype, vx, wx) => {
                 let v = self.eval_expr(vx)?;
                 let w = self.eval_expr(wx)?;
-                if vtype == VType::I16 {
+                if vtype == &VType::I16 {
                     Ok(Val::I16(select(v.as_u32(), w.as_u16()? as u32) as u16))
                 } else {
                     Ok(Val::I32(select(v.as_u32(), w.as_u32())))
                 }
             }
-            Expr::And(vtype, ref vx) => {
+            Expr::And(vtype, vx) => {
                 let v = self.eval_expr(vx)?;
                 match vtype {
                     VType::I16 => Ok(Val::I16(and_16(v.as_u16()? as u32) as u16)),
                     VType::I32 => Ok(Val::I32(and_32(v.as_u32()))),
                 }
             }
-            Expr::Or(vtype, ref vx) => {
+            Expr::Or(vtype, vx) => {
                 let v = self.eval_expr(vx)?;
                 match vtype {
                     VType::I16 => Ok(Val::I16(or_16(v.as_u16()? as u32) as u16)),
                     VType::I32 => Ok(Val::I32(or_32(v.as_u32()))),
                 }
             }
-            Expr::Xor(vtype, ref vx) => {
+            Expr::Xor(vtype, vx) => {
                 let v = self.eval_expr(vx)?;
                 match vtype {
                     VType::I16 => Ok(Val::I16(xor_16(v.as_u16()? as u32) as u16)),
                     VType::I32 => Ok(Val::I32(xor_32(v.as_u32()))),
                 }
             }
-            Expr::RsNot(ref vx) => {
+            Expr::RsNot(vx) => {
                 let v = self.eval_expr(vx)?;
                 Ok(Val::I32(!v.as_u32()))
             }
-            Expr::RsAnd(ref vx, ref wx) => {
+            Expr::RsAnd(vx, wx) => {
                 let v = self.eval_expr(vx)?;
                 let w = self.eval_expr(wx)?;
                 Ok(Val::I32(v.as_u32() & w.as_u32()))
             }
-            Expr::RsOr(ref vx, ref wx) => {
+            Expr::RsOr(vx, wx) => {
                 let v = self.eval_expr(vx)?;
                 let w = self.eval_expr(wx)?;
                 Ok(Val::I32(v.as_u32() | w.as_u32()))
             }
-            Expr::RsXor(ref vx, ref wx) => {
+            Expr::RsXor(vx, wx) => {
                 let v = self.eval_expr(vx)?;
                 let w = self.eval_expr(wx)?;
                 Ok(Val::I32(v.as_u32() ^ w.as_u32()))
             }
-            Expr::RsRshift(ref vx, ref wx) => {
+            Expr::RsRshift(vx, wx) => {
                 let v = self.eval_expr(vx)?;
                 let w = self.eval_expr(wx)?;
                 Ok(Val::I32(v.as_u32() >> w.as_u32()))
             }
-            Expr::RsLshift(ref vx, ref wx) => {
+            Expr::RsLshift(vx, wx) => {
                 let v = self.eval_expr(vx)?;
                 let w = self.eval_expr(wx)?;
                 Ok(Val::I32(v.as_u32() << w.as_u32()))
             }
-            // Expr::RsEqual(ref vx, ref wx) => {
+            // Expr::RsEqual(vx, wx) => {
             //     let v = self.eval_expr(vx)?;
             //     let w = self.eval_expr(wx)?;
             //     Ok(Val::I32((v.as_u32() == w.as_u32()) as u32))
             // }
-            Expr::RsNotEqual(ref vx, ref wx) => {
+            Expr::RsNotEqual(vx, wx) => {
                 let v = self.eval_expr(vx)?;
                 let w = self.eval_expr(wx)?;
                 Ok(Val::I32((v.as_u32() != w.as_u32()) as u32))
             }
-            Expr::RsPlus(ref vx, ref wx) => {
+            Expr::RsPlus(vx, wx) => {
                 let v = self.eval_expr(vx)?;
                 let w = self.eval_expr(wx)?;
                 Ok(Val::I32(v.as_u32() + w.as_u32()))
             }
-            Expr::RsMinus(ref vx, ref wx) => {
+            Expr::RsMinus(vx, wx) => {
                 let v = self.eval_expr(vx)?;
                 let w = self.eval_expr(wx)?;
                 Ok(Val::I32(v.as_u32() - w.as_u32()))

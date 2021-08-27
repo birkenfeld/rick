@@ -76,10 +76,9 @@ impl Optimizer {
     /// since you can't have 32-bit literals.
     pub fn opt_constant_fold(mut program: Program) -> Program {
         for stmt in &mut program.stmts {
-            match stmt.body {
-                StmtBody::Calc(_, ref mut expr) |
-                StmtBody::Resume(ref mut expr) |
-                StmtBody::Forget(ref mut expr) => Optimizer::fold(expr),
+            match &mut stmt.body {
+                StmtBody::Calc(_, expr) | StmtBody::Resume(expr) |
+                StmtBody::Forget(expr) => Optimizer::fold(expr),
                 _ => { }
             }
         }
@@ -88,8 +87,8 @@ impl Optimizer {
 
     fn fold(expr: &mut Expr) {
         let mut result = None;
-        match *expr {
-            Expr::Mingle(ref mut vx, ref mut wx) => {
+        match expr {
+            Expr::Mingle(vx, wx) => {
                 Optimizer::fold(vx);
                 Optimizer::fold(wx);
                 if let Expr::Num(_, v) = **vx {
@@ -102,7 +101,7 @@ impl Optimizer {
                     }
                 }
             }
-            Expr::Select(_, ref mut vx, ref mut wx) => {
+            Expr::Select(_, vx, wx) => {
                 Optimizer::fold(vx);
                 Optimizer::fold(wx);
                 if let Expr::Num(_, v) = **vx {
@@ -112,7 +111,7 @@ impl Optimizer {
                     }
                 }
             }
-            Expr::And(_, ref mut vx) => {
+            Expr::And(_, vx) => {
                 Optimizer::fold(vx);
                 if let Expr::Num(vtype, v) = **vx {
                     result = Some(match vtype {
@@ -121,7 +120,7 @@ impl Optimizer {
                     });
                 }
             }
-            Expr::Or(_, ref mut vx) => {
+            Expr::Or(_, vx) => {
                 Optimizer::fold(vx);
                 if let Expr::Num(vtype, v) = **vx {
                     result = Some(match vtype {
@@ -130,7 +129,7 @@ impl Optimizer {
                     });
                 }
             }
-            Expr::Xor(_, ref mut vx) => {
+            Expr::Xor(_, vx) => {
                 Optimizer::fold(vx);
                 if let Expr::Num(vtype, v) = **vx {
                     result = Some(match vtype {
@@ -150,10 +149,9 @@ impl Optimizer {
     pub fn opt_expressions(mut program: Program) -> Program {
         for stmt in &mut program.stmts {
             //println!("\n\n{}", stmt.props.srcline);
-            match stmt.body {
-                StmtBody::Calc(_, ref mut expr) |
-                StmtBody::Resume(ref mut expr) |
-                StmtBody::Forget(ref mut expr) => Optimizer::opt_expr(expr),
+            match &mut stmt.body {
+                StmtBody::Calc(_, expr) | StmtBody::Resume(expr) |
+                StmtBody::Forget(expr) => Optimizer::opt_expr(expr),
                 _ => { }
             }
         }
@@ -428,9 +426,9 @@ impl Optimizer {
     pub fn opt_abstain_check(mut program: Program) -> Program {
         let mut can_abstain = vec![false; program.stmts.len()];
         for stmt in &program.stmts {
-            match stmt.body {
-                StmtBody::Abstain(_, ref whats) |
-                StmtBody::Reinstate(ref whats) => {
+            match &stmt.body {
+                StmtBody::Abstain(_, whats) |
+                StmtBody::Reinstate(whats) => {
                     for what in whats {
                         if let Abstain::Label(lbl) = *what {
                             let idx = program.labels[&lbl];
@@ -468,9 +466,9 @@ impl Optimizer {
         reset(&mut program.var_info.2);
         reset(&mut program.var_info.3);
         for stmt in &program.stmts {
-            match stmt.body {
-                StmtBody::Stash(ref vars) |
-                StmtBody::Retrieve(ref vars) => {
+            match &stmt.body {
+                StmtBody::Stash(vars) |
+                StmtBody::Retrieve(vars) => {
                     for var in vars {
                         match *var {
                             Var::I16(n) => program.var_info.0[n].can_stash = true,
@@ -480,8 +478,7 @@ impl Optimizer {
                         }
                     }
                 }
-                StmtBody::Ignore(ref vars) |
-                StmtBody::Remember(ref vars) => {
+                StmtBody::Ignore(vars) | StmtBody::Remember(vars) => {
                     for var in vars {
                         match *var {
                             Var::I16(n) => program.var_info.0[n].can_ignore = true,

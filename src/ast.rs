@@ -244,15 +244,15 @@ impl Expr {
     /// Get the variable width for this expression.  Defaults to 32-bit if the
     /// type of expression has no information about the width.
     pub fn get_vtype(&self) -> VType {
-        match *self {
+        match self {
             Expr::Num(vtype, _) | Expr::And(vtype, _) | Expr::Or(vtype, _) |
-            Expr::Xor(vtype, _) | Expr::Select(vtype, _, _) => vtype,
+            Expr::Xor(vtype, _) | Expr::Select(vtype, _, _) => *vtype,
             Expr::Mingle(..) |
             Expr::RsAnd(..) | Expr::RsOr(..) | Expr::RsXor(..) |
             Expr::RsNot(..) | Expr::RsRshift(..) | Expr::RsLshift(..) |
             Expr::RsNotEqual(..) | Expr::RsMinus(..) |
             Expr::RsPlus(..) => VType::I32,
-            Expr::Var(ref v) => v.get_vtype(),
+            Expr::Var(v) => v.get_vtype(),
         }
     }
 }
@@ -260,9 +260,9 @@ impl Expr {
 impl Var {
     /// Is this Var a dimensioning access (array without subscript)?
     pub fn is_dim(&self) -> bool {
-        match *self {
-            Var::A16(_, ref v) if v.is_empty() => true,
-            Var::A32(_, ref v) if v.is_empty() => true,
+        match self {
+            Var::A16(_, v) if v.is_empty() => true,
+            Var::A32(_, v) if v.is_empty() => true,
             _ => false,
         }
     }
@@ -279,11 +279,9 @@ impl Var {
 
     /// Rename the variable with a new number.
     pub fn rename(&mut self, new: usize) {
-        match *self {
-            Var::I16(ref mut n) |
-            Var::I32(ref mut n) |
-            Var::A16(ref mut n, _) |
-            Var::A32(ref mut n, _) => {
+        match self {
+            Var::I16(n) | Var::I32(n) |
+            Var::A16(n, _) | Var::A32(n, _) => {
                 *n = new;
             }
         }
@@ -291,7 +289,7 @@ impl Var {
 
     /// Get the VType for this Var.
     pub fn get_vtype(&self) -> VType {
-        match *self {
+        match self {
             Var::I16(..) | Var::A16(..) => VType::I16,
             Var::I32(..) | Var::A32(..) => VType::I32,
         }
@@ -355,26 +353,25 @@ impl Display for Stmt {
 
 impl Display for StmtBody {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        match *self {
-            StmtBody::Error(ref err) => write!(fmt, "* {}", err.short_string()),
-            StmtBody::Calc(ref var, ref expr) => write!(fmt, "{} <- {}", var, expr),
-            StmtBody::Dim(ref var, ref exprs) => write!(fmt, "{} <- {}", var,
-                                                        self.fmt_bylist(exprs)),
-            StmtBody::DoNext(ref line) => write!(fmt, "({}) NEXT", line),
-            StmtBody::ComeFrom(ref spec) => write!(fmt, "COME FROM {}", spec),
-            StmtBody::Resume(ref expr) => write!(fmt, "RESUME {}", expr),
-            StmtBody::Forget(ref expr) => write!(fmt, "FORGET {}", expr),
-            StmtBody::Ignore(ref vars) => write!(fmt, "IGNORE {}", self.fmt_pluslist(vars)),
-            StmtBody::Remember(ref vars) => write!(fmt, "REMEMBER {}", self.fmt_pluslist(vars)),
-            StmtBody::Stash(ref vars) => write!(fmt, "STASH {}", self.fmt_pluslist(vars)),
-            StmtBody::Retrieve(ref vars) => write!(fmt, "RETRIEVE {}", self.fmt_pluslist(vars)),
-            StmtBody::Abstain(ref expr, ref whats) => match *expr {
+        match self {
+            StmtBody::Error(err) => write!(fmt, "* {}", err.short_string()),
+            StmtBody::Calc(var, expr) => write!(fmt, "{} <- {}", var, expr),
+            StmtBody::Dim(var, exprs) => write!(fmt, "{} <- {}", var, self.fmt_bylist(exprs)),
+            StmtBody::DoNext(line) => write!(fmt, "({}) NEXT", line),
+            StmtBody::ComeFrom(spec) => write!(fmt, "COME FROM {}", spec),
+            StmtBody::Resume(expr) => write!(fmt, "RESUME {}", expr),
+            StmtBody::Forget(expr) => write!(fmt, "FORGET {}", expr),
+            StmtBody::Ignore(vars) => write!(fmt, "IGNORE {}", self.fmt_pluslist(vars)),
+            StmtBody::Remember(vars) => write!(fmt, "REMEMBER {}", self.fmt_pluslist(vars)),
+            StmtBody::Stash(vars) => write!(fmt, "STASH {}", self.fmt_pluslist(vars)),
+            StmtBody::Retrieve(vars) => write!(fmt, "RETRIEVE {}", self.fmt_pluslist(vars)),
+            StmtBody::Abstain(expr, whats) => match expr {
                 None => write!(fmt, "ABSTAIN FROM {}", self.fmt_pluslist(whats)),
-                Some(ref e) => write!(fmt, "ABSTAIN {} FROM {}", e, self.fmt_pluslist(whats)),
+                Some(e) => write!(fmt, "ABSTAIN {} FROM {}", e, self.fmt_pluslist(whats)),
             },
-            StmtBody::Reinstate(ref whats) => write!(fmt, "REINSTATE {}", self.fmt_pluslist(whats)),
-            StmtBody::WriteIn(ref vars) => write!(fmt, "WRITE IN {}", self.fmt_pluslist(vars)),
-            StmtBody::ReadOut(ref vars) => write!(fmt, "READ OUT {}", self.fmt_pluslist(vars)),
+            StmtBody::Reinstate(whats) => write!(fmt, "REINSTATE {}", self.fmt_pluslist(whats)),
+            StmtBody::WriteIn(vars) => write!(fmt, "WRITE IN {}", self.fmt_pluslist(vars)),
+            StmtBody::ReadOut(vars) => write!(fmt, "READ OUT {}", self.fmt_pluslist(vars)),
             StmtBody::TryAgain => write!(fmt, "TRY AGAIN"),
             StmtBody::GiveUp => write!(fmt, "GIVE UP"),
             StmtBody::Print(_) => write!(fmt, "<PRINT>"),
@@ -384,17 +381,17 @@ impl Display for StmtBody {
 
 impl Display for Var {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        match *self {
+        match self {
             Var::I16(n) => write!(fmt, ".{}", n),
             Var::I32(n) => write!(fmt, ":{}", n),
-            Var::A16(n, ref subs) => {
+            Var::A16(n, subs) => {
                 write!(fmt, ",{}", n)?;
                 for sub in subs {
                     write!(fmt, " SUB {}", sub)?;
                 }
                 Ok(())
             }
-            Var::A32(n, ref subs) => {
+            Var::A32(n, subs) => {
                 write!(fmt, ";{}", n)?;
                 for sub in subs {
                     write!(fmt, " SUB {}", sub)?;
@@ -407,35 +404,35 @@ impl Display for Var {
 
 impl Display for Expr {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        match *self {
-            Expr::Num(_, ref n) => write!(fmt, "#{:X}", n),
-            Expr::Var(ref v) => v.fmt(fmt),
-            Expr::Mingle(ref x, ref y) => write!(fmt, "({} $ {})", x, y),
-            Expr::Select(_, ref x, ref y) => write!(fmt, "({} ~ {})", x, y),
-            Expr::And(t, ref x) => write!(fmt, "&{} {}",
-                                          if t == VType::I16 { "16" } else { "32" }, x),
-            Expr::Or(t, ref x) => write!(fmt, "V{} {}",
-                                         if t == VType::I16 { "16" } else { "32" }, x),
-            Expr::Xor(t, ref x) => write!(fmt, "?{} {}",
-                                          if t == VType::I16 { "16" } else { "32" }, x),
+        match self {
+            Expr::Num(_, n) => write!(fmt, "#{:X}", n),
+            Expr::Var(v) => v.fmt(fmt),
+            Expr::Mingle(x, y) => write!(fmt, "({} $ {})", x, y),
+            Expr::Select(_, x, y) => write!(fmt, "({} ~ {})", x, y),
+            Expr::And(t, x) => write!(fmt, "&{} {}",
+                                      if t == &VType::I16 { "16" } else { "32" }, x),
+            Expr::Or(t, x) => write!(fmt, "V{} {}",
+                                     if t == &VType::I16 { "16" } else { "32" }, x),
+            Expr::Xor(t, x) => write!(fmt, "?{} {}",
+                                      if t == &VType::I16 { "16" } else { "32" }, x),
             // optimized exprs
-            Expr::RsNot(ref x) => write!(fmt, "!{}", x),
-            Expr::RsAnd(ref x, ref y) => write!(fmt, "({} & {})", x, y),
-            Expr::RsOr(ref x, ref y) => write!(fmt, "({} | {})", x, y),
-            Expr::RsXor(ref x, ref y) => write!(fmt, "({} ^ {})", x, y),
-            Expr::RsRshift(ref x, ref y) => write!(fmt, "({} >> {})", x, y),
-            Expr::RsLshift(ref x, ref y) => write!(fmt, "({} << {})", x, y),
-            // Expr::RsEqual(ref x, ref y) => write!(fmt, "({} == {})", x, y),
-            Expr::RsNotEqual(ref x, ref y) => write!(fmt, "({} != {})", x, y),
-            Expr::RsPlus(ref x, ref y) => write!(fmt, "({} + {})", x, y),
-            Expr::RsMinus(ref x, ref y) => write!(fmt, "({} - {})", x, y),
+            Expr::RsNot(x) => write!(fmt, "!{}", x),
+            Expr::RsAnd(x, y) => write!(fmt, "({} & {})", x, y),
+            Expr::RsOr(x, y) => write!(fmt, "({} | {})", x, y),
+            Expr::RsXor(x, y) => write!(fmt, "({} ^ {})", x, y),
+            Expr::RsRshift(x, y) => write!(fmt, "({} >> {})", x, y),
+            Expr::RsLshift(x, y) => write!(fmt, "({} << {})", x, y),
+            // Expr::RsEqual(x, y) => write!(fmt, "({} == {})", x, y),
+            Expr::RsNotEqual(x, y) => write!(fmt, "({} != {})", x, y),
+            Expr::RsPlus(x, y) => write!(fmt, "({} + {})", x, y),
+            Expr::RsMinus(x, y) => write!(fmt, "({} - {})", x, y),
         }
     }
 }
 
 impl Display for Abstain {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        match *self {
+        match self {
             Abstain::Label(n) => write!(fmt, "({})", n),
             Abstain::Calc => write!(fmt, "CALCULATING"),
             Abstain::Next => write!(fmt, "NEXTING"),
@@ -457,10 +454,10 @@ impl Display for Abstain {
 
 impl Display for ComeFrom {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        match *self {
+        match self {
             ComeFrom::Label(n) => write!(fmt, "({})", n),
-            ComeFrom::Expr(ref e) => write!(fmt, "{}", e),
-            ComeFrom::Gerund(ref g) => write!(fmt, "{}", g),
+            ComeFrom::Expr(e) => write!(fmt, "{}", e),
+            ComeFrom::Gerund(g) => write!(fmt, "{}", g),
         }
     }
 }
