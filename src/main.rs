@@ -15,8 +15,6 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
-#![feature(box_patterns)]
-
 /// Main program for Rick.
 ///
 /// Parses arguments, calls parser, optimizer, interpreter or code generator.

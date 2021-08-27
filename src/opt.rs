@@ -163,22 +163,28 @@ impl Optimizer {
     fn opt_expr(expr: &mut Expr) {
         //println!("optimizing {}", expr);
         let mut result = None;
-        match *expr {
-            Expr::Select(_, ref mut vx, ref mut wx) => {
+        match expr {
+            Expr::Select(_, vx, wx) => {
                 Optimizer::opt_expr(vx);
                 Optimizer::opt_expr(wx);
                 match **wx {
                     // Select(UnOP(Mingle(x, y)), 0x5555_5555) = BinOP(x, y)
                     Expr::Num(_, 0x5555_5555) => {
-                        match **vx {
-                            Expr::And(_, box Expr::Mingle(ref m1, ref m2)) => {
-                                result = Some(Expr::RsAnd(m1.clone(), m2.clone()));
+                        match &**vx {
+                            Expr::And(_, other) => {
+                                if let Expr::Mingle(m1, m2) = &**other {
+                                    result = Some(Expr::RsAnd(m1.clone(), m2.clone()));
+                                }
                             }
-                            Expr::Or(_, box Expr::Mingle(ref m1, ref m2)) => {
-                                result = Some(Expr::RsOr(m1.clone(), m2.clone()));
+                            Expr::Or(_, other) => {
+                                if let Expr::Mingle(m1, m2) = &**other {
+                                    result = Some(Expr::RsOr(m1.clone(), m2.clone()));
+                                }
                             }
-                            Expr::Xor(_, box Expr::Mingle(ref m1, ref m2)) => {
-                                result = Some(Expr::RsXor(m1.clone(), m2.clone()));
+                            Expr::Xor(_, other) => {
+                                if let Expr::Mingle(m1, m2) = &**other {
+                                    result = Some(Expr::RsXor(m1.clone(), m2.clone()));
+                                }
                             }
                             _ => { }
                         }
@@ -198,148 +204,149 @@ impl Optimizer {
                     }
                     // Select(Mingle(x, 0), 0x2AAA_AAAB)  ->  (x << 1) & 0xFFFF
                     Expr::Num(_, 0x2AAA_AAAB) => {
-                        if let Expr::Mingle(ref m1, box Expr::Num(_, 0)) = **vx {
-                            result = Some(Expr::RsAnd(
-                                Box::new(Expr::RsLshift(m1.clone(), n(1))), n(0xFFFF)));
+                        if let Expr::Mingle(m1, other) = &**vx {
+                            if let Expr::Num(_, 0) = &**other {
+                                result = Some(Expr::RsAnd(
+                                    Box::new(Expr::RsLshift(m1.clone(), n(1))), n(0xFFFF)));
+                            }
                         }
                     }
                     _ => { }
                 }
             }
-            Expr::Mingle(ref mut vx, ref mut wx) => {
+            Expr::Mingle(vx, wx) => {
                 Optimizer::opt_expr(vx);
                 Optimizer::opt_expr(wx);
-                // (x ~ 0xA..A) OP (y ~ 0xA..A) $ (x ~ 0x5..5) OP (y ~ 0x5..5)
-                // -> (x OP y) in 32-bit
-                if let Expr::RsAnd(box Expr::Select(_, ref ax, box Expr::Num(_, 0xAAAA_AAAA)),
-                                   box Expr::Select(_, ref bx, box Expr::Num(_, 0xAAAA_AAAA))) = **vx {
-                    if let Expr::RsAnd(box Expr::Select(_, ref cx, box Expr::Num(_, 0x5555_5555)),
-                                       box Expr::Select(_, ref dx, box Expr::Num(_, 0x5555_5555))) = **wx {
-                        if *ax == *cx && *bx == *dx {
-                            result = Some(Expr::RsAnd(ax.clone(), bx.clone()));
+                match (&**vx, &**wx) {
+                    (Expr::RsAnd(vx1, vx2), Expr::RsAnd(wx1, wx2)) => {
+                        match (&**vx1, &**vx2, &**wx1, &**wx2) {
+                            // (x ~ 0xA..A) OP (y ~ 0xA..A) $ (x ~ 0x5..5) OP (y ~ 0x5..5)
+                            // -> (x OP y) in 32-bit
+                            (Expr::Select(_, ax, n1), Expr::Select(_, bx, n2),
+                             Expr::Select(_, cx, n3), Expr::Select(_, dx, n4)) if
+                                matches!(**n1, Expr::Num(_, 0xAAAA_AAAA)) &&
+                                matches!(**n2, Expr::Num(_, 0xAAAA_AAAA)) &&
+                                matches!(**n3, Expr::Num(_, 0x5555_5555)) &&
+                                matches!(**n4, Expr::Num(_, 0x5555_5555)) &&
+                                ax == cx && bx == dx =>
+                                result = Some(Expr::RsAnd(ax.clone(), bx.clone())),
+                            // (x ~ 0xA..A) OP y1 $ (x ~ 0x5..5) OP y2
+                            // -> (x OP (y1 << 16 | y2)) in 32-bit
+                            (Expr::Select(_, ax, n1), Expr::Num(_, bn),
+                             Expr::Select(_, cx, n3), Expr::Num(_, dn)) if
+                                matches!(**n1, Expr::Num(_, 0xAAAA_AAAA)) &&
+                                matches!(**n3, Expr::Num(_, 0x5555_5555)) &&
+                                ax == cx =>
+                                result = Some(Expr::RsAnd(ax.clone(), n((bn << 16) | dn))),
+                            _ => {}
                         }
                     }
-                }
-                if let Expr::RsOr(box Expr::Select(_, ref ax, box Expr::Num(_, 0xAAAA_AAAA)),
-                                  box Expr::Select(_, ref bx, box Expr::Num(_, 0xAAAA_AAAA))) = **vx {
-                    if let Expr::RsOr(box Expr::Select(_, ref cx, box Expr::Num(_, 0x5555_5555)),
-                                      box Expr::Select(_, ref dx, box Expr::Num(_, 0x5555_5555))) = **wx {
-                        if *ax == *cx && *bx == *dx {
-                            result = Some(Expr::RsOr(ax.clone(), bx.clone()));
+                    (Expr::RsOr(vx1, vx2), Expr::RsOr(wx1, wx2)) => {
+                        match (&**vx1, &**vx2, &**wx1, &**wx2) {
+                            // as above
+                            (Expr::Select(_, ax, n1), Expr::Select(_, bx, n2),
+                             Expr::Select(_, cx, n3), Expr::Select(_, dx, n4)) if
+                                matches!(**n1, Expr::Num(_, 0xAAAA_AAAA)) &&
+                                matches!(**n2, Expr::Num(_, 0xAAAA_AAAA)) &&
+                                matches!(**n3, Expr::Num(_, 0x5555_5555)) &&
+                                matches!(**n4, Expr::Num(_, 0x5555_5555)) &&
+                                ax == cx && bx == dx =>
+                                result = Some(Expr::RsOr(ax.clone(), bx.clone())),
+                            (Expr::Select(_, ax, n1), Expr::Num(_, bn),
+                             Expr::Select(_, cx, n3), Expr::Num(_, dn)) if
+                                matches!(**n1, Expr::Num(_, 0xAAAA_AAAA)) &&
+                                matches!(**n3, Expr::Num(_, 0x5555_5555)) &&
+                                ax == cx =>
+                                result = Some(Expr::RsOr(ax.clone(), n((bn << 16) | dn))),
+                            _ => {}
                         }
                     }
-                }
-                if let Expr::RsXor(box Expr::Select(_, ref ax, box Expr::Num(_, 0xAAAA_AAAA)),
-                                   box Expr::Select(_, ref bx, box Expr::Num(_, 0xAAAA_AAAA))) = **vx {
-                    if let Expr::RsXor(box Expr::Select(_, ref cx, box Expr::Num(_, 0x5555_5555)),
-                                       box Expr::Select(_, ref dx, box Expr::Num(_, 0x5555_5555))) = **wx {
-                        if *ax == *cx && *bx == *dx {
-                            result = Some(Expr::RsXor(ax.clone(), bx.clone()));
+                    (Expr::RsXor(vx1, vx2), Expr::RsXor(wx1, wx2)) => {
+                        match (&**vx1, &**vx2, &**wx1, &**wx2) {
+                            (Expr::Select(_, ax, n1), Expr::Select(_, bx, n2),
+                             Expr::Select(_, cx, n3), Expr::Select(_, dx, n4)) if
+                                matches!(**n1, Expr::Num(_, 0xAAAA_AAAA)) &&
+                                matches!(**n2, Expr::Num(_, 0xAAAA_AAAA)) &&
+                                matches!(**n3, Expr::Num(_, 0x5555_5555)) &&
+                                matches!(**n4, Expr::Num(_, 0x5555_5555)) &&
+                                ax == cx && bx == dx =>
+                                result = Some(Expr::RsXor(ax.clone(), bx.clone())),
+                            (Expr::Select(_, ax, n1), Expr::Num(_, bn),
+                             Expr::Select(_, cx, n3), Expr::Num(_, dn)) if
+                                matches!(**n1, Expr::Num(_, 0xAAAA_AAAA)) &&
+                                matches!(**n3, Expr::Num(_, 0x5555_5555)) &&
+                                ax == cx =>
+                                result = Some(Expr::RsXor(ax.clone(), n((bn << 16) | dn))),
+                            _ => {}
                         }
                     }
-                }
-                // (x ~ 0xA..A) OP y1 $ (x ~ 0x5..5) OP y2
-                // -> (x OP (y1 << 16 | y2)) in 32-bit
-                if let Expr::RsAnd(box Expr::Select(_, ref ax, box Expr::Num(_, 0xAAAA_AAAA)),
-                                   box Expr::Num(_, bn)) = **vx {
-                    if let Expr::RsAnd(box Expr::Select(_, ref cx, box Expr::Num(_, 0x5555_5555)),
-                                       box Expr::Num(_, dn)) = **wx {
-                        if *ax == *cx {
-                            result = Some(Expr::RsAnd(ax.clone(), n((bn << 16) | dn)));
-                        }
-                    }
-                }
-                if let Expr::RsOr(box Expr::Select(_, ref ax, box Expr::Num(_, 0xAAAA_AAAA)),
-                                  box Expr::Num(_, bn)) = **vx {
-                    if let Expr::RsOr(box Expr::Select(_, ref cx, box Expr::Num(_, 0x5555_5555)),
-                                      box Expr::Num(_, dn)) = **wx {
-                        if *ax == *cx {
-                            result = Some(Expr::RsOr(ax.clone(), n((bn << 16) | dn)));
-                        }
-                    }
-                }
-                if let Expr::RsXor(box Expr::Select(_, ref ax, box Expr::Num(_, 0xAAAA_AAAA)),
-                                   box Expr::Num(_, bn)) = **vx {
-                    if let Expr::RsXor(box Expr::Select(_, ref cx, box Expr::Num(_, 0x5555_5555)),
-                                       box Expr::Num(_, dn)) = **wx {
-                        if *ax == *cx {
-                            result = Some(Expr::RsXor(ax.clone(), n((bn << 16) | dn)));
-                        }
-                    }
-                }
-                // (x != y) $ (z != w)  ->  ((x != y) << 1) | (z != w)
-                if let Expr::RsNotEqual(..) = **vx {
-                    if let Expr::RsNotEqual(..) = **wx {
-                        result = Some(Expr::RsOr(Box::new(Expr::RsLshift(vx.clone(), n(1))), wx.clone()));
-                    }
+                    // (x != y) $ (z != w)  ->  ((x != y) << 1) | (z != w)
+                    (Expr::RsNotEqual(..), Expr::RsNotEqual(..)) =>
+                        result = Some(Expr::RsOr(Box::new(Expr::RsLshift(vx.clone(), n(1))), wx.clone())),
+                    _ => {}
                 }
             }
-            Expr::And(_, ref mut vx) | Expr::Or(_, ref mut vx) | Expr::Xor(_, ref mut vx) |
-            Expr::RsNot(ref mut vx) => {
+            Expr::And(_, vx) | Expr::Or(_, vx) | Expr::Xor(_, vx) | Expr::RsNot(vx) => {
                 Optimizer::opt_expr(vx);
             }
-            Expr::RsAnd(ref mut vx, ref mut wx) => {
+            Expr::RsAnd(vx, wx) => {
                 Optimizer::opt_expr(vx);
                 Optimizer::opt_expr(wx);
-                // (x ~ x) & 1  ->  x != 0
-                if let Expr::Select(_, ref sx, ref tx) = **vx {
-                    if *sx == *tx {
-                        if let Expr::Num(_, 1) = **wx {
-                            result = Some(Expr::RsNotEqual(sx.clone(), n(0)));
+                match (&**vx, &**wx) {
+                    // (x ~ x) & 1  ->  x != 0
+                    (Expr::Select(_, sx, tx), Expr::Num(_, 1)) if sx == tx => {
+                        result = Some(Expr::RsNotEqual(sx.clone(), n(0)));
+                    }
+                    (Expr::Xor(_, sx), Expr::Num(_, 3)) => {
+                        if let Expr::Mingle(mx, n2) = &**sx {
+                            // ?(x $ 1) & 3  ->  1 + (x & 1)
+                            if matches!(**n2, Expr::Num(_, 1)) {
+                                result = Some(Expr::RsPlus(n(1), Box::new(Expr::RsAnd(mx.clone(), n(1)))));
+                            }
+                            // ?(x $ 2) & 3  ->  2 - (x & 1)
+                            if matches!(**n2, Expr::Num(_, 2)) {
+                                result = Some(Expr::RsMinus(n(2), Box::new(Expr::RsAnd(mx.clone(), n(1)))));
+                            }
                         }
                     }
-                }
-                // ?(x $ 1) & 3  ->  1 + (x & 1)
-                if let Expr::Xor(_, box Expr::Mingle(ref mx, box Expr::Num(_, 1))) = **vx {
-                    if let Expr::Num(_, 3) = **wx {
-                        result = Some(Expr::RsPlus(n(1), Box::new(Expr::RsAnd(mx.clone(), n(1)))));
+                    // x & 0xFFFFFFFF has no effect
+                    (_, Expr::Num(_, 0xFFFF_FFFF)) => {
+                        result = Some(*vx.clone());
                     }
-                }
-                // ?(x $ 2) & 3  ->  2 - (x & 1)
-                if let Expr::Xor(_, box Expr::Mingle(ref mx, box Expr::Num(_, 2))) = **vx {
-                    if let Expr::Num(_, 3) = **wx {
-                        result = Some(Expr::RsMinus(n(2), Box::new(Expr::RsAnd(mx.clone(), n(1)))));
-                    }
-                }
-                // x & 0xFFFFFFFF has no effect
-                if let Expr::Num(_, 0xFFFF_FFFF) = **wx {
-                    result = Some(*vx.clone());
-                }
-                // Select(UnOP(Mingle(x, y)), 1) = BinOP(x & 1, y & 1)
-                if let Expr::Num(_, 1) = **wx {
-                    match **vx {
-                        Expr::And(_, box Expr::Mingle(ref m1, ref m2)) => {
+                    // Select(UnOP(Mingle(x, y)), 1) = BinOP(x & 1, y & 1)
+                    (Expr::And(_, sx), Expr::Num(_, 1)) => {
+                        if let Expr::Mingle(m1, m2) = &**sx {
                             result = Some(Expr::RsAnd(
                                 Box::new(Expr::RsAnd(m1.clone(), n(1))),
                                 Box::new(Expr::RsAnd(m2.clone(), n(1)))));
                         }
-                        Expr::Or(_, box Expr::Mingle(ref m1, ref m2)) => {
+                    }
+                    (Expr::Or(_, sx), Expr::Num(_, 1)) => {
+                        if let Expr::Mingle(m1, m2) = &**sx {
                             result = Some(Expr::RsOr(
                                 Box::new(Expr::RsAnd(m1.clone(), n(1))),
                                 Box::new(Expr::RsAnd(m2.clone(), n(1)))));
                         }
-                        Expr::Xor(_, box Expr::Mingle(ref m1, ref m2)) => {
+                    }
+                    (Expr::Xor(_, sx), Expr::Num(_, 1)) => {
+                        if let Expr::Mingle(m1, m2) = &**sx {
                             result = Some(Expr::RsXor(
                                 Box::new(Expr::RsAnd(m1.clone(), n(1))),
                                 Box::new(Expr::RsAnd(m2.clone(), n(1)))));
                         }
-                        _ => { }
                     }
-                }
-                // ((x & y) & y)  ->  second & has no effect
-                if let Expr::RsAnd(_, ref v2x) = **vx {
-                    if *v2x == *wx {
+                    // ((x & y) & y)  ->  second & has no effect
+                    (Expr::RsAnd(_, v2x), _) if v2x == wx => {
                         result = Some(*vx.clone());
                     }
-                }
-                // ((x != y) & 1)  ->  & has no effect
-                if let Expr::RsNotEqual(..) = **vx {
-                    if let Expr::Num(_, 1) = **wx {
+                    // ((x != y) & 1)  ->  & has no effect
+                    (Expr::RsNotEqual(..), Expr::Num(_, 1)) => {
                         result = Some(*vx.clone());
                     }
+                    _ => {}
                 }
             }
-            Expr::RsXor(ref mut vx, ref mut wx) => {
+            Expr::RsXor(vx, wx) => {
                 Optimizer::opt_expr(vx);
                 Optimizer::opt_expr(wx);
                 if let Expr::Num(_, 0xFFFF_FFFF) = **wx {
@@ -349,13 +356,9 @@ impl Optimizer {
                     result = Some(Expr::RsNot(wx.clone()));
                 }
             }
-            Expr::RsOr(ref mut vx, ref mut wx) |
-            Expr::RsRshift(ref mut vx, ref mut wx) |
-            Expr::RsLshift(ref mut vx, ref mut wx) |
-            // Expr::RsEqual(ref mut vx, ref mut wx) |
-            Expr::RsNotEqual(ref mut vx, ref mut wx) |
-            Expr::RsMinus(ref mut vx, ref mut wx) |
-            Expr::RsPlus(ref mut vx, ref mut wx) => {
+            // Expr::RsEqual(vx, wx) |
+            Expr::RsOr(vx, wx) | Expr::RsRshift(vx, wx) | Expr::RsLshift(vx, wx) |
+            Expr::RsNotEqual(vx, wx) | Expr::RsMinus(vx, wx) | Expr::RsPlus(vx, wx) => {
                 Optimizer::opt_expr(vx);
                 Optimizer::opt_expr(wx);
             }
