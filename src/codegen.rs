@@ -273,13 +273,13 @@ impl Generator {
                     Box::new(|_| "1".into())
                 };
                 for what in whats {
-                    self.gen_abstain(what, &*f)?;
+                    self.gen_abstain(what, &f)?;
                 }
             }
             StmtBody::Reinstate(whats) => {
                 w!(self.o, 20; "let val = 1;");
                 for what in whats {
-                    self.gen_abstain(what, &|v| format!("{}.saturating_sub(1)", v))?;
+                    self.gen_abstain(what, |v| format!("{}.saturating_sub(1)", v))?;
                 }
             }
             StmtBody::ReadOut(exprs) => {
@@ -409,7 +409,7 @@ impl Generator {
     }
 
     /// Helper for ABSTAIN.
-    fn gen_abstain(&mut self, what: &Abstain, gen: &dyn Fn(String) -> String) -> WRes {
+    fn gen_abstain(&mut self, what: &Abstain, gen: impl Fn(String) -> String) -> WRes {
         if let Abstain::Label(lbl) = *what {
             let idx = self.program.labels[&lbl];
             w!(self.o, 20; "abstain[{}] = {};", idx, gen(format!("(abstain[{}] as u32)", idx)));

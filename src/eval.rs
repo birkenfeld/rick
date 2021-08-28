@@ -313,13 +313,13 @@ impl<'a> Eval<'a> {
                     Box::new(|_| 1)
                 };
                 for what in whats {
-                    self.abstain(what, &*f);
+                    self.abstain(what, &f);
                 }
                 Ok(Flow::Next)
             }
             StmtBody::Reinstate(whats) => {
                 for what in whats {
-                    self.abstain(what, &|v: u32| v.saturating_sub(1));
+                    self.abstain(what, |v| v.saturating_sub(1));
                 }
                 Ok(Flow::Next)
             }
@@ -545,7 +545,7 @@ impl<'a> Eval<'a> {
     }
 
     /// P()rocess an ABSTAIN or REINSTATE statement.  Cannot fail.
-    fn abstain(&mut self, what: &ast::Abstain, f: &dyn Fn(u32) -> u32) {
+    fn abstain(&mut self, what: &ast::Abstain, f: impl Fn(u32) -> u32) {
         if let ast::Abstain::Label(lbl) = *what {
             let idx = self.program.labels[&lbl] as usize;
             if self.program.stmts[idx].body != StmtBody::GiveUp {

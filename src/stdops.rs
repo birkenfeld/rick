@@ -233,15 +233,9 @@ impl<T: Debug> Display for Array<T> {
 
 /// Generate a 32-bit random seed.
 pub fn get_random_seed() -> u32 {
-    let seed: u32;
-    if let Ok(mut fp) = File::open("/dev/urandom") {
-        let mut buf = [0; 4];
-        let _ = fp.read(&mut buf);  // if no data, seed is just a little less random.
-        seed = (buf[0] as u32) << 24 | (buf[1] as u32) << 16 | (buf[2] as u32) << 8 | (buf[3] as u32);
-    } else {
-        seed = 4;  // chosen by fair dice roll. guaranteed to be random.
-    }
-    seed
+    let mut buf = [0, 0, 0, 4];  // chosen by fair dice roll. guaranteed to be random.
+    let _ = File::open("/dev/urandom").and_then(|mut fp| fp.read(&mut buf));
+    u32::from_le_bytes(buf)
 }
 
 /// Check statement execution chance (false -> skip).
@@ -365,18 +359,12 @@ pub fn from_english(v: &str, line: usize) -> Res<u32> {
 
 /// Output a number in Roman format.
 pub fn write_number(w: &mut dyn Write, val: u32, line: usize) -> Res<()> {
-    if write!(w, "{}", to_roman(val)).is_err() {
-        return IE252.err_with(None, line);
-    }
-    Ok(())
+    write!(w, "{}", to_roman(val)).map_err(|_| IE252.mk(None, line))
 }
 
 /// Output a byte.
 pub fn write_bytes(w: &mut dyn Write, val: &[u8], line: usize) -> Res<()> {
-    if w.write_all(val).is_err() {
-        return IE252.err_with(None, line);
-    }
-    Ok(())
+    w.write_all(val).map_err(|_| IE252.mk(None, line))
 }
 
 /// Read a number in spelled out English format.

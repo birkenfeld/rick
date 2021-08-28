@@ -68,7 +68,7 @@ impl<'p> Parser<'p> {
                  allow_bug }
     }
 
-    fn get_lines<T: Read>(mut reader: BufReader<T>) -> Vec<String> {
+    fn get_lines(mut reader: BufReader<impl Read>) -> Vec<String> {
         let mut buf = Vec::new();
         let mut res = Vec::new();
         while let Ok(n) = reader.read_until(b'\n', &mut buf) {
@@ -532,36 +532,36 @@ impl<'p> Parser<'p> {
     /// Add the syslib to `stmts` if necessary.
     fn add_stdlibs(&self, mut stmts: Vec<Stmt>,
                    added_syslib: &mut bool, added_floatlib: &mut bool) -> Vec<Stmt> {
-        let mut need_syslib = 0;
-        let mut need_floatlib = 0;
+        let mut need_syslib = None;
+        let mut need_floatlib = None;
         for stmt in &stmts {
             if stmt.props.label >= 1000 && stmt.props.label < 1999 {
                 // we *are* the syslib or override its labels
-                need_syslib = -1;
+                need_syslib = Some(false);
             }
             if stmt.props.label >= 5000 && stmt.props.label < 5999 {
                 // we *are* the floatlib or override its labels
-                need_floatlib = -1;
+                need_floatlib = Some(false);
             }
             if let StmtBody::DoNext(n) = stmt.body {
                 // jumping to a syslib label? we might need it then
-                if (1000..1999).contains(&n) && need_syslib > -1 {
-                    need_syslib = 1;
+                if (1000..1999).contains(&n) && need_syslib.is_none() {
+                    need_syslib = Some(true);
                 }
-                if (5000..5999).contains(&n) && need_floatlib > -1 {
-                    need_floatlib = 1;
+                if (5000..5999).contains(&n) && need_floatlib.is_none() {
+                    need_floatlib = Some(true);
                 }
             }
         }
         let mut last_lineno = self.tokens.lineno();
-        if need_syslib == 1 {
+        if need_syslib == Some(true) {
             let mut p = Parser::new(syslib::SYSLIB_CODE, last_lineno, false);
             let mut syslib_stmts = p.parse().expect("E-42 SYSLIB BROKEN");
             stmts.append(&mut syslib_stmts);
             *added_syslib = true;
             last_lineno = p.tokens.lineno();
         }
-        if need_floatlib == 1 {
+        if need_floatlib == Some(true) {
             let mut p = Parser::new(syslib::FLOATLIB_CODE, last_lineno, false);
             let mut floatlib_stmts = p.parse().expect("E2.0000000001 FLOATLIB BROKEN");
             stmts.append(&mut floatlib_stmts);
@@ -571,14 +571,10 @@ impl<'p> Parser<'p> {
     }
 
     /// Walk all references to variables, and call a visitor function for each.
-    fn walk_vars<F>(&self, stmt: &mut Stmt, mut visitor: F)
-        where F: FnMut(&mut Var)
-    {
+    fn walk_vars(&self, stmt: &mut Stmt, mut visitor: impl FnMut(&mut Var)) {
         let visitor = &mut visitor;
 
-        fn walk_var<F>(var: &mut Var, visitor: &mut F)
-            where F: FnMut(&mut Var)
-        {
+        fn walk_var(var: &mut Var, visitor: &mut impl FnMut(&mut Var)) {
             visitor(var);
             match var {
                 Var::A16(_, es) | Var::A32(_, es) => {
@@ -590,9 +586,7 @@ impl<'p> Parser<'p> {
             }
         }
 
-        fn walk_expr<F>(expr: &mut Expr, visitor: &mut F)
-            where F: FnMut(&mut Var)
-        {
+        fn walk_expr(expr: &mut Expr, visitor: &mut impl FnMut(&mut Var)) {
             match expr {
                 Expr::Var(v) => walk_var(v, visitor),
                 Expr::And(_, e) |

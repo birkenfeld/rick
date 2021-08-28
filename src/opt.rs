@@ -41,7 +41,7 @@ use std::collections::BTreeMap;
 use std::io::Cursor;
 use std::u16;
 
-use crate::ast::{Program, Stmt, StmtBody, Expr, Var, VarInfo, VType, Abstain};
+use crate::ast::{Program, Stmt, StmtBody, Expr, Var, VType, Abstain};
 use crate::eval;
 use crate::stdops::{mingle, select, and_16, and_32, or_16, or_32, xor_16, xor_32};
 
@@ -454,16 +454,11 @@ impl Optimizer {
 
     /// Determine "can_ignore" and "can_stash" for variables.
     pub fn opt_var_check(mut program: Program) -> Program {
-        fn reset(vis: &mut Vec<VarInfo>) {
-            for vi in vis {
-                vi.can_stash = false;
-                vi.can_ignore = false;
-            }
+        let v = &mut program.var_info;
+        for vi in v.0.iter_mut().chain(&mut v.1).chain(&mut v.2).chain(&mut v.3) {
+            vi.can_stash = false;
+            vi.can_ignore = false;
         }
-        reset(&mut program.var_info.0);
-        reset(&mut program.var_info.1);
-        reset(&mut program.var_info.2);
-        reset(&mut program.var_info.3);
         for stmt in &program.stmts {
             match &stmt.body {
                 StmtBody::Stash(vars) |
