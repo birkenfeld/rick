@@ -28,7 +28,7 @@ use std::collections::{BTreeMap, HashMap, hash_map::Entry as HEntry};
 use std::io::{Read, BufRead, BufReader, Cursor};
 use std::u16;
 use std::str;
-
+use itertools::Itertools;
 use rand::{self, Rng};
 
 use crate::ast::{self, Program, Stmt, StmtBody, StmtProps, Expr, Abstain, ComeFrom, Var, VType, VarInfo};
@@ -686,7 +686,7 @@ impl<'p> Parser<'p> {
         let mut added_floatlib = false;
         let mut stmts = self.add_stdlibs(stmts, &mut added_syslib, &mut added_floatlib);
         let nstmts = stmts.len();
-        let srclines = stmts.iter().map(|s| s.props.srcline).collect::<Vec<_>>();
+        let srclines = stmts.iter().map(|s| s.props.srcline).collect_vec();
         // here we:
         // - determine the "abstain" type of each statement
         // - add "way to" info for the next srcline

@@ -22,6 +22,7 @@
 use std::collections::BTreeMap;
 use std::default::Default;
 use std::fmt::{Display, Error, Formatter};
+use itertools::Itertools;
 
 use crate::err::RtError;
 use crate::lex::SrcLine;
@@ -229,15 +230,12 @@ impl Stmt {
     }
 }
 
-impl StmtBody {
-    // helpers for Display
-    fn fmt_pluslist<T: Display>(&self, vars: &[T]) -> String {
-        vars.iter().map(|v| format!("{}", v)).collect::<Vec<_>>().join(" + ")
-    }
+fn fmt_pluslist<T: Display>(vars: &[T]) -> impl Display + '_ {
+    vars.iter().format(" + ")
+}
 
-    fn fmt_bylist(&self, vars: &[Expr]) -> String {
-        vars.iter().map(|v| format!("{}", v)).collect::<Vec<_>>().join(" BY ")
-    }
+fn fmt_bylist(vars: &[Expr]) -> impl Display + '_ {
+    vars.iter().format(" BY ")
 }
 
 impl Expr {
@@ -356,22 +354,22 @@ impl Display for StmtBody {
         match self {
             StmtBody::Error(err) => write!(fmt, "* {}", err.short_string()),
             StmtBody::Calc(var, expr) => write!(fmt, "{} <- {}", var, expr),
-            StmtBody::Dim(var, exprs) => write!(fmt, "{} <- {}", var, self.fmt_bylist(exprs)),
+            StmtBody::Dim(var, exprs) => write!(fmt, "{} <- {}", var, fmt_bylist(exprs)),
             StmtBody::DoNext(line) => write!(fmt, "({}) NEXT", line),
             StmtBody::ComeFrom(spec) => write!(fmt, "COME FROM {}", spec),
             StmtBody::Resume(expr) => write!(fmt, "RESUME {}", expr),
             StmtBody::Forget(expr) => write!(fmt, "FORGET {}", expr),
-            StmtBody::Ignore(vars) => write!(fmt, "IGNORE {}", self.fmt_pluslist(vars)),
-            StmtBody::Remember(vars) => write!(fmt, "REMEMBER {}", self.fmt_pluslist(vars)),
-            StmtBody::Stash(vars) => write!(fmt, "STASH {}", self.fmt_pluslist(vars)),
-            StmtBody::Retrieve(vars) => write!(fmt, "RETRIEVE {}", self.fmt_pluslist(vars)),
+            StmtBody::Ignore(vars) => write!(fmt, "IGNORE {}", fmt_pluslist(vars)),
+            StmtBody::Remember(vars) => write!(fmt, "REMEMBER {}", fmt_pluslist(vars)),
+            StmtBody::Stash(vars) => write!(fmt, "STASH {}", fmt_pluslist(vars)),
+            StmtBody::Retrieve(vars) => write!(fmt, "RETRIEVE {}", fmt_pluslist(vars)),
             StmtBody::Abstain(expr, whats) => match expr {
-                None => write!(fmt, "ABSTAIN FROM {}", self.fmt_pluslist(whats)),
-                Some(e) => write!(fmt, "ABSTAIN {} FROM {}", e, self.fmt_pluslist(whats)),
+                None => write!(fmt, "ABSTAIN FROM {}", fmt_pluslist(whats)),
+                Some(e) => write!(fmt, "ABSTAIN {} FROM {}", e, fmt_pluslist(whats)),
             },
-            StmtBody::Reinstate(whats) => write!(fmt, "REINSTATE {}", self.fmt_pluslist(whats)),
-            StmtBody::WriteIn(vars) => write!(fmt, "WRITE IN {}", self.fmt_pluslist(vars)),
-            StmtBody::ReadOut(vars) => write!(fmt, "READ OUT {}", self.fmt_pluslist(vars)),
+            StmtBody::Reinstate(whats) => write!(fmt, "REINSTATE {}", fmt_pluslist(whats)),
+            StmtBody::WriteIn(vars) => write!(fmt, "WRITE IN {}", fmt_pluslist(vars)),
+            StmtBody::ReadOut(vars) => write!(fmt, "READ OUT {}", fmt_pluslist(vars)),
             StmtBody::TryAgain => write!(fmt, "TRY AGAIN"),
             StmtBody::GiveUp => write!(fmt, "GIVE UP"),
             StmtBody::Print(_) => write!(fmt, "<PRINT>"),

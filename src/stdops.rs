@@ -327,6 +327,7 @@ pub fn to_roman(mut val: u32) -> String {
         place += 1;
         val /= 10;
     }
+    // NOTE: no itertools here, the file is copied to compilation input.
     format!("{}\n{}\n",
             l1.into_iter().rev().collect::<String>(),
             l2.into_iter().rev().collect::<String>())

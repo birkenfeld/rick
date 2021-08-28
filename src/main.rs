@@ -56,7 +56,6 @@ fn main() {
 }
 
 fn main_inner() -> Result<i32, err::RtError> {
-    let args: Vec<String> = args().collect();
     let mut opts = getopts::Options::new();
     opts.optflag("i", "interpret", "interpret code instead of compiling");
     opts.optflag("c", "no-compile", "do not call rustc");
@@ -70,7 +69,7 @@ fn main_inner() -> Result<i32, err::RtError> {
     opts.optflag("h", "help", "print help message");
 
     // parse args
-    let matches = match opts.parse(&args[1..]) {
+    let matches = match opts.parse(args().skip(1)) {
         Ok(m)  => m,
         Err(e) => { println!("{}", e.to_string());
                     return err::IE990.err() },
