@@ -253,7 +253,7 @@ pub fn check_chance(chance: u8, state: &mut u32) -> bool {
         // I'm sure it is exceedingly random
         *state = state.wrapping_mul(1103515245).wrapping_add(12345);
         let random = (*state / 65536) % 100;
-        random < (chance as u32)
+        random < chance.into()
     }
 }
 
@@ -356,7 +356,7 @@ pub fn from_english(v: &str, line: usize) -> Res<u32> {
             None => return IE579.err_with(Some(word), line)
         }
     }
-    if res > (u32::MAX as u64) {
+    if res > u32::MAX.into() {
         IE533.err_with(None, line)
     } else {
         Ok(res as u32)
@@ -399,7 +399,7 @@ pub fn read_byte() -> u16 {
 
 /// Check for 16-bit overflow.
 pub fn check_ovf(v: u32, line: usize) -> Res<u32> {
-    if v > (u16::MAX as u32) {
+    if v > u16::MAX.into() {
         IE533.err_with(None, line)
     } else {
         Ok(v)
@@ -495,6 +495,6 @@ impl LikeU16 for u16 {
 }
 
 impl LikeU16 for u32 {
-    fn from_u16(x: u16) -> u32 { x as u32 }
+    fn from_u16(x: u16) -> u32 { x.into() }
     fn to_u16(self) -> u16 { self as u16 }
 }

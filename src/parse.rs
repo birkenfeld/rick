@@ -237,11 +237,11 @@ impl<'p> Parser<'p> {
     fn parse_var_maybe(&mut self, subs_allowed: bool) -> ParseRes<Option<Var>> {
         if self.take(Rule::SPOT) {
             let val = self.req_number(u16::MAX, &IE200)?;
-            return Ok(Some(Var::I16(val as usize)));
+            return Ok(Some(Var::I16(val.into())));
         }
         if self.take(Rule::TWOSPOT) {
             let val = self.req_number(u16::MAX, &IE200)?;
-            return Ok(Some(Var::I32(val as usize)));
+            return Ok(Some(Var::I32(val.into())));
         }
         if self.take(Rule::TAIL) {
             let val = self.req_number(u16::MAX, &IE200)?;
@@ -250,7 +250,7 @@ impl<'p> Parser<'p> {
             } else {
                 vec![]
             };
-            return Ok(Some(Var::A16(val as usize, subs)));
+            return Ok(Some(Var::A16(val.into(), subs)));
         }
         if self.take(Rule::HYBRID) {
             let val = self.req_number(u16::MAX, &IE200)?;
@@ -259,7 +259,7 @@ impl<'p> Parser<'p> {
             } else {
                 vec![]
             };
-            return Ok(Some(Var::A32(val as usize, subs)));
+            return Ok(Some(Var::A32(val.into(), subs)));
         }
         Ok(None)
     }
@@ -302,14 +302,14 @@ impl<'p> Parser<'p> {
         let mut res = Vec::new();
         if self.take(Rule::MESH) {
             let val = self.req_number(u16::MAX, &IE017)?;
-            res.push(Expr::Num(VType::I16, val as u32));
+            res.push(Expr::Num(VType::I16, val.into()));
         } else {
             res.push(Expr::Var(self.parse_var(true)?));
         }
         while self.take(Rule::INTERSECTION) {
             if self.take(Rule::MESH) {
                 let val = self.req_number(u16::MAX, &IE017)?;
-                res.push(Expr::Num(VType::I16, val as u32));
+                res.push(Expr::Num(VType::I16, val.into()));
             } else {
                 res.push(Expr::Var(self.parse_var(true)?));
             }
@@ -333,29 +333,29 @@ impl<'p> Parser<'p> {
         if self.take(Rule::MESH) {
             let constr = parse_constr(self);
             let val = self.req_number(u16::MAX, &IE017)?;
-            return Ok(Some(constr(Expr::Num(VType::I16, val as u32))));
+            return Ok(Some(constr(Expr::Num(VType::I16, val.into()))));
         }
         if self.take(Rule::SPOT) {
             let constr = parse_constr(self);
             let val = self.req_number(u16::MAX, &IE200)?;
-            return Ok(Some(constr(Expr::Var(Var::I16(val as usize)))));
+            return Ok(Some(constr(Expr::Var(Var::I16(val.into())))));
         }
         if self.take(Rule::TWOSPOT) {
             let constr = parse_constr(self);
             let val = self.req_number(u16::MAX, &IE200)?;
-            return Ok(Some(constr(Expr::Var(Var::I32(val as usize)))));
+            return Ok(Some(constr(Expr::Var(Var::I32(val.into())))));
         }
         if self.take(Rule::TAIL) {
             let constr = parse_constr(self);
             let val = self.req_number(u16::MAX, &IE200)?;
             let subs = self.parse_subs()?;
-            return Ok(Some(constr(Expr::Var(Var::A16(val as usize, subs)))));
+            return Ok(Some(constr(Expr::Var(Var::A16(val.into(), subs)))));
         }
         if self.take(Rule::HYBRID) {
             let constr = parse_constr(self);
             let val = self.req_number(u16::MAX, &IE200)?;
             let subs = self.parse_subs()?;
-            return Ok(Some(constr(Expr::Var(Var::A32(val as usize, subs)))));
+            return Ok(Some(constr(Expr::Var(Var::A32(val.into(), subs)))));
         }
         Ok(None)
     }
@@ -493,7 +493,7 @@ impl<'p> Parser<'p> {
             Some(t) => {
                 if t.rule == Rule::NUMBER {
                     let x = t.value;
-                    if x > max as u32 {
+                    if x > max.into() {
                         Err(DecodeError::Hard(err.mk(None, self.tokens.lineno())))
                     } else {
                         self.stash.push(t);

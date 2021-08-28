@@ -148,7 +148,7 @@ impl Generator {
         // end of abstain check
         w!(self.o, 16; "}}");
         // insert random compiler bug
-        if i == self.program.bugline as usize {
+        if i == self.program.bugline.into() {
             w!(self.o, 16; "return err::IE774.err_with(None, {});", self.line);
         }
         // COME FROM check
@@ -372,7 +372,7 @@ impl Generator {
                 // real types, so the magnitude of the value is the only
                 // reliable indicator whether we can put it into the variable
                 w!(self.o; "
-                    if val > (std::u16::MAX as u32) {{
+                    if val > std::u16::MAX.into() {{
                         return err::IE275.err_with(None, {});
                     }}", self.line);
                 w!(self.o, 20; "v{}.assign{}(val as u16);", n, suffix);
@@ -380,7 +380,7 @@ impl Generator {
             Var::I32(n) => w!(self.o, 20; "w{}.assign{}(val);", n, suffix),
             Var::A16(n, subs) => {
                 w!(self.o; "
-                    if val > (std::u16::MAX as u32) {{
+                    if val > std::u16::MAX.into() {{
                         return err::IE275.err_with(None, {});
                     }}", self.line);
                 if subs.len() == 1 {
@@ -456,7 +456,7 @@ impl Generator {
             Expr::Mingle(vx, wx) => {
                 w!(self.o; "mingle(");
                 if let Expr::Num(_, n) = **vx {
-                    if n > (u16::MAX as u32) {
+                    if n > u16::MAX.into() {
                         return IE533.err_with(None, self.line);
                     }
                     self.gen_eval(vx, "")?;
@@ -467,7 +467,7 @@ impl Generator {
                 }
                 w!(self.o; ", ");
                 if let Expr::Num(_, n) = **wx {
-                    if n > (u16::MAX as u32) {
+                    if n > u16::MAX.into() {
                         return IE533.err_with(None, self.line);
                     }
                     self.gen_eval(wx, "")?;

@@ -93,8 +93,7 @@ impl Optimizer {
                 Optimizer::fold(wx);
                 if let Expr::Num(_, v) = **vx {
                     if let Expr::Num(_, w) = **wx {
-                        if v <= (u16::MAX as u32) &&
-                           w <= (u16::MAX as u32) {
+                        if v <= u16::MAX.into() && w <= u16::MAX.into() {
                             let z = mingle(v, w);
                             result = Some(*n(z));
                         }

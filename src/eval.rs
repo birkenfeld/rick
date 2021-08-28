@@ -43,7 +43,7 @@ impl Val {
         match *self {
             Val::I16(v) => Ok(v),
             Val::I32(v) => {
-                if v > (u16::MAX as u32) {
+                if v > u16::MAX.into() {
                     return IE275.err();
                 }
                 Ok(v as u16)
@@ -54,7 +54,7 @@ impl Val {
     /// Cast as a 32-bit value; always succeeds.
     pub fn as_u32(&self) -> u32 {
         match *self {
-            Val::I16(v) => v as u32,
+            Val::I16(v) => v.into(),
             Val::I32(v) => v
         }
     }
@@ -118,7 +118,7 @@ impl<'a> Eval<'a> {
     /// Construct a new evaluator.
     pub fn new(program: &'a Program, stdout: &'a mut dyn Write, debug: bool,
                random: bool) -> Eval<'a> {
-        let abs = program.stmts.iter().map(|stmt| stmt.props.disabled as u32).collect();
+        let abs = program.stmts.iter().map(|stmt| stmt.props.disabled.into()).collect();
         let nvars = (program.var_info.0.len(),
                      program.var_info.1.len(),
                      program.var_info.2.len(),
@@ -196,7 +196,7 @@ impl<'a> Eval<'a> {
                 }
             }
             // if we are on the line with the compiler bug, error out
-            if pctr == self.program.bugline as usize {
+            if pctr == self.program.bugline.into() {
                 return IE774.err_with(None, stmt.props.onthewayto);
             }
             // try to determine if we have to go to a COME FROM statement
@@ -260,7 +260,7 @@ impl<'a> Eval<'a> {
                 match self.program.labels.get(n) {
                     // too many jumps on stack already?
                     Some(_) if self.jumps.len() >= 80 => IE123.err(),
-                    Some(i)                           => Ok(Flow::Jump(*i as usize)),
+                    Some(i)                           => Ok(Flow::Jump((*i).into())),
                     None                              => IE129.err(),
                 }
             }
@@ -274,7 +274,7 @@ impl<'a> Eval<'a> {
                 // be no Ok(None) returns
                 let next = pop_jumps(&mut self.jumps, n, true, 0)?
                     .expect("https://xkcd.com/378/ ?!");
-                Ok(Flow::Back(next as usize))
+                Ok(Flow::Back(next.into()))
             }
             StmtBody::Forget(expr) => {
                 let n = self.eval_expr(expr)?.as_u32();
@@ -388,7 +388,7 @@ impl<'a> Eval<'a> {
                 let v = self.eval_expr(vx)?;
                 let w = self.eval_expr(wx)?;
                 if vtype == &VType::I16 {
-                    Ok(Val::I16(select(v.as_u32(), w.as_u16()? as u32) as u16))
+                    Ok(Val::I16(select(v.as_u32(), w.as_u16()?.into()) as u16))
                 } else {
                     Ok(Val::I32(select(v.as_u32(), w.as_u32())))
                 }
@@ -396,21 +396,21 @@ impl<'a> Eval<'a> {
             Expr::And(vtype, vx) => {
                 let v = self.eval_expr(vx)?;
                 match vtype {
-                    VType::I16 => Ok(Val::I16(and_16(v.as_u16()? as u32) as u16)),
+                    VType::I16 => Ok(Val::I16(and_16(v.as_u16()?.into()) as u16)),
                     VType::I32 => Ok(Val::I32(and_32(v.as_u32()))),
                 }
             }
             Expr::Or(vtype, vx) => {
                 let v = self.eval_expr(vx)?;
                 match vtype {
-                    VType::I16 => Ok(Val::I16(or_16(v.as_u16()? as u32) as u16)),
+                    VType::I16 => Ok(Val::I16(or_16(v.as_u16()?.into()) as u16)),
                     VType::I32 => Ok(Val::I32(or_32(v.as_u32()))),
                 }
             }
             Expr::Xor(vtype, vx) => {
                 let v = self.eval_expr(vx)?;
                 match vtype {
-                    VType::I16 => Ok(Val::I16(xor_16(v.as_u16()? as u32) as u16)),
+                    VType::I16 => Ok(Val::I16(xor_16(v.as_u16()?.into()) as u16)),
                     VType::I32 => Ok(Val::I32(xor_32(v.as_u32()))),
                 }
             }
@@ -446,12 +446,12 @@ impl<'a> Eval<'a> {
             // Expr::RsEqual(vx, wx) => {
             //     let v = self.eval_expr(vx)?;
             //     let w = self.eval_expr(wx)?;
-            //     Ok(Val::I32((v.as_u32() == w.as_u32()) as u32))
+            //     Ok(Val::I32((v.as_u32() == w.as_u32()).into()))
             // }
             Expr::RsNotEqual(vx, wx) => {
                 let v = self.eval_expr(vx)?;
                 let w = self.eval_expr(wx)?;
-                Ok(Val::I32((v.as_u32() != w.as_u32()) as u32))
+                Ok(Val::I32((v.as_u32() != w.as_u32()).into()))
             }
             Expr::RsPlus(vx, wx) => {
                 let v = self.eval_expr(vx)?;
