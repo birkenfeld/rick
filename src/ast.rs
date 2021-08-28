@@ -136,23 +136,27 @@ pub enum Expr {
     // INTERCAL operators
     Mingle(Box<Expr>, Box<Expr>),
     Select(VType, Box<Expr>, Box<Expr>),
-    And(VType, Box<Expr>),
-    Or(VType, Box<Expr>),
-    Xor(VType, Box<Expr>),
+    Log(Logical, VType, Box<Expr>),
     // only used after optimizing
     RsNot(Box<Expr>),
-    RsAnd(Box<Expr>, Box<Expr>),
-    RsOr(Box<Expr>, Box<Expr>),
-    RsXor(Box<Expr>, Box<Expr>),
-    RsRshift(Box<Expr>, Box<Expr>),
-    RsLshift(Box<Expr>, Box<Expr>),
-    // RsEqual(Box<Expr>, Box<Expr>),
-    RsNotEqual(Box<Expr>, Box<Expr>),
-    RsPlus(Box<Expr>, Box<Expr>),
-    RsMinus(Box<Expr>, Box<Expr>),
-    // RsTimes(Box<Expr>, Box<Expr>),
-    // RsDivide(Box<Expr>, Box<Expr>),
-    // RsModulus(Box<Expr>, Box<Expr>),
+    RsLog(Logical, Box<Expr>, Box<Expr>),
+    RsArith(Arith, Box<Expr>, Box<Expr>),
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Logical {
+    And,
+    Or,
+    Xor,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Arith {
+    Rshift,
+    Lshift,
+    Plus,
+    Minus,
+    NotEqual,
 }
 
 /// Type of an expression, used when the width actually matters.
@@ -243,13 +247,10 @@ impl Expr {
     /// type of expression has no information about the width.
     pub fn get_vtype(&self) -> VType {
         match self {
-            Expr::Num(vtype, _) | Expr::And(vtype, _) | Expr::Or(vtype, _) |
-            Expr::Xor(vtype, _) | Expr::Select(vtype, _, _) => *vtype,
-            Expr::Mingle(..) |
-            Expr::RsAnd(..) | Expr::RsOr(..) | Expr::RsXor(..) |
-            Expr::RsNot(..) | Expr::RsRshift(..) | Expr::RsLshift(..) |
-            Expr::RsNotEqual(..) | Expr::RsMinus(..) |
-            Expr::RsPlus(..) => VType::I32,
+            Expr::Num(vtype, _) | Expr::Log(_, vtype, _) |
+            Expr::Select(vtype, _, _) => *vtype,
+            Expr::Mingle(..) | Expr::RsLog(..) |
+            Expr::RsNot(..) | Expr::RsArith(..) => VType::I32,
             Expr::Var(v) => v.get_vtype(),
         }
     }
@@ -407,23 +408,22 @@ impl Display for Expr {
             Expr::Var(v) => v.fmt(fmt),
             Expr::Mingle(x, y) => write!(fmt, "({} $ {})", x, y),
             Expr::Select(_, x, y) => write!(fmt, "({} ~ {})", x, y),
-            Expr::And(t, x) => write!(fmt, "&{} {}",
-                                      if t == &VType::I16 { "16" } else { "32" }, x),
-            Expr::Or(t, x) => write!(fmt, "V{} {}",
-                                     if t == &VType::I16 { "16" } else { "32" }, x),
-            Expr::Xor(t, x) => write!(fmt, "?{} {}",
-                                      if t == &VType::I16 { "16" } else { "32" }, x),
+            Expr::Log(Logical::And, t, x) =>
+                write!(fmt, "&{} {}", if t == &VType::I16 { "16" } else { "32" }, x),
+            Expr::Log(Logical::Or, t, x) =>
+                write!(fmt, "V{} {}", if t == &VType::I16 { "16" } else { "32" }, x),
+            Expr::Log(Logical::Xor, t, x) =>
+                write!(fmt, "?{} {}", if t == &VType::I16 { "16" } else { "32" }, x),
             // optimized exprs
             Expr::RsNot(x) => write!(fmt, "!{}", x),
-            Expr::RsAnd(x, y) => write!(fmt, "({} & {})", x, y),
-            Expr::RsOr(x, y) => write!(fmt, "({} | {})", x, y),
-            Expr::RsXor(x, y) => write!(fmt, "({} ^ {})", x, y),
-            Expr::RsRshift(x, y) => write!(fmt, "({} >> {})", x, y),
-            Expr::RsLshift(x, y) => write!(fmt, "({} << {})", x, y),
-            // Expr::RsEqual(x, y) => write!(fmt, "({} == {})", x, y),
-            Expr::RsNotEqual(x, y) => write!(fmt, "({} != {})", x, y),
-            Expr::RsPlus(x, y) => write!(fmt, "({} + {})", x, y),
-            Expr::RsMinus(x, y) => write!(fmt, "({} - {})", x, y),
+            Expr::RsLog(Logical::And, x, y) => write!(fmt, "({} & {})", x, y),
+            Expr::RsLog(Logical::Or,  x, y) => write!(fmt, "({} | {})", x, y),
+            Expr::RsLog(Logical::Xor, x, y) => write!(fmt, "({} ^ {})", x, y),
+            Expr::RsArith(Arith::Rshift, x, y) => write!(fmt, "({} >> {})", x, y),
+            Expr::RsArith(Arith::Lshift, x, y) => write!(fmt, "({} << {})", x, y),
+            Expr::RsArith(Arith::NotEqual, x, y) => write!(fmt, "({} != {})", x, y),
+            Expr::RsArith(Arith::Plus, x, y) => write!(fmt, "({} + {})", x, y),
+            Expr::RsArith(Arith::Minus, x, y) => write!(fmt, "({} - {})", x, y),
         }
     }
 }

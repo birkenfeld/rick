@@ -25,7 +25,7 @@ use std::io::Write;
 use std::u16;
 
 use crate::err::{Res, IE123, IE129, IE252, IE275, IE555, IE633, IE774, IE994};
-use crate::ast::{self, Program, Stmt, StmtBody, ComeFrom, Expr, Var, VType};
+use crate::ast::{self, Program, Stmt, StmtBody, ComeFrom, Expr, Logical, Arith, Var, VType};
 use crate::stdops::{Bind, Array, write_number, read_number, check_chance, check_ovf, pop_jumps,
                     get_random_seed, mingle, select, and_16, and_32, or_16, or_32, xor_16, xor_32};
 
@@ -393,75 +393,40 @@ impl<'a> Eval<'a> {
                     Ok(Val::I32(select(v.as_u32(), w.as_u32())))
                 }
             }
-            Expr::And(vtype, vx) => {
+            Expr::Log(op, vtype, vx) => {
                 let v = self.eval_expr(vx)?;
-                match vtype {
-                    VType::I16 => Ok(Val::I16(and_16(v.as_u16()?.into()) as u16)),
-                    VType::I32 => Ok(Val::I32(and_32(v.as_u32()))),
-                }
-            }
-            Expr::Or(vtype, vx) => {
-                let v = self.eval_expr(vx)?;
-                match vtype {
-                    VType::I16 => Ok(Val::I16(or_16(v.as_u16()?.into()) as u16)),
-                    VType::I32 => Ok(Val::I32(or_32(v.as_u32()))),
-                }
-            }
-            Expr::Xor(vtype, vx) => {
-                let v = self.eval_expr(vx)?;
-                match vtype {
-                    VType::I16 => Ok(Val::I16(xor_16(v.as_u16()?.into()) as u16)),
-                    VType::I32 => Ok(Val::I32(xor_32(v.as_u32()))),
+                match (op, vtype) {
+                    (Logical::And, VType::I16) => Ok(Val::I16(and_16(v.as_u16()?.into()) as u16)),
+                    (Logical::And, VType::I32) => Ok(Val::I32(and_32(v.as_u32()))),
+                    (Logical::Or,  VType::I16) => Ok(Val::I16(or_16(v.as_u16()?.into()) as u16)),
+                    (Logical::Or,  VType::I32) => Ok(Val::I32(or_32(v.as_u32()))),
+                    (Logical::Xor, VType::I16) => Ok(Val::I16(xor_16(v.as_u16()?.into()) as u16)),
+                    (Logical::Xor, VType::I32) => Ok(Val::I32(xor_32(v.as_u32()))),
                 }
             }
             Expr::RsNot(vx) => {
                 let v = self.eval_expr(vx)?;
                 Ok(Val::I32(!v.as_u32()))
             }
-            Expr::RsAnd(vx, wx) => {
+            Expr::RsLog(op, vx, wx) => {
                 let v = self.eval_expr(vx)?;
                 let w = self.eval_expr(wx)?;
-                Ok(Val::I32(v.as_u32() & w.as_u32()))
+                Ok(match op {
+                    Logical::And => Val::I32(v.as_u32() & w.as_u32()),
+                    Logical::Or  => Val::I32(v.as_u32() | w.as_u32()),
+                    Logical::Xor => Val::I32(v.as_u32() ^ w.as_u32()),
+                })
             }
-            Expr::RsOr(vx, wx) => {
+            Expr::RsArith(op, vx, wx) => {
                 let v = self.eval_expr(vx)?;
                 let w = self.eval_expr(wx)?;
-                Ok(Val::I32(v.as_u32() | w.as_u32()))
-            }
-            Expr::RsXor(vx, wx) => {
-                let v = self.eval_expr(vx)?;
-                let w = self.eval_expr(wx)?;
-                Ok(Val::I32(v.as_u32() ^ w.as_u32()))
-            }
-            Expr::RsRshift(vx, wx) => {
-                let v = self.eval_expr(vx)?;
-                let w = self.eval_expr(wx)?;
-                Ok(Val::I32(v.as_u32() >> w.as_u32()))
-            }
-            Expr::RsLshift(vx, wx) => {
-                let v = self.eval_expr(vx)?;
-                let w = self.eval_expr(wx)?;
-                Ok(Val::I32(v.as_u32() << w.as_u32()))
-            }
-            // Expr::RsEqual(vx, wx) => {
-            //     let v = self.eval_expr(vx)?;
-            //     let w = self.eval_expr(wx)?;
-            //     Ok(Val::I32((v.as_u32() == w.as_u32()).into()))
-            // }
-            Expr::RsNotEqual(vx, wx) => {
-                let v = self.eval_expr(vx)?;
-                let w = self.eval_expr(wx)?;
-                Ok(Val::I32((v.as_u32() != w.as_u32()).into()))
-            }
-            Expr::RsPlus(vx, wx) => {
-                let v = self.eval_expr(vx)?;
-                let w = self.eval_expr(wx)?;
-                Ok(Val::I32(v.as_u32() + w.as_u32()))
-            }
-            Expr::RsMinus(vx, wx) => {
-                let v = self.eval_expr(vx)?;
-                let w = self.eval_expr(wx)?;
-                Ok(Val::I32(v.as_u32() - w.as_u32()))
+                Ok(match op {
+                    Arith::Rshift => Val::I32(v.as_u32() >> w.as_u32()),
+                    Arith::Lshift => Val::I32(v.as_u32() << w.as_u32()),
+                    Arith::NotEqual => Val::I32((v.as_u32() != w.as_u32()).into()),
+                    Arith::Plus  => Val::I32(v.as_u32() + w.as_u32()),
+                    Arith::Minus => Val::I32(v.as_u32() - w.as_u32()),
+                })
             }
         }
     }

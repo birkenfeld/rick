@@ -34,7 +34,8 @@ use std::io::{BufWriter, Write};
 use std::rc::Rc;
 use std::u16;
 
-use crate::ast::{Program, Stmt, StmtBody, Expr, Var, VType, Abstain, ComeFrom};
+use crate::ast::{Program, Stmt, StmtBody, Expr, Logical, Arith, Var, VType, Abstain,
+                 ComeFrom};
 use crate::err::{Res, IE129, IE533, IE994};
 use crate::lex::SrcLine;
 
@@ -491,26 +492,14 @@ impl Generator {
                 }
                 w!(self.o; "){}", astype);
             }
-            Expr::And(vtype, vx) => {
-                match vtype {
-                    VType::I16 => w!(self.o; "and_16("),
-                    VType::I32 => w!(self.o; "and_32("),
-                }
-                self.gen_eval(vx, "")?;
-                w!(self.o; "){}", astype);
-            }
-            Expr::Or(vtype, vx) => {
-                match vtype {
-                    VType::I16 => w!(self.o; "or_16("),
-                    VType::I32 => w!(self.o; "or_32("),
-                }
-                self.gen_eval(vx, "")?;
-                w!(self.o; "){}", astype);
-            }
-            Expr::Xor(vtype, vx) => {
-                match vtype {
-                    VType::I16 => w!(self.o; "xor_16("),
-                    VType::I32 => w!(self.o; "xor_32("),
+            Expr::Log(op, vtype, vx) => {
+                match (op, vtype) {
+                    (Logical::And, VType::I16) => w!(self.o; "and_16("),
+                    (Logical::And, VType::I32) => w!(self.o; "and_32("),
+                    (Logical::Or,  VType::I16) => w!(self.o; "or_16("),
+                    (Logical::Or,  VType::I32) => w!(self.o; "or_32("),
+                    (Logical::Xor, VType::I16) => w!(self.o; "xor_16("),
+                    (Logical::Xor, VType::I32) => w!(self.o; "xor_32("),
                 }
                 self.gen_eval(vx, "")?;
                 w!(self.o; "){}", astype);
@@ -520,17 +509,15 @@ impl Generator {
                 self.gen_eval(vx, "")?;
                 w!(self.o; "){}", astype);
             }
-            Expr::RsAnd(vx, wx) => self.gen_binop(vx, wx, "&", astype)?,
-            Expr::RsOr(vx, wx) => self.gen_binop(vx, wx, "|", astype)?,
-            Expr::RsXor(vx, wx) => self.gen_binop(vx, wx, "^", astype)?,
-            Expr::RsRshift(vx, wx) => self.gen_binop(vx, wx, ">>", astype)?,
-            Expr::RsLshift(vx, wx) => self.gen_binop_extrapar(vx, wx, "<<", astype)?,
-            // Expr::RsEqual(vx, wx) => self.gen_binop(
-            //     vx, wx, "==", if astype == "" { " as u32" } else { astype })?,
-            Expr::RsNotEqual(vx, wx) => self.gen_binop(
+            Expr::RsLog(Logical::And, vx, wx) => self.gen_binop(vx, wx, "&", astype)?,
+            Expr::RsLog(Logical::Or,  vx, wx) => self.gen_binop(vx, wx, "|", astype)?,
+            Expr::RsLog(Logical::Xor, vx, wx) => self.gen_binop(vx, wx, "^", astype)?,
+            Expr::RsArith(Arith::Rshift, vx, wx) => self.gen_binop(vx, wx, ">>", astype)?,
+            Expr::RsArith(Arith::Lshift, vx, wx) => self.gen_binop_extrapar(vx, wx, "<<", astype)?,
+            Expr::RsArith(Arith::NotEqual, vx, wx) => self.gen_binop(
                 vx, wx, "!=", if astype.is_empty() { " as u32" } else { astype })?,
-            Expr::RsPlus(vx, wx) => self.gen_binop(vx, wx, "+", astype)?,
-            Expr::RsMinus(vx, wx) => self.gen_binop(vx, wx, "-", astype)?,
+            Expr::RsArith(Arith::Plus, vx, wx) => self.gen_binop(vx, wx, "+", astype)?,
+            Expr::RsArith(Arith::Minus, vx, wx) => self.gen_binop(vx, wx, "-", astype)?,
         }
         Ok(())
     }

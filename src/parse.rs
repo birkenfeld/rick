@@ -31,9 +31,10 @@ use std::str;
 use itertools::Itertools;
 use rand::{self, Rng};
 
-use crate::ast::{self, Program, Stmt, StmtBody, StmtProps, Expr, Abstain, ComeFrom, Var, VType, VarInfo};
-use crate::err::{Res, RtError, ErrDesc, IE000, IE017, IE079, IE099, IE139, IE182, IE197, IE200,
-                 IE444, IE555, IE993};
+use crate::ast::{self, Program, Stmt, StmtBody, StmtProps, Expr, Abstain, ComeFrom,
+                 Logical, Var, VType, VarInfo};
+use crate::err::{Res, RtError, ErrDesc, IE000, IE017, IE079, IE099, IE139, IE182, IE197,
+                 IE200, IE444, IE555, IE993};
 use crate::lex::{SrcLine, SrcToken, Rule, Lexer, lex};
 use crate::syslib;
 
@@ -321,11 +322,11 @@ impl<'p> Parser<'p> {
     fn parse_item_with_unop(&mut self) -> ParseRes<Option<Expr>> {
         fn parse_constr(self_: &mut Parser) -> Box<dyn Fn(Expr) -> Expr> {
             if self_.take(Rule::AMPERSAND) {
-                Box::new(|e| Expr::And(VType::I16, Box::new(e)))
+                Box::new(|e| Expr::Log(Logical::And, VType::I16, Box::new(e)))
             } else if self_.take(Rule::BOOK) {
-                Box::new(|e| Expr::Or(VType::I16, Box::new(e)))
+                Box::new(|e| Expr::Log(Logical::Or, VType::I16, Box::new(e)))
             } else if self_.take(Rule::WHAT) {
-                Box::new(|e| Expr::Xor(VType::I16, Box::new(e)))
+                Box::new(|e| Expr::Log(Logical::Xor, VType::I16, Box::new(e)))
             } else {
                 Box::new(|e| e)
             }
@@ -457,13 +458,13 @@ impl<'p> Parser<'p> {
             Ok(expr)
         } else if self.take(Rule::AMPERSAND) {
             let expr = self.parse_expr()?;
-            Ok(Expr::And(expr.get_vtype(), Box::new(expr)))
+            Ok(Expr::Log(Logical::And, expr.get_vtype(), Box::new(expr)))
         } else if self.take(Rule::BOOK) {
             let expr = self.parse_expr()?;
-            Ok(Expr::Or(expr.get_vtype(), Box::new(expr)))
+            Ok(Expr::Log(Logical::Or, expr.get_vtype(), Box::new(expr)))
         } else if self.take(Rule::WHAT) {
             let expr = self.parse_expr()?;
-            Ok(Expr::Xor(expr.get_vtype(), Box::new(expr)))
+            Ok(Expr::Log(Logical::Xor, expr.get_vtype(), Box::new(expr)))
         } else {
             Err(self.invalid())
         }
@@ -589,21 +590,12 @@ impl<'p> Parser<'p> {
         fn walk_expr(expr: &mut Expr, visitor: &mut impl FnMut(&mut Var)) {
             match expr {
                 Expr::Var(v) => walk_var(v, visitor),
-                Expr::And(_, e) |
-                Expr::Or(_, e) |
-                Expr::Xor(_, e) |
+                Expr::Log(_, _, e) |
                 Expr::RsNot(e) => walk_expr(e, visitor),
                 Expr::Mingle(e, e2) |
                 Expr::Select(_, e, e2) |
-                Expr::RsAnd(e, e2) |
-                Expr::RsOr(e, e2) |
-                Expr::RsXor(e, e2) |
-                Expr::RsRshift(e, e2) |
-                Expr::RsLshift(e, e2) |
-                // Expr::RsEqual(e, e2) |
-                Expr::RsNotEqual(e, e2) |
-                Expr::RsPlus(e, e2) |
-                Expr::RsMinus(e, e2) => {
+                Expr::RsLog(_, e, e2) |
+                Expr::RsArith(_, e, e2) => {
                     walk_expr(e, visitor);
                     walk_expr(e2, visitor);
                 }

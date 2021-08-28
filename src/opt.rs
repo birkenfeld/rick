@@ -41,7 +41,7 @@ use std::collections::BTreeMap;
 use std::io::Cursor;
 use std::u16;
 
-use crate::ast::{Program, Stmt, StmtBody, Expr, Var, VType, Abstain};
+use crate::ast::{Program, Stmt, StmtBody, Expr, Logical, Arith, Var, VType, Abstain};
 use crate::eval;
 use crate::stdops::{mingle, select, and_16, and_32, or_16, or_32, xor_16, xor_32};
 
@@ -110,30 +110,16 @@ impl Optimizer {
                     }
                 }
             }
-            Expr::And(_, vx) => {
+            Expr::Log(op, _, vx) => {
                 Optimizer::fold(vx);
                 if let Expr::Num(vtype, v) = **vx {
-                    result = Some(match vtype {
-                        VType::I16 => Expr::Num(vtype, and_16(v)),
-                        VType::I32 => Expr::Num(vtype, and_32(v)),
-                    });
-                }
-            }
-            Expr::Or(_, vx) => {
-                Optimizer::fold(vx);
-                if let Expr::Num(vtype, v) = **vx {
-                    result = Some(match vtype {
-                        VType::I16 => Expr::Num(vtype, or_16(v)),
-                        VType::I32 => Expr::Num(vtype, or_32(v)),
-                    });
-                }
-            }
-            Expr::Xor(_, vx) => {
-                Optimizer::fold(vx);
-                if let Expr::Num(vtype, v) = **vx {
-                    result = Some(match vtype {
-                        VType::I16 => Expr::Num(vtype, xor_16(v)),
-                        VType::I32 => Expr::Num(vtype, xor_32(v)),
+                    result = Some(match (op, vtype) {
+                        (Logical::And, VType::I16) => Expr::Num(vtype, and_16(v)),
+                        (Logical::And, VType::I32) => Expr::Num(vtype, and_32(v)),
+                        (Logical::Or,  VType::I16) => Expr::Num(vtype, or_16(v)),
+                        (Logical::Or,  VType::I32) => Expr::Num(vtype, or_32(v)),
+                        (Logical::Xor, VType::I16) => Expr::Num(vtype, xor_16(v)),
+                        (Logical::Xor, VType::I32) => Expr::Num(vtype, xor_32(v)),
                     });
                 }
             }
@@ -167,35 +153,22 @@ impl Optimizer {
                 match **wx {
                     // Select(UnOP(Mingle(x, y)), 0x5555_5555) = BinOP(x, y)
                     Expr::Num(_, 0x5555_5555) => {
-                        match &**vx {
-                            Expr::And(_, other) => {
-                                if let Expr::Mingle(m1, m2) = &**other {
-                                    result = Some(Expr::RsAnd(m1.clone(), m2.clone()));
-                                }
+                        if let Expr::Log(op, _, other) = &**vx {
+                            if let Expr::Mingle(m1, m2) = &**other {
+                                result = Some(Expr::RsLog(*op, m1.clone(), m2.clone()));
                             }
-                            Expr::Or(_, other) => {
-                                if let Expr::Mingle(m1, m2) = &**other {
-                                    result = Some(Expr::RsOr(m1.clone(), m2.clone()));
-                                }
-                            }
-                            Expr::Xor(_, other) => {
-                                if let Expr::Mingle(m1, m2) = &**other {
-                                    result = Some(Expr::RsXor(m1.clone(), m2.clone()));
-                                }
-                            }
-                            _ => { }
                         }
                     }
                     // Select(x, N) is a shift & mask if N has to "inside" zeros
                     // in binary notation
                     Expr::Num(_, i) if i.count_zeros() == i.leading_zeros() + i.trailing_zeros() => {
                         if i.trailing_zeros() == 0 {
-                            result = Some(Expr::RsAnd(vx.clone(), n(i)));
+                            result = Some(Expr::RsLog(Logical::And, vx.clone(), n(i)));
                         } else if i.leading_zeros() == 0 {
-                            result = Some(Expr::RsRshift(vx.clone(), n(i.trailing_zeros())));
+                            result = Some(Expr::RsArith(Arith::Rshift, vx.clone(), n(i.trailing_zeros())));
                         } else {
-                            result = Some(Expr::RsAnd(
-                                Box::new(Expr::RsRshift(vx.clone(), n(i.trailing_zeros()))),
+                            result = Some(Expr::RsLog(Logical::And,
+                                Box::new(Expr::RsArith(Arith::Rshift, vx.clone(), n(i.trailing_zeros()))),
                                 n((1 << i.count_ones()) - 1)));
                         }
                     }
@@ -203,8 +176,10 @@ impl Optimizer {
                     Expr::Num(_, 0x2AAA_AAAB) => {
                         if let Expr::Mingle(m1, other) = &**vx {
                             if let Expr::Num(_, 0) = &**other {
-                                result = Some(Expr::RsAnd(
-                                    Box::new(Expr::RsLshift(m1.clone(), n(1))), n(0xFFFF)));
+                                result = Some(Expr::RsLog(
+                                    Logical::And,
+                                    Box::new(Expr::RsArith(Arith::Lshift, m1.clone(), n(1))),
+                                    n(0xFFFF)));
                             }
                         }
                     }
@@ -215,7 +190,9 @@ impl Optimizer {
                 Optimizer::opt_expr(vx);
                 Optimizer::opt_expr(wx);
                 match (&**vx, &**wx) {
-                    (Expr::RsAnd(vx1, vx2), Expr::RsAnd(wx1, wx2)) => {
+                    (Expr::RsLog(op1, vx1, vx2), Expr::RsLog(op2, wx1, wx2))
+                        if op1 == op2
+                    => {
                         match (&**vx1, &**vx2, &**wx1, &**wx2) {
                             // (x ~ 0xA..A) OP (y ~ 0xA..A) $ (x ~ 0x5..5) OP (y ~ 0x5..5)
                             // -> (x OP y) in 32-bit
@@ -226,7 +203,7 @@ impl Optimizer {
                                 matches!(**n3, Expr::Num(_, 0x5555_5555)) &&
                                 matches!(**n4, Expr::Num(_, 0x5555_5555)) &&
                                 ax == cx && bx == dx =>
-                                result = Some(Expr::RsAnd(ax.clone(), bx.clone())),
+                                result = Some(Expr::RsLog(*op1, ax.clone(), bx.clone())),
                             // (x ~ 0xA..A) OP y1 $ (x ~ 0x5..5) OP y2
                             // -> (x OP (y1 << 16 | y2)) in 32-bit
                             (Expr::Select(_, ax, n1), Expr::Num(_, bn),
@@ -234,75 +211,41 @@ impl Optimizer {
                                 matches!(**n1, Expr::Num(_, 0xAAAA_AAAA)) &&
                                 matches!(**n3, Expr::Num(_, 0x5555_5555)) &&
                                 ax == cx =>
-                                result = Some(Expr::RsAnd(ax.clone(), n((bn << 16) | dn))),
-                            _ => {}
-                        }
-                    }
-                    (Expr::RsOr(vx1, vx2), Expr::RsOr(wx1, wx2)) => {
-                        match (&**vx1, &**vx2, &**wx1, &**wx2) {
-                            // as above
-                            (Expr::Select(_, ax, n1), Expr::Select(_, bx, n2),
-                             Expr::Select(_, cx, n3), Expr::Select(_, dx, n4)) if
-                                matches!(**n1, Expr::Num(_, 0xAAAA_AAAA)) &&
-                                matches!(**n2, Expr::Num(_, 0xAAAA_AAAA)) &&
-                                matches!(**n3, Expr::Num(_, 0x5555_5555)) &&
-                                matches!(**n4, Expr::Num(_, 0x5555_5555)) &&
-                                ax == cx && bx == dx =>
-                                result = Some(Expr::RsOr(ax.clone(), bx.clone())),
-                            (Expr::Select(_, ax, n1), Expr::Num(_, bn),
-                             Expr::Select(_, cx, n3), Expr::Num(_, dn)) if
-                                matches!(**n1, Expr::Num(_, 0xAAAA_AAAA)) &&
-                                matches!(**n3, Expr::Num(_, 0x5555_5555)) &&
-                                ax == cx =>
-                                result = Some(Expr::RsOr(ax.clone(), n((bn << 16) | dn))),
-                            _ => {}
-                        }
-                    }
-                    (Expr::RsXor(vx1, vx2), Expr::RsXor(wx1, wx2)) => {
-                        match (&**vx1, &**vx2, &**wx1, &**wx2) {
-                            (Expr::Select(_, ax, n1), Expr::Select(_, bx, n2),
-                             Expr::Select(_, cx, n3), Expr::Select(_, dx, n4)) if
-                                matches!(**n1, Expr::Num(_, 0xAAAA_AAAA)) &&
-                                matches!(**n2, Expr::Num(_, 0xAAAA_AAAA)) &&
-                                matches!(**n3, Expr::Num(_, 0x5555_5555)) &&
-                                matches!(**n4, Expr::Num(_, 0x5555_5555)) &&
-                                ax == cx && bx == dx =>
-                                result = Some(Expr::RsXor(ax.clone(), bx.clone())),
-                            (Expr::Select(_, ax, n1), Expr::Num(_, bn),
-                             Expr::Select(_, cx, n3), Expr::Num(_, dn)) if
-                                matches!(**n1, Expr::Num(_, 0xAAAA_AAAA)) &&
-                                matches!(**n3, Expr::Num(_, 0x5555_5555)) &&
-                                ax == cx =>
-                                result = Some(Expr::RsXor(ax.clone(), n((bn << 16) | dn))),
+                                result = Some(Expr::RsLog(*op1, ax.clone(), n((bn << 16) | dn))),
                             _ => {}
                         }
                     }
                     // (x != y) $ (z != w)  ->  ((x != y) << 1) | (z != w)
-                    (Expr::RsNotEqual(..), Expr::RsNotEqual(..)) =>
-                        result = Some(Expr::RsOr(Box::new(Expr::RsLshift(vx.clone(), n(1))), wx.clone())),
+                    (Expr::RsArith(Arith::NotEqual, ..), Expr::RsArith(Arith::NotEqual, ..)) =>
+                        result = Some(Expr::RsLog(
+                            Logical::Or,
+                            Box::new(Expr::RsArith(Arith::Lshift, vx.clone(), n(1))),
+                            wx.clone())),
                     _ => {}
                 }
             }
-            Expr::And(_, vx) | Expr::Or(_, vx) | Expr::Xor(_, vx) | Expr::RsNot(vx) => {
+            Expr::Log(_, _, vx) | Expr::RsNot(vx) => {
                 Optimizer::opt_expr(vx);
             }
-            Expr::RsAnd(vx, wx) => {
+            Expr::RsLog(Logical::And, vx, wx) => {
                 Optimizer::opt_expr(vx);
                 Optimizer::opt_expr(wx);
                 match (&**vx, &**wx) {
                     // (x ~ x) & 1  ->  x != 0
                     (Expr::Select(_, sx, tx), Expr::Num(_, 1)) if sx == tx => {
-                        result = Some(Expr::RsNotEqual(sx.clone(), n(0)));
+                        result = Some(Expr::RsArith(Arith::NotEqual, sx.clone(), n(0)));
                     }
-                    (Expr::Xor(_, sx), Expr::Num(_, 3)) => {
+                    (Expr::Log(Logical::Xor, _, sx), Expr::Num(_, 3)) => {
                         if let Expr::Mingle(mx, n2) = &**sx {
                             // ?(x $ 1) & 3  ->  1 + (x & 1)
                             if matches!(**n2, Expr::Num(_, 1)) {
-                                result = Some(Expr::RsPlus(n(1), Box::new(Expr::RsAnd(mx.clone(), n(1)))));
+                                result = Some(Expr::RsArith(Arith::Plus, n(1),
+                                                            Box::new(Expr::RsLog(Logical::And, mx.clone(), n(1)))));
                             }
                             // ?(x $ 2) & 3  ->  2 - (x & 1)
                             if matches!(**n2, Expr::Num(_, 2)) {
-                                result = Some(Expr::RsMinus(n(2), Box::new(Expr::RsAnd(mx.clone(), n(1)))));
+                                result = Some(Expr::RsArith(Arith::Minus, n(2),
+                                                            Box::new(Expr::RsLog(Logical::And, mx.clone(), n(1)))));
                             }
                         }
                     }
@@ -311,39 +254,25 @@ impl Optimizer {
                         result = Some(*vx.clone());
                     }
                     // Select(UnOP(Mingle(x, y)), 1) = BinOP(x & 1, y & 1)
-                    (Expr::And(_, sx), Expr::Num(_, 1)) => {
+                    (Expr::Log(op, _, sx), Expr::Num(_, 1)) => {
                         if let Expr::Mingle(m1, m2) = &**sx {
-                            result = Some(Expr::RsAnd(
-                                Box::new(Expr::RsAnd(m1.clone(), n(1))),
-                                Box::new(Expr::RsAnd(m2.clone(), n(1)))));
-                        }
-                    }
-                    (Expr::Or(_, sx), Expr::Num(_, 1)) => {
-                        if let Expr::Mingle(m1, m2) = &**sx {
-                            result = Some(Expr::RsOr(
-                                Box::new(Expr::RsAnd(m1.clone(), n(1))),
-                                Box::new(Expr::RsAnd(m2.clone(), n(1)))));
-                        }
-                    }
-                    (Expr::Xor(_, sx), Expr::Num(_, 1)) => {
-                        if let Expr::Mingle(m1, m2) = &**sx {
-                            result = Some(Expr::RsXor(
-                                Box::new(Expr::RsAnd(m1.clone(), n(1))),
-                                Box::new(Expr::RsAnd(m2.clone(), n(1)))));
+                            result = Some(Expr::RsLog(*op,
+                                Box::new(Expr::RsLog(Logical::And, m1.clone(), n(1))),
+                                Box::new(Expr::RsLog(Logical::And, m2.clone(), n(1)))));
                         }
                     }
                     // ((x & y) & y)  ->  second & has no effect
-                    (Expr::RsAnd(_, v2x), _) if v2x == wx => {
+                    (Expr::RsLog(Logical::And, _, v2x), _) if v2x == wx => {
                         result = Some(*vx.clone());
                     }
                     // ((x != y) & 1)  ->  & has no effect
-                    (Expr::RsNotEqual(..), Expr::Num(_, 1)) => {
+                    (Expr::RsArith(Arith::NotEqual, ..), Expr::Num(_, 1)) => {
                         result = Some(*vx.clone());
                     }
                     _ => {}
                 }
             }
-            Expr::RsXor(vx, wx) => {
+            Expr::RsLog(Logical::Xor, vx, wx) => {
                 Optimizer::opt_expr(vx);
                 Optimizer::opt_expr(wx);
                 if let Expr::Num(_, 0xFFFF_FFFF) = **wx {
@@ -353,9 +282,7 @@ impl Optimizer {
                     result = Some(Expr::RsNot(wx.clone()));
                 }
             }
-            // Expr::RsEqual(vx, wx) |
-            Expr::RsOr(vx, wx) | Expr::RsRshift(vx, wx) | Expr::RsLshift(vx, wx) |
-            Expr::RsNotEqual(vx, wx) | Expr::RsMinus(vx, wx) | Expr::RsPlus(vx, wx) => {
+            Expr::RsLog(Logical::Or, vx, wx) | Expr::RsArith(_, vx, wx) => {
                 Optimizer::opt_expr(vx);
                 Optimizer::opt_expr(wx);
             }
