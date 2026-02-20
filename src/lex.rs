@@ -102,7 +102,7 @@ impl<'a> Lexer<'a> {
     }
 }
 
-pub fn lex(s: &str, startline: usize) -> Lexer {
+pub fn lex(s: &str, startline: usize) -> Lexer<'_> {
     // always succeeds since we have an UNKNOWN token
     let inner = PestLexer::parse(Rule::tokens, s).unwrap();
     Lexer { inner, startline, stash: vec![], lastline: startline }

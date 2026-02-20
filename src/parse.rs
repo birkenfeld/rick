@@ -57,7 +57,7 @@ pub struct Parser<'p> {
 
 
 impl<'p> Parser<'p> {
-    pub fn new(code: &str, startline: usize, allow_bug: bool) -> Parser {
+    pub fn new(code: &str, startline: usize, allow_bug: bool) -> Parser<'_> {
         // we have to keep a list of all physical source lines to generate
         // E000 error messages
         let cursor = Cursor::new(code);
@@ -763,7 +763,7 @@ impl<'p> Parser<'p> {
         }
         // here we:
         // - assign comefroms to statements
-        for (i, mut stmt) in stmts.iter_mut().enumerate() {
+        for (i, stmt) in stmts.iter_mut().enumerate() {
             stmt.comefrom = comefroms.remove(&i);
         }
         // select a line for the compiler bug
