@@ -6,8 +6,8 @@ edition = "2018"
 
 [dependencies]
 getopts = "0.2"
-rand = "0.8"
+rand = "0.10"
 encoding = "0.2"
 pest = "2.0"
 pest_derive = "2.0"
-itertools = "0.10"
+itertools = "0.14"

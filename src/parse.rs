@@ -29,7 +29,7 @@ use std::io::{Read, BufRead, BufReader, Cursor};
 use std::u16;
 use std::str;
 use itertools::Itertools;
-use rand::{self, Rng};
+use rand::{self, RngExt};
 
 use crate::ast::{self, Program, Stmt, StmtBody, StmtProps, Expr, Abstain, ComeFrom,
                  Logical, Var, VType, VarInfo};
@@ -767,9 +767,9 @@ impl<'p> Parser<'p> {
             stmt.comefrom = comefroms.remove(&i);
         }
         // select a line for the compiler bug
-        let mut rng = rand::thread_rng();
-        let bugline = if self.allow_bug && rng.gen_range(0..10) == 0 {
-            rng.gen_range(0..stmts.len())
+        let mut rng = rand::rng();
+        let bugline = if self.allow_bug && rng.random_range(0..10) == 0 {
+            rng.random_range(0..stmts.len())
         } else {
             stmts.len()  // can never be reached
         } as u16;
