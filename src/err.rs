@@ -15,21 +15,21 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
-/// Provides runtime errors.
-///
-/// The term "runtime error" is actually a bit misleading: the errors produced by the
-/// compiler and by the compiled program actually behave the same.  Certain error codes
-/// can only be emitted by the compiler, and others only at program runtime.
-///
-/// Most errors are accompanied by "ON THE WAY TO ..." followed by the source line
-/// number of the following statement.  If the syslib or floatlib are automatically
-/// appended to the program, their source line numbers will start where the original
-/// program ended.
-///
-/// In the interpreter, errors are usually constructed with line number 0, and the
-/// interpreter sets the correct line number before it hands the error up to its
-/// caller.  In compiled code, no such adjustment is done, so errors have to get the
-/// correct line numbers when created.
+//! Provides runtime errors.
+//!
+//! The term "runtime error" is actually a bit misleading: the errors produced by the
+//! compiler and by the compiled program actually behave the same.  Certain error codes
+//! can only be emitted by the compiler, and others only at program runtime.
+//!
+//! Most errors are accompanied by "ON THE WAY TO ..." followed by the source line
+//! number of the following statement.  If the syslib or floatlib are automatically
+//! appended to the program, their source line numbers will start where the original
+//! program ended.
+//!
+//! In the interpreter, errors are usually constructed with line number 0, and the
+//! interpreter sets the correct line number before it hands the error up to its
+//! caller.  In compiled code, no such adjustment is done, so errors have to get the
+//! correct line numbers when created.
 
 use std::{fmt, io};
 

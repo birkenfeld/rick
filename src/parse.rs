@@ -15,19 +15,17 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
-/// Parses INTERCAL (yes, it's possible!) and generates an Abstract Sadism Tree.
-///
-/// Hand-written, since I didn't find any parser generators that looked nice enough.
-/// The INTERCAL syntax is actually not that complicated (except where it is), but
-/// the various extensions make it a bit iffy.
-///
-/// There are quite a few steps to do after parsing, which are done in the method
-/// called `post_process`.  It makes a list of statements into a "real" program.
+//! Parses INTERCAL (yes, it's possible!) and generates an Abstract Sadism Tree.
+//!
+//! Hand-written, since I didn't find any parser generators that looked nice enough.
+//! The INTERCAL syntax is actually not that complicated (except where it is), but
+//! the various extensions make it a bit iffy.
+//!
+//! There are quite a few steps to do after parsing, which are done in the method
+//! called `post_process`.  It makes a list of statements into a "real" program.
 
 use std::collections::{BTreeMap, HashMap, hash_map::Entry as HEntry};
 use std::io::{Read, BufRead, BufReader, Cursor};
-use std::u16;
-use std::str;
 use itertools::Itertools;
 use rand::{self, RngExt};
 
@@ -623,10 +621,8 @@ impl<'p> Parser<'p> {
                     walk_expr(e, visitor);
                 }
             }
-            StmtBody::ComeFrom(spec) => {
-                if let ComeFrom::Expr(e) = spec {
-                    walk_expr(e, visitor);
-                }
+            StmtBody::ComeFrom(ComeFrom::Expr(e)) => {
+                walk_expr(e, visitor);
             }
             StmtBody::Ignore(vs) |
             StmtBody::Remember(vs) |
@@ -685,7 +681,7 @@ impl<'p> Parser<'p> {
         let mut labels = BTreeMap::new();
         let mut comefroms: HashMap<usize, u16> = HashMap::new();
         let mut vars = Vars { counts: vec![0, 0, 0, 0], map: HashMap::new() };
-        for (i, mut stmt) in stmts.iter_mut().enumerate() {
+        for (i, stmt) in stmts.iter_mut().enumerate() {
             stmt_types.push(stmt.stype());
             stmt.props.onthewayto =
                 if i < nstmts - 1 { srclines[i + 1] } else { srclines[i] };
@@ -701,7 +697,7 @@ impl<'p> Parser<'p> {
             if let StmtBody::Error(e) = &mut stmt.body {
                 e.set_line(stmt.props.onthewayto);
             }
-            self.collect_vars(&mut vars, &mut stmt);
+            self.collect_vars(&mut vars, stmt);
         }
         // check politeness
         if stmts.len() > 2 {
@@ -717,7 +713,7 @@ impl<'p> Parser<'p> {
         // - make sure abstain labels exist
         // - make sure TRY AGAIN is last in the file
         let mut uses_complex_comefrom = false;
-        for (i, mut stmt) in stmts.iter_mut().enumerate() {
+        for (i, stmt) in stmts.iter_mut().enumerate() {
             if let StmtBody::ComeFrom(spec) = &stmt.body {
                 match spec {
                     ComeFrom::Label(n) => {
@@ -746,7 +742,7 @@ impl<'p> Parser<'p> {
                     }
                 }
             }
-            self.rename_vars(&vars, &mut stmt);
+            self.rename_vars(&vars, stmt);
             if let StmtBody::Abstain(_, v) = &stmt.body {
                 if let Abstain::Label(n) = v[0] {
                     if !labels.contains_key(&n) {

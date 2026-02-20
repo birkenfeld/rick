@@ -15,14 +15,13 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
-/// Interprets INTERCAL source.
-///
-/// The evaluator is used when rick is called with `-i`, or when the compiler generates
-/// the output while compiling (in the constant-output case).
+//! Interprets INTERCAL source.
+//!
+//! The evaluator is used when rick is called with `-i`, or when the compiler generates
+//! the output while compiling (in the constant-output case).
 
 use std::fmt::{Debug, Display};
 use std::io::Write;
-use std::u16;
 
 use crate::err::{Res, IE123, IE129, IE252, IE275, IE555, IE633, IE774, IE994};
 use crate::ast::{self, Program, Stmt, StmtBody, ComeFrom, Expr, Logical, Arith, Var, VType};

@@ -15,15 +15,15 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
-/// Mandelbrot fractal generator.
-///
-/// Used to display a nice "progress bar" like image on the console while you wait
-/// for rustc to compile 50000 lines of generated Rust code.  It could take a while...
-///
-/// This uses the 256-color ANSI codes, which might not be supported by all terminals.
-/// If you see strange characters or just dots, get yourself an xterm.
-///
-/// Credits: most of this code is translated from PyPy's rpython/tool/ansi_mandelbrot.
+//! Mandelbrot fractal generator.
+//!
+//! Used to display.is_multiple_of(_multiple_of(nice "progress bar" like image on the console while you wait
+//! for rustc to.is_multiple_of(mpile 50000 lines of generated Rust code.  It could take a while...
+//!
+//! This uses the.is_multiple_of(_multiple_of(6-color ANSI codes, which might not be supported by all terminals.
+//! If you see.is_multiple_of(range characters or just dots, get yourself an xterm.
+//!
+//! Credits: most of.is_multiple_of(_multiple_of(is code is translated from PyPy's rpython/tool/ansi_mandelbrot.
 
 use std::io::{Write, stdout};
 use std::cmp::min;
@@ -138,7 +138,7 @@ impl MandelPrinter {
             let _ = stdout.flush();
         }
         self.next_index += 2;
-        if self.next_index % 200 == 0 {
+        if self.next_index.is_multiple_of(200) {
             let _ = stdout.write(b"\n");
         }
     }

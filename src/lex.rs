@@ -68,7 +68,7 @@ impl<'a> Lexer<'a> {
                 let line = pair.as_span().end_pos().line_col().0 - 1 + self.startline;
                 // convert into SrcToken
                 if rule == Rule::NUMBER {
-                    SrcToken { line, rule, value: text.trim().parse().unwrap_or(u32::max_value()) }
+                    SrcToken { line, rule, value: text.trim().parse().unwrap_or(u32::MAX) }
                 } else if rule == Rule::WOW {
                     // handle ! = '. combination
                     self.stash.push(SrcToken { line, rule: Rule::SPOT, value: 0 });

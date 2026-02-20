@@ -1,7 +1,7 @@
 // -------------------------------------------------------------------------------------------------
 // Rick, a Rust intercal compiler.  Save your souls!
 //
-// Copyright (c) 2015-2021 Georg Brandl
+// Copyright (c) 2015- Georg Brandl
 //
 // This program is free software; you can redistribute it and/or modify it under the terms of the
 // GNU General Public License as published by the Free Software Foundation; either version 2 of the
@@ -15,9 +15,9 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
-/// Main program for Rick.
-///
-/// Parses arguments, calls parser, optimizer, interpreter or code generator.
+//! Main program for Rick.
+//!
+//! Parses arguments, calls parser, optimizer, interpreter or code generator.
 
 mod err;
 mod lex;
@@ -49,7 +49,7 @@ fn main() {
         Ok(code) => exit(code),
         Err(err) => {
             let mut stderr = stderr();
-            write!(stderr, "{}", err.to_string()).unwrap();
+            write!(stderr, "{}", err).unwrap();
             exit(1);
         }
     }
@@ -71,7 +71,7 @@ fn main_inner() -> Result<i32, err::RtError> {
     // parse args
     let matches = match opts.parse(args().skip(1)) {
         Ok(m)  => m,
-        Err(e) => { println!("{}", e.to_string());
+        Err(e) => { println!("{}", e);
                     return err::IE990.err() },
     };
 
@@ -101,7 +101,7 @@ fn main_inner() -> Result<i32, err::RtError> {
     if !infile.ends_with(".i") {
         return err::IE998.err();
     }
-    let mut f = match File::open(&infile) {
+    let mut f = match File::open(infile) {
         Err(_) => return err::IE777.err(),
         Ok(f)  => f,
     };
@@ -184,7 +184,7 @@ fn run_compiler(outname: &str, opt_flag: bool) -> Result<(), err::RtError> {
         cmd.arg("-O");
     }
     cmd.arg("-o").arg(&outname[..outname.len()-3]);
-    cmd.arg(&outname);
+    cmd.arg(outname);
     cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
     let child = match cmd.spawn() {
         Err(_) => return err::IE666.err(),

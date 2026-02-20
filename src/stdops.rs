@@ -15,25 +15,24 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
-/// Runtime support for INTERCAL compiler and interpreter.
-///
-/// This file provides code that is useful in the interpreter and in the compiled
-/// program.
-///
-/// The basic things implemented here are:
-///
-/// * Bind, the struct holding INTERCAL variables and their STASHes
-/// * Array, the struct holding INTERCAL arrays
-/// * RNG for execution chances
-/// * jump handling for RESUME and FORGET
-/// * Roman numeral and English spelled-out number conversion
-/// * Basic read/write of numbers and bytes
-/// * all the INTERCAL operators (mingle, select, unary and, unary or, unary xor)
+//! Runtime support for INTERCAL compiler and interpreter.
+//!
+//! This file provides code that is useful in the interpreter and in the compiled
+//! program.
+//!
+//! The basic things implemented here are:
+//!
+//! * Bind, the struct holding INTERCAL variables and their STASHes
+//! * Array, the struct holding INTERCAL arrays
+//! * RNG for execution chances
+//! * jump handling for RESUME and FORGET
+//! * Roman numeral and English spelled-out number conversion
+//! * Basic read/write of numbers and bytes
+//! * all the INTERCAL operators (mingle, select, unary and, unary or, unary xor)
 
 use std::fmt::{Debug, Display, Error, Formatter};
 use std::fs::File;
 use std::io::{Read, Write, stdin};
-use std::{u16, u32};
 
 use crate::err::{Res, IE240, IE241, IE252, IE436, IE533, IE562, IE579, IE621, IE632};
 
@@ -158,7 +157,7 @@ impl<T: LikeU16 + Default> Bind<Array<T>> {
             ix += (sub - 1) * prev_dim;
             prev_dim *= dim;
         }
-        Ok(ix as usize)
+        Ok(ix)
     }
 
     pub fn dimension(&mut self, dims: Vec<usize>, line: usize) -> Res<()> {
@@ -180,7 +179,7 @@ impl<T: LikeU16 + Default> Bind<Array<T>> {
         for val in &self.val.elems {
             let byte = ((*state as i16 - val.to_u16() as i16) as u16 % 256) as u8;
             let mut c = byte;
-            *state = byte as u8;
+            *state = byte;
             c = (c & 0x0f) << 4 | (c & 0xf0) >> 4;
             c = (c & 0x33) << 2 | (c & 0xcc) >> 2;
             c = (c & 0x55) << 1 | (c & 0xaa) >> 1;

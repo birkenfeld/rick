@@ -15,9 +15,9 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
-/// Provides the Abstract Sadist Tree, for representing INTERCAL programs in memory.
-///
-/// Most of the stuff here should be pretty standard.
+//! Provides the Abstract Sadist Tree, for representing INTERCAL programs in memory.
+//!
+//! Most of the stuff here should be pretty standard.
 
 use std::collections::BTreeMap;
 use std::default::Default;
@@ -168,6 +168,7 @@ pub enum VType {
 
 /// Specification of targets for an ABSTAIN or REINSTATE.
 #[derive(PartialEq, Eq, Debug)]
+#[allow(clippy::enum_variant_names)]
 pub enum Abstain {
     Label(Label),
     Calc,

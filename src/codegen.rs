@@ -15,24 +15,23 @@
 // if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 // -------------------------------------------------------------------------------------------------
 
-/// Translates AST to Rust.
-///
-/// There is quite a bit of ugly code generation here.  A library for quasi-quoting
-/// and pretty-printing Rust code would help a lot here.  I tried, at least, to make
-/// the actual generated code as nice as possible, so that it is not too hard to
-/// see what is going on at runtime.
-///
-/// All of the INTERCAL statements are generated into one monstrous function with a
-/// big switch over the current logical line (pctr is the "program counter").  This
-/// function is called from main(), which does not much else.
-///
-/// A lot of the generated code is similar to what eval.rs does at runtime, but most
-/// of the common code lives in stdops.rs.
+//! Translates AST to Rust.
+//!
+//! There is quite a bit of ugly code generation here.  A library for quasi-quoting
+//! and pretty-printing Rust code would help a lot here.  I tried, at least, to make
+//! the actual generated code as nice as possible, so that it is not too hard to
+//! see what is going on at runtime.
+//!
+//! All of the INTERCAL statements are generated into one monstrous function with a
+//! big switch over the current logical line (pctr is the "program counter").  This
+//! function is called from main(), which does not much else.
+//!
+//! A lot of the generated code is similar to what eval.rs does at runtime, but most
+//! of the common code lives in stdops.rs.
 
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::rc::Rc;
-use std::u16;
 
 use crate::ast::{Program, Stmt, StmtBody, Expr, Logical, Arith, Var, VType, Abstain,
                  ComeFrom};
